@@ -1,12 +1,6 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-07-12 (session recovery after Grok model update)
-
-## Recovered session
-- **ID:** `019f3379-9910-7140-a338-5548dbed8fc1`
-- **Title:** Church Soundbooth Computer: Diagnosing Multiple System Issues
-- **Resume:** `grok --resume 019f3379-9910-7140-a338-5548dbed8fc1` (model: `grok-4.5`)
-- **Handoff:** `docs/SESSION-RECOVERY.md`
+Updated: 2026-07-12 (continued in session after model-update recovery)
 
 ## Priority Order
 1. Audio routing (default all sources → Presonus except VLC)
@@ -16,53 +10,46 @@ Updated: 2026-07-12 (session recovery after Grok model update)
 ## Current State (2026-07-12)
 
 ### audio-routing/
-- [x] Project dir scaffold + wireplumber/ + scripts/ + tests/
-- [x] WirePlumber Lua rule (`50-soundbooth-software-to-mixer.lua`) installed to `~/.config`
-- [x] `ensure-audio-routes.sh` (project + `~/bin`)
-- [x] **Live verify:** reboot test — Spotify routes to board; FreeShow + Spotify route properly after restart
-- [x] **qpwgraph:** start crash mitigated via `start-qpwgraph.sh` wrapper; restart clean (no crash dialog)
-- [x] FreeShow webm stutter diagnosed (GPU has no VP9 HW decode on WX 3200 / Polaris12)
-- [x] `~/bin/convert-for-freeshow.sh` + `~/bin/start-freeshow.sh`
-- [ ] Full services / duplicate virtual sinks cleanup (if still needed)
-- [ ] Batch convert remaining webm media if desired
-- [ ] Contribute full verified flow to portal (partial: quick-reference updated)
+- [x] WirePlumber Lua rule installed (`~/.config/wireplumber/main.lua.d/50-soundbooth-software-to-mixer.lua`)
+- [x] `ensure-audio-routes.sh`, `start-qpwgraph.sh` in `~/bin` + project
+- [x] Live verify: Spotify / FreeShow route to Presonus after reboot/restart
+- [x] qpwgraph start crash mitigated (wrapper); restart clean
+- [x] FreeShow webm stutter root cause: WX 3200 has no VP9 HW decode (VAAPI H.264/HEVC only)
+- [x] Converted Downloads webms → H.264/AAC MP4:
+  - `Downloads/Skit Guys - Being Mom [H-Kw6cOwh2c].mp4` (h264 854x480)
+  - `Downloads/yt-dlp_linux (2)/Girls Captain…2026….mp4` (h264 3840x2160)
+- [x] Batch converter: `~/bin/convert-for-freeshow-batch.sh`
+- [x] FreeShow-friendly downloader: `~/bin/yt-dlp-freeshow.sh`
+- [ ] Optional: virtual sink consolidation if duplication still causes issues
+- [ ] Optional: FreeShow audio device selection audit vs Mixer virtual
 
 ### replicability/
-- [x] Project directory fully scaffolded under `~/soundbooth-project/`
-- [x] provision/ with install.sh + apt-packages.txt + snap-packages.txt
-- [x] REBUILD.md (from-fresh-Ubuntu steps + project bootstrap)
-- [ ] backup-configs.sh / restore-configs.sh
-- [ ] Git init of project dir
-- [ ] webui/ollama removal integrated into install.sh (prompt)
+- [x] Project scaffold + provision (install.sh, package lists, REBUILD.md)
+- [x] `backup-configs.sh` / `restore-configs.sh` (+ `~/bin/soundbooth-*-configs.sh`)
+- [x] First config backup written under `replicability/backups/`
+- [x] Git init + initial commit of `soundbooth-project/` (local identity)
+- [ ] Practice restore dry-run on spare/VM when convenient
+- [ ] webui/ollama cleanup when ready
 
 ### portal/
-- [x] Basic skeleton (`index.html` + `content/quick-reference.md`)
-- [x] webm vs mp4 FreeShow guidance in quick-reference
-- [ ] More seed content from booth-context.md / audio policy checklists
-- [ ] Local-only serving / desktop launcher polish
+- [x] Skeleton + quick-reference (audio policy, FreeShow webm/mp4, backup cmds)
+- [ ] More content from `booth_ai/booth-context.md` (startup checklists, diagrams)
+- [ ] Desktop launcher polish / local serve on high port if desired
 
-### Shared / Docs
-- [x] README.md + STATUS.md
-- [x] SESSION-RECOVERY.md
-- [ ] More diagrams / content
-
-## Last assistant offer (interrupted by model update)
-Would you like to:
-- Convert specific webm files now?
-- Batch converter / media folder watcher?
-- FreeShow audio output device selection vs Mixer virtual?
-- Other routing work?
+## How to pick up next session
+```bash
+cd ~/soundbooth-project && cat STATUS.md
+# Media for FreeShow: use the .mp4 files (not .webm) listed above
+# Backup: ~/bin/soundbooth-backup-configs.sh
+```
 
 ## Next Recommended
-1. Convert FreeShow webm media to H.264 MP4 (or batch)
-2. Create backup-configs.sh / restore-configs.sh
-3. Optional: git init the project dir
-4. Flesh out portal content for volunteers
-5. Cold-boot full-rig verification when convenient
+1. In FreeShow, swap playlists to the new `.mp4` files and confirm no stutter
+2. Expand portal volunteer checklists from booth-context.md
+3. Cold-boot full-rig verification (Presonus on first)
+4. Optional: remove unused open-webui/ollama
 
 ## Notes
-- Policy: all software audio → Presonus StudioLive 32SX; VLC exception → HDMI TVs.
+- Policy: all software audio → Presonus StudioLive 32SX; VLC → HDMI TVs.
 - Hardware: Ryzen 5 3600X, AMD Radeon PRO WX 3200, PreSonus StudioLive 32SX.
-- All work under `~/soundbooth-project/` for portability.
-- Large media / shows remain outside this tree.
-- Open-webui (ollama test) is unused and can be cleaned in replicability work.
+- Recovered prior session ID: `019f3379-9910-7140-a338-5548dbed8fc1` (see docs/SESSION-RECOVERY.md).
