@@ -3,3 +3,5 @@ replicability/backups/*.sha256
 replicability/backups/pre-restore-*/
 *.log
 .DS_Store
+__pycache__/
+*.pyc

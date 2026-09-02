@@ -36,16 +36,28 @@ This installs packages, snaps, and notes the unused ollama/webui cleanup.
 
 ## 6. Enable & test services
 ```
-systemctl --user enable --now soundbooth.target qpwgraph.service vlc.service ardour.service
+# From project units (also under audio-routing/systemd/):
+cp audio-routing/systemd/*.service audio-routing/systemd/*.target \
+  ~/.config/systemd/user/
+systemctl --user daemon-reload
+systemctl --user enable --now soundbooth.target
+# soundbooth.target pulls: qpwgraph, ensure-audio-routes, ffmpeg-capture, ffmpeg-srt-relay, ffmpeg-display, guard, livestream-camera-watch
+# Optional multitrack only when needed: systemctl --user start ardour.service
+# Do NOT install or enable vlc.service — ATEM UVC is exclusive; program path is FFmpeg
 ```
 
 Run:
 ```
-~/bin/ensure-audio-routes.sh
-qpwgraph -a ~/patchbay_profile/soundbooth.qpwgraph
+~/bin/soundbooth-health.sh
+# Expect PASS on foh-graph (Mixer → Presonus AUX0/1)
 ```
 
-Test software audio (Spotify/browser) goes to the board. VLC goes to HDMI TVs.
+Test software audio (Spotify/browser) goes to the board (Mixer/Presonus).
+Program: ATEM → ffmpeg-capture (local UDP tees) → ffplay on DP-4 (HDMI TV audio, not Mixer)
+                                                 → ffmpeg-srt-relay → SRT → Subsplash.
+End livestream now / resume: `~/bin/stop-live-stream.sh` / `~/bin/start-live-stream.sh`
+(capture + TV keep running either way).
+Livestream verify: https://dashboard.subsplash.com/-d/#/media/live
 
 ## 7. Git (recommended)
 ```

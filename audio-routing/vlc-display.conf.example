@@ -1,0 +1,29 @@
+# Soundbooth VLC output targeting
+# Used by ~/bin/start-vlc.sh and ~/bin/vlc-display-guard.sh
+#
+# Prefer a stable connector name from `xrandr --listmonitors` (rightmost field).
+# On this rig the sanctuary VLC TV is SII "HDMI TV" on DP-4 (see monitors.xml).
+
+VLC_OUTPUT_CONNECTOR=DP-4
+
+# Optional overrides (uncomment if needed):
+# VLC_SCREEN_NUMBER=1
+# VLC_VIDEO_DEV=/dev/video0
+
+# Guard: restart VLC if its window is not on the preferred output (seconds between checks)
+VLC_GUARD_INTERVAL_SEC=20
+
+# Boot: how long start-vlc.sh waits for X auth + preferred connector before failing
+# (systemd Restart= will retry). HDMI TVs / extenders often lag after login.
+# VLC_DISPLAY_WAIT_SEC=120
+
+# --- A/V sync (ATEM UVC video + separate USB audio via PipeWire) ---
+# Video and audio are different USB endpoints; VLC cannot true-sync them.
+# Positive VLC_AUDIO_DESYNC_MS delays audio (usual: video lags → delay audio).
+# If speech is still early vs lips, increase; if late, decrease or use negative.
+# After change: systemctl --user restart vlc.service
+# Bars on dayjoborchestra A/V Sync Test (ucZl6vQ_8Uo) ≈ 100ms each
+VLC_AUDIO_DESYNC_MS=2000
+VLC_LIVE_CACHING_MS=300
+# Optional hard-code Pulse source (default: auto-detect Blackmagic/ATEM source):
+# VLC_AUDIO_SOURCE=alsa_input.usb-Blackmagic_Design_ATEM_Mini_Extreme_....analog-stereo

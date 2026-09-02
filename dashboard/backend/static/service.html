@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Service · Soundbooth Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+<div class="page" style="max-width:1200px;">
+
+  <div class="breadcrumb">
+    <a href="/index.html" style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-weight:600;" id="back-link"></a>
+  </div>
+
+  <div class="header">
+    <div class="brand">
+      <div class="brand-mark" id="svc-icon"></div>
+      <div>
+        <div class="brand-title" id="svc-title">Loading…</div>
+        <div class="brand-sub mono" id="svc-unit-name">&nbsp;</div>
+      </div>
+    </div>
+    <div class="pill pill-neutral" id="svc-status-pill">…</div>
+  </div>
+
+  <div class="card" style="padding:20px 24px;">
+    <div class="section-title" style="margin-bottom:8px;">Controls</div>
+    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;" id="svc-controls"></div>
+  </div>
+
+  <div style="display:flex; gap:24px; flex-wrap:wrap;">
+    <div class="card" style="flex:1 1 320px; padding:20px 24px;">
+      <div class="section-title" style="margin-bottom:14px;">Relationships</div>
+      <div id="svc-relationships" style="font-size:13px; color:var(--text-muted);">
+        Not tracked yet — see <span class="mono">SYSTEM-STATE.md</span> for how services depend on each other.
+      </div>
+    </div>
+    <div class="card" style="flex:1 1 320px; padding:20px 24px;">
+      <div class="section-title" style="margin-bottom:14px;">Status</div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;" id="svc-metrics"></div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:20px 24px; display:flex; flex-direction:column; gap:12px;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <div class="section-title">Service Log <span class="mono" id="svc-log-title" style="font-weight:400; color:var(--text-faint);"></span></div>
+      <button class="btn btn-ghost btn-sm" id="refresh-log-btn">Refresh</button>
+    </div>
+    <div class="log-view mono" id="svc-log" style="height:300px;">Loading…</div>
+  </div>
+
+</div>
+
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script src="/js/api.js"></script>
+<script src="/js/icons.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/service.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+[Unit]
+Description=PTZOptics Camera Management Platform (unpacked AppImage)
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+# Must not start before the graphical session — packed unit used default.target
+# and dumped once at boot (Missing X server / $DISPLAY).
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+# Unpacked so ESM import("get-port") works. Packed app.asar makes RTSP-MPEG
+# throw ENOTDIR and the preview pane stays blank.
+WorkingDirectory=%h/AppImage/Camera-Management-Platform-1.9.7.extracted
+ExecStart=%h/AppImage/Camera-Management-Platform-1.9.7.extracted/camera-management-platform --no-sandbox
+Restart=on-failure
+RestartSec=5
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
+Environment=DISPLAY=:0
+
+[Install]
+WantedBy=graphical-session.target

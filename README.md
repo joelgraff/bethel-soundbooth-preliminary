@@ -21,9 +21,16 @@ See the master plan (in the Grok session or copied here) for the full intended l
 
 All artifacts created for these initiatives should land here so the entire "setup system" can be versioned (git recommended) and deployed to a fresh machine.
 
-## Status
+## Status & shared knowledge (multi-session)
 
-See `STATUS.md` for current progress across sessions.
+| File | Purpose |
+|------|---------|
+| **`SYSTEM-STATE.md`** | Canonical “how the system works” — every session should read this |
+| **`STATUS.md`** | Progress / next steps across sessions |
+| **`AGENTS.md`** | Rules Grok loads for this project |
+| **`docs/MULTI-SESSION.md`** | How to run diagnostics vs troubleshooting vs feature sessions |
+
+Grok also loads `~/AGENTS.md` and `~/.grok/rules/soundbooth.md` so new sessions pick up the same pointers. Optional skill: `/soundbooth`.
 
 ## License / Notes
 

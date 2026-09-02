@@ -1,0 +1,14 @@
+[Unit]
+Description=Set default session sink to Mixer (Presonus FOH path)
+After=pipewire.service wireplumber.service virtual-sinks-loaded.target
+Requires=pipewire.service wireplumber.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Virtual sinks (Mixer, LocalLive) come from pipewire-pulse conf.
+# This only re-asserts the session default; ensure-audio-routes does full graph repair.
+ExecStart=/bin/bash -c 'pactl set-default-sink Mixer || true'
+
+[Install]
+WantedBy=default.target

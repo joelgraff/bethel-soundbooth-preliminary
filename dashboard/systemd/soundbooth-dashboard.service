@@ -1,0 +1,18 @@
+[Unit]
+Description=Soundbooth Control Dashboard (backend API + agent bridge)
+Documentation=file:///home/soundbooth/soundbooth-project/dashboard/README.md
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/soundbooth-project/dashboard/backend
+# Host/port/PIN/secret come from ~/.config/soundbooth/dashboard.conf
+# (see dashboard/backend/dashboard.conf.example) via run.py -> app/config.py.
+ExecStart=%h/soundbooth-project/dashboard/backend/.venv/bin/python run.py
+Restart=on-failure
+RestartSec=5
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=graphical-session.target

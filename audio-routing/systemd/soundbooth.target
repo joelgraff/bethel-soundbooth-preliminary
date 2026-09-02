@@ -1,0 +1,9 @@
+[Unit]
+Description=Church Presentation Rig - All Services
+# Program: FFmpeg SRT + ffplay on DP-4. No VLC services. Ardour optional (manual).
+# FOH: Mixer virtual sink + presonus-foh-bridge (ALSA) — not PW multichannel volume
+Wants=virtual-sinks-loaded.target qpwgraph.service ensure-audio-routes.service presonus-foh-bridge.service ffmpeg-srt.service ffmpeg-display.service ffmpeg-display-guard.service ffmpeg-srt-watch.service camera-management-watch.service
+After=virtual-sinks-loaded.target qpwgraph.service ensure-audio-routes.service
+
+[Install]
+WantedBy=default.target

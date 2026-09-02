@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soundbooth Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="4" height="18" rx="1.5"/><rect x="10" y="7" width="4" height="14" rx="1.5"/><rect x="16" y="11" width="4" height="10" rx="1.5"/></svg>
+      </div>
+      <div>
+        <div class="brand-title">Soundbooth Control</div>
+        <div class="brand-sub">Live Operator Dashboard</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <div class="mono" id="clock" style="font-size:13px; color:var(--text-muted);"></div>
+      <button class="btn btn-ghost btn-sm" id="logout-btn">Log out</button>
+    </div>
+  </div>
+
+  <div class="card health-banner good" id="health-banner">
+    <div class="health-top">
+      <div style="display:flex; align-items:center; gap:16px;">
+        <span id="health-icon"></span>
+        <div>
+          <div class="health-headline" id="health-headline">Checking system health…</div>
+          <div class="health-sub" id="health-sub">&nbsp;</div>
+        </div>
+      </div>
+    </div>
+    <div id="health-issues"></div>
+  </div>
+
+  <div class="quick-actions" id="quick-actions"></div>
+
+  <div class="grid">
+    <div class="col col-wide">
+      <div class="card svc-card">
+        <div class="svc-header">
+          <div class="svc-title">Services</div>
+          <div class="pill pill-good" id="svc-summary">…</div>
+        </div>
+        <div class="svc-list" id="svc-list"></div>
+      </div>
+
+      <div class="card svc-card" style="height:auto;">
+        <div class="svc-header">
+          <div class="svc-title">Live Output Preview</div>
+          <button class="btn btn-ghost btn-sm" id="calibrate-btn">Run A/V Sync Check</button>
+        </div>
+        <div class="hdmi-grid" id="hdmi-grid"></div>
+        <div id="calibrate-result" style="display:none; font-size:12.5px; padding:12px 14px; border-radius:10px; line-height:1.6;"></div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div class="card chat-card">
+        <div class="chat-header">
+          <div class="chat-header-left">
+            <div class="chat-avatar" id="chat-avatar"></div>
+            <div>
+              <div style="font-size:14.5px; font-weight:700;">AI Agent</div>
+              <div class="chat-status"><span class="dot offline" id="chat-dot"></span><span id="chat-status-text">Not connected</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="chat-log" id="chat-log"></div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="chat-input-row">
+            <input id="chat-input" placeholder="Ask the AI agent…" disabled>
+            <button class="chat-send" id="chat-send" disabled></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card trbl-card">
+        <div class="svc-title">Troubleshooting</div>
+        <div>
+          <div class="lbl" style="padding-bottom:8px;">Needs Attention</div>
+          <div id="trbl-issues" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:8px; min-height:0;">
+          <div class="log-picker">
+            <div class="lbl" style="flex-shrink:0;">Service Log</div>
+            <select id="log-unit-select"></select>
+          </div>
+          <div class="log-view mono" id="log-view">Select a service above.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script src="/js/api.js"></script>
+<script src="/js/icons.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/dashboard.js"></script>
+</body>
+</html>

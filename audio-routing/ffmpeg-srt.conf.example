@@ -1,0 +1,35 @@
+# FFmpeg ATEM capture + SRT livestream (Subsplash / similar)
+# Install: cp to ~/.config/soundbooth/ffmpeg-srt.conf and set FFMPEG_SRT_URL
+#
+# Shared by two independent services (split 2026-08-23 so the livestream leg
+# can be stopped/started — e.g. at end of service — without touching capture
+# or the sanctuary TV):
+#   ffmpeg-capture.service    owns ATEM /dev/video0 → local UDP tees (always-on)
+#   ffmpeg-srt-relay.service  reads capture's dedicated :5003 tee → SRT/Subsplash (stream copy)
+# Stop the stream: ~/bin/stop-live-stream.sh   Start it: ~/bin/start-live-stream.sh
+
+# Required (read by ffmpeg-srt-relay.service): full SRT caller URL
+# (streamid is secret — do not commit real values)
+# FFMPEG_SRT_URL='srt://live-rs.example.com:8080?streamid=...&mode=caller&transtype=live&fc=25600&payloadsize=1316&maxbw=-1'
+
+# Optional overrides:
+# FFMPEG_VIDEO_DEV=/dev/video0
+# FFMPEG_VIDEO_SIZE=1920x1080
+# FFMPEG_VIDEO_FPS=30
+# FFMPEG_AUDIO_SOURCE=   # auto-detect Blackmagic/ATEM Pulse source if empty
+# FFMPEG_AUDIO_DELAY_SEC=0.25  # lip-sync adelay (sec); raw path audio leads ~0.25s
+# FFMPEG_TV_EXTRA_AUDIO_DELAY_SEC=0  # extra delay for ffmpeg-display leg ONLY
+#   (back-of-house TVs via GoFanco extender / their own picture processing lag
+#   video behind audio independently of the shared encode above; does not
+#   affect the SRT relay or FFMPEG_AUDIO_DELAY_SEC — see start-ffmpeg-display.sh)
+# FFMPEG_LOCAL_UDP='udp://127.0.0.1:5000?pkt_size=1316'          # ffplay DP-4 display (unicast: exclusive — this booth's deployed value; script default is multicast 239.255.42.42)
+# FFMPEG_LOCAL_UDP_PREVIEW='udp://127.0.0.1:5001?pkt_size=1316'  # booth multiview encode tile (unicast: exclusive)
+# FFMPEG_LOCAL_UDP_PROBE='udp://127.0.0.1:5002?pkt_size=1316'    # free tee for av-sync-calibrate (unicast: exclusive)
+# FFMPEG_LOCAL_UDP_RELAY='udp://127.0.0.1:5003?pkt_size=1316'    # feeds ffmpeg-srt-relay.service (unicast: exclusive — its own port, never shared with :5000)
+# FFMPEG_LOCAL_HTTP=           # optional; HTTP listen is flaky with tee
+# FFMPEG_LOCAL_PLAY='udp://@127.0.0.1:5000'  # ffplay input URL
+# FFMPEG_SRT_RELAY_INPUT=      # override relay's read of FFMPEG_LOCAL_UDP_RELAY if it must differ
+# FFMPEG_SRT_DNS_WAIT_SEC=120  # relay: wait for SRT host DNS before opening (0 to skip)
+# FFMPEG_ENCODE_MODE=x264      # or vaapi
+# FFMPEG_VBITRATE=4500k
+# FFMPEG_ABITRATE=160k

@@ -1,0 +1,30 @@
+[Unit]
+Description=FFmpeg ATEM capture → local UDP for DP-4 display + livestream relay
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+After=graphical-session.target pipewire-pulse.service sound.target
+Wants=pipewire-pulse.service
+# Script waits for /dev/video0 (udev/ACL often late after boot)
+StartLimitIntervalSec=600
+StartLimitBurst=30
+
+[Service]
+Type=simple
+Environment=PATH=%h/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin
+Environment=DISPLAY=:0
+# XAUTHORITY discovered at runtime (Mutter)
+TimeoutStartSec=180
+# ffmpeg's own signal handler exits 255 on SIGTERM even for a clean stop
+# (confirmed 2026-08-23, matches historical ffmpeg-srt.service behavior) —
+# without this, `systemctl stop`/restart shows as "failed" for a normal exit.
+SuccessExitStatus=255
+ExecStart=%h/bin/start-ffmpeg-capture.sh
+Restart=always
+RestartSec=8
+# Reattach sanctuary ffplay + livestream relay after encode (re)start — must be
+# non-blocking (blocking try-restart deadlocks if either waits on this unit
+# still being in start-post)
+ExecStartPost=/bin/bash -c 'sleep 2; systemctl --user try-restart --no-block ffmpeg-display.service ffmpeg-srt-relay.service'
+Nice=-5
+
+[Install]
+WantedBy=graphical-session.target

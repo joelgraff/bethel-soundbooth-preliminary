@@ -1,0 +1,17 @@
+[Unit]
+Description=Dashboard HDMI preview capture (DP-2 FreeShow Primary, DP-3 FreeShow Stage)
+Documentation=file:///home/soundbooth/soundbooth-project/dashboard/README.md
+After=graphical-session.target
+Wants=graphical-session.target
+
+[Service]
+Type=simple
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
+Environment=DISPLAY=:0
+# XAUTHORITY/DBUS_SESSION_BUS_ADDRESS discovered at runtime (see ensure_display_env())
+ExecStart=%h/bin/hdmi-preview-capture.py
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target

@@ -1,0 +1,23 @@
+# Fragment for ~/.asoundrc — StudioLive 32SX FOH path
+# Stereo software → USB return 1–2 (64ch device, ch 0/1 only)
+
+pcm.presonus_foh {
+    type plug
+    slave {
+        pcm "presonus_foh_raw"
+        channels 64
+        format S32_LE
+        rate 48000
+    }
+    ttable.0.0 1
+    ttable.1.1 1
+}
+
+pcm.presonus_foh_raw {
+    type hw
+    card S32SX
+    device 0
+    channels 64
+    format S32_LE
+    rate 48000
+}

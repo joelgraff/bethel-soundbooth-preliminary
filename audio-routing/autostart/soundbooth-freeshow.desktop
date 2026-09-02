@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Soundbooth FreeShow
+Comment=Presentation Primary (DP-2) + Stage (DP-3); prefer MP4/H.264
+Exec=/home/soundbooth/bin/start-freeshow.sh
+Icon=freeshow
+Terminal=false
+Categories=AudioVideo;
+StartupNotify=true
+StartupWMClass=FreeShow
+X-GNOME-Autostart-enabled=true
+# Wait for multi-head layout + program path
+X-GNOME-Autostart-Delay=12
+OnlyShowIn=GNOME;Unity;XFCE;

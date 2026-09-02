@@ -1,0 +1,17 @@
+[Unit]
+Description=Soundbooth Mixer → PreSonus FOH USB bridge
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+After=pipewire.service pipewire-pulse.service wireplumber.service virtual-audio.service
+Wants=pipewire.service pipewire-pulse.service virtual-audio.service
+PartOf=soundbooth.target
+
+[Service]
+Type=simple
+ExecStart=%h/bin/start-presonus-foh-bridge.sh
+Restart=on-failure
+RestartSec=2
+# Give Mixer null sink time to appear after pulse
+ExecStartPre=/bin/sleep 2
+
+[Install]
+WantedBy=soundbooth.target

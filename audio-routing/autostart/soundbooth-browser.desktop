@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Soundbooth Browser
+Comment=Vivaldi on DP-1 booth ultrawide (not program DP-4)
+Exec=/home/soundbooth/bin/start-booth-browser.sh
+Icon=vivaldi
+Terminal=false
+Categories=Network;WebBrowser;
+StartupNotify=true
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=10
+OnlyShowIn=GNOME;Unity;XFCE;

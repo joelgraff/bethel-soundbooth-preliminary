@@ -1,0 +1,22 @@
+[Unit]
+Description=Dashboard HDMI preview capture (DP-4 program, via ffmpeg-capture's :5002 tee)
+Documentation=file:///home/soundbooth/soundbooth-project/dashboard/README.md
+After=ffmpeg-capture.service graphical-session.target
+Wants=ffmpeg-capture.service
+
+[Service]
+Type=simple
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
+# ffmpeg's own SIGTERM handler exits 255 even for a clean stop (same
+# behavior as ffmpeg-capture.service/ffmpeg-display.service) — without this,
+# the dashboard's own stop/start around a calibration run would show as
+# "failed" instead of a clean stop, and Restart=always covers the case where
+# av-sync-calibrate.py's own port-stealing kill (run manually, bypassing the
+# dashboard) takes this down unexpectedly.
+SuccessExitStatus=255
+ExecStart=%h/bin/start-hdmi-preview-dp4.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target

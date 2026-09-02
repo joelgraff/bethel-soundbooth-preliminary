@@ -1,0 +1,31 @@
+# Soundbooth Dashboard config
+# Copy to ~/.config/soundbooth/dashboard.conf and edit. Not committed to git
+# (it holds the PIN and session secret) — see dashboard/.gitignore.
+
+# PIN required to unlock the dashboard, including from the LAN subnet.
+# Change this before relying on it for anything.
+DASHBOARD_PIN=changeme
+
+# Random secret used to sign session cookies. Generate with:
+#   python3 -c "import secrets; print(secrets.token_hex(32))"
+SESSION_SECRET=changeme
+
+# Lets the booth PC's own dashboard-viewer window (start-booth-dashboard-view.sh)
+# skip the PIN screen. Same trust tier as the PIN/session secret above — not
+# a source-IP check (see dashboard/backend/app/auth.py for why). Leave unset
+# to require the PIN everywhere, including locally. Generate with:
+#   python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+LOCAL_TOKEN=changeme
+
+# 127.0.0.1 = booth PC only. 0.0.0.0 = also reachable on the soundbooth LAN
+# subnet — only do this on the isolated, password-protected subnet, never on
+# guest Wi-Fi.
+DASHBOARD_HOST=0.0.0.0
+DASHBOARD_PORT=8420
+
+# Defaults match the live deployment layout; override only if yours differs.
+# PROJECT_DIR=/home/soundbooth/soundbooth-project
+# HEALTH_SCRIPT=/home/soundbooth/bin/soundbooth-health.sh
+# CALIBRATE_SCRIPT=/home/soundbooth/bin/av-sync-calibrate.py
+# HDMI_PREVIEW_DIR=/dev/shm/soundbooth-dashboard
+# HDMI_PREVIEW_MAX_AGE_SEC=10
