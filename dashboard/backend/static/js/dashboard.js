@@ -479,6 +479,7 @@ async function refreshRecStatus() {
   const stopBtn = document.getElementById("rec-stop-btn");
   const info = document.getElementById("rec-active-info");
   const nameInput = document.getElementById("rec-name");
+  const splitInput = document.getElementById("rec-split");
 
   if (recIsRecording) {
     pill.className = "pill pill-warn";
@@ -486,8 +487,9 @@ async function refreshRecStatus() {
     startBtn.style.display = "none";
     stopBtn.style.display = "";
     nameInput.disabled = true;
+    splitInput.disabled = true;
     info.style.display = "";
-    info.textContent = `${status.filename} — ch ${status.channels.join(",")} — ${formatElapsed(status.elapsed_sec)}`;
+    info.textContent = `${status.filenames.join(", ")} — ch ${status.channels.join(",")} — ${formatElapsed(status.elapsed_sec)}`;
     document.querySelectorAll(".rec-chan-btn").forEach((b) => {
       b.classList.toggle("active", status.channels.includes(Number(b.dataset.channel)));
     });
@@ -497,6 +499,7 @@ async function refreshRecStatus() {
     startBtn.style.display = "";
     stopBtn.style.display = "none";
     nameInput.disabled = false;
+    splitInput.disabled = false;
     info.style.display = "none";
   }
 }
@@ -530,8 +533,9 @@ async function startRecording() {
     return;
   }
   const name = document.getElementById("rec-name").value.trim();
+  const split = document.getElementById("rec-split").checked;
   try {
-    await api.recordingStart(channels, name);
+    await api.recordingStart(channels, name, split);
     showToast("Recording started");
   } catch (err) {
     showToast(err.message || "Failed to start recording");

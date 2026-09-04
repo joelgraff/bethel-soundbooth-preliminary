@@ -183,6 +183,7 @@ def api_calibrate(body: CalibrateBody, _: None = Depends(require_session)):
 class RecordingStartBody(BaseModel):
     channels: list[int]
     name: Optional[str] = None
+    split: bool = False
 
 
 @app.get("/api/recording/status")
@@ -197,6 +198,7 @@ def api_recording_start(body: RecordingStartBody, _: None = Depends(require_sess
             channels=body.channels,
             name=body.name,
             out_dir=settings.recordings_dir,
+            split=body.split,
             max_duration_sec=settings.recording_max_duration_sec,
         )
     except recording_mod.RecordingError as exc:

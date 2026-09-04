@@ -41,7 +41,15 @@ TARGET_SINK="Mixer"          # Preferred stable target for software
 # in-app volume stays at 1.0 per above; 33% is the PipeWire stream level on
 # top of that).
 # Override: FREESHOW_VOLUME_PCT=40 SOFTWARE_VOLUME_PCT=33 ~/bin/ensure-audio-routes.sh
-FREESHOW_VOLUME_PCT="${FREESHOW_VOLUME_PCT:-33}"
+#
+# Re-tuned 50% 2026-09-04 (was 33%) — operator found FreeShow's actual media
+# volume (its embedded LibVLC player, see apply_software_levels() below) had
+# been running unmanaged and maxed at 100% the whole time, unrelated to this
+# 33%/50% number; that number only ever applied to FreeShow's OTHER stream
+# (application.name=Chromium). 50% is the operator's ear-tuned level for the
+# newly-managed LibVLC stream; kept the same for both since they're both
+# "FreeShow" as far as an operator adjusting one knob is concerned.
+FREESHOW_VOLUME_PCT="${FREESHOW_VOLUME_PCT:-50}"
 SOFTWARE_VOLUME_PCT="${SOFTWARE_VOLUME_PCT:-33}"
 
 SOFTWARE_PATTERNS=(
@@ -59,6 +67,14 @@ VLC_PATTERN="vlc"   # We deliberately leave VLC alone
 
 get_sink_id() {
     pactl list short sinks | awk -v name="$1" 'index($2, name) {print $1; exit}'
+}
+
+# Returns the numeric Sink id a sink-input is currently connected to.
+sink_input_sink_id() {
+    pactl list sink-inputs 2>/dev/null | awk -v want="$1" '
+        $1=="Sink" && $2=="Input" { cur=$3; gsub("#","",cur); next }
+        cur==want && $1=="Sink:" { print $2; exit }
+    '
 }
 
 # Returns application.process.binary for a sink-input id (best-effort; mawk-safe)
@@ -126,13 +142,31 @@ apply_software_levels() {
                 line=$0; sub(/[^"]*"/, "", line); sub(/".*/, "", line); print line; exit
             }
         ')
-        # Skip VLC / ffplay / ffmpeg (program TV path → LocalLive/HDMI, not Mixer)
-        if [[ "${app,,}" == *vlc* || "${bin,,}" == *vlc* \
-            || "${app,,}" == *ffplay* || "${bin,,}" == *ffplay* \
+        # Always skip ffplay/ffmpeg — genuinely always the program TV path
+        # (LocalLive/HDMI), never Mixer.
+        if [[ "${app,,}" == *ffplay* || "${bin,,}" == *ffplay* \
             || "${app,,}" == *ffmpeg* || "${bin,,}" == *ffmpeg* ]]; then
             continue
         fi
-        if [[ "$bin" == "freeshow" ]]; then
+        # VLC is a genuinely mixed case: this policy predates FreeShow
+        # embedding LibVLC for its own video/media playback, which shows up
+        # identically to a standalone VLC process (same application.name,
+        # "VLC media player (LibVLC ...)") — confirmed live 2026-09-04 that
+        # FreeShow's media audio goes through exactly this identity, IS
+        # already on Mixer (not LocalLive/HDMI), and was going completely
+        # unmanaged because of this blanket skip — the actual cause of
+        # "FreeShow's volume keeps coming back maxed." So: only skip a
+        # VLC-named stream if it's NOT already on Mixer (i.e. a real
+        # standalone/manual VLC session doing its own thing elsewhere,
+        # which this script still must not touch); if it IS on Mixer,
+        # that's FreeShow's embedded player and gets the same treatment as
+        # the "Chromium"-identified FreeShow stream below.
+        is_vlc_named=false
+        [[ "${app,,}" == *vlc* || "${bin,,}" == *vlc* ]] && is_vlc_named=true
+        if $is_vlc_named && [[ "$(sink_input_sink_id "$id" || true)" != "${SINK_ID:-}" ]]; then
+            continue
+        fi
+        if [[ "$bin" == "freeshow" ]] || $is_vlc_named; then
             if $DRY_RUN; then
                 log "DRY: FreeShow $id volume ${FREESHOW_VOLUME_PCT}%"
             else

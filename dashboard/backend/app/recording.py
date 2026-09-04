@@ -49,7 +49,7 @@ class RecordingError(RuntimeError):
 class _ActiveRecording:
     process: subprocess.Popen
     channels: list[int]
-    filename: str
+    filenames: list[str]
     started_at: float
     max_timer: Optional[threading.Timer]
 
@@ -58,9 +58,36 @@ _active: Optional[_ActiveRecording] = None
 _lock = threading.Lock()
 
 
-def _pan_filter(channels: list[int]) -> str:
+def _single_file_cmd(channels: list[int], out_file: Path) -> str:
     terms = [f"c{i}=c{ch - 1}" for i, ch in enumerate(channels)]
-    return f"pan={len(channels)}c|" + "|".join(terms)
+    pan = f"pan={len(channels)}c|" + "|".join(terms)
+    return (
+        f"arecord -D {HW_DEVICE} -f S32_LE -r 48000 -c {HW_CHANNELS} -t raw 2>/dev/null | "
+        f"ffmpeg -hide_banner -loglevel warning -f s32le -ar 48000 -ac {HW_CHANNELS} "
+        f"-i pipe:0 -filter_complex '{pan}' -c:a pcm_s24le -y '{out_file}'"
+    )
+
+
+def _split_files_cmd(channels: list[int], out_dir: Path, base: str) -> tuple[str, list[str]]:
+    # One arecord (the device only supports one reader) feeding one ffmpeg
+    # that splits the stream N ways internally (asplit) and writes N
+    # separate mono files — not N separate arecord/ffmpeg pairs.
+    n = len(channels)
+    split_labels = "".join(f"[s{i}]" for i in range(n))
+    pan_blocks = [f"[s{i}]pan=mono|c0=c{ch - 1}[o{i}]" for i, ch in enumerate(channels)]
+    filter_complex = f"asplit={n}{split_labels};" + ";".join(pan_blocks)
+    map_args = []
+    filenames = []
+    for i, ch in enumerate(channels):
+        fname = f"{base}-ch{ch}.wav"
+        filenames.append(fname)
+        map_args.append(f"-map '[o{i}]' -c:a pcm_s24le -y '{out_dir / fname}'")
+    cmd = (
+        f"arecord -D {HW_DEVICE} -f S32_LE -r 48000 -c {HW_CHANNELS} -t raw 2>/dev/null | "
+        f"ffmpeg -hide_banner -loglevel warning -f s32le -ar 48000 -ac {HW_CHANNELS} "
+        f"-i pipe:0 -filter_complex '{filter_complex}' " + " ".join(map_args)
+    )
+    return cmd, filenames
 
 
 def start_recording(
@@ -68,6 +95,7 @@ def start_recording(
     channels: list[int],
     name: Optional[str],
     out_dir: Path,
+    split: bool = False,
     max_duration_sec: float = DEFAULT_MAX_DURATION_SEC,
 ) -> dict:
     global _active
@@ -89,20 +117,23 @@ def start_recording(
             base = f"board-{time.strftime('%Y%m%d-%H%M%S')}"
 
         out_dir.mkdir(parents=True, exist_ok=True)
-        out_file = out_dir / f"{base}.wav"
-        if out_file.exists():
-            raise RecordingError(f"{out_file.name} already exists — choose a different name")
 
-        pan = _pan_filter(channels)
+        if split:
+            cmd, filenames = _split_files_cmd(channels, out_dir, base)
+            for fname in filenames:
+                if (out_dir / fname).exists():
+                    raise RecordingError(f"{fname} already exists — choose a different name")
+        else:
+            out_file = out_dir / f"{base}.wav"
+            if out_file.exists():
+                raise RecordingError(f"{out_file.name} already exists — choose a different name")
+            cmd = _single_file_cmd(channels, out_file)
+            filenames = [out_file.name]
+
         # Shell pipeline run in its own process group (preexec_fn=os.setsid)
         # so SIGINT reaches both arecord and ffmpeg cleanly on stop, same as
-        # an interactive Ctrl-C would — ffmpeg finalizes the WAV header on a
-        # clean SIGINT, not just SIGKILL.
-        cmd = (
-            f"arecord -D {HW_DEVICE} -f S32_LE -r 48000 -c {HW_CHANNELS} -t raw 2>/dev/null | "
-            f"ffmpeg -hide_banner -loglevel warning -f s32le -ar 48000 -ac {HW_CHANNELS} "
-            f"-i pipe:0 -filter_complex '{pan}' -c:a pcm_s24le -y '{out_file}'"
-        )
+        # an interactive Ctrl-C would — ffmpeg finalizes the WAV header(s)
+        # on a clean SIGINT, not just SIGKILL.
         proc = subprocess.Popen(cmd, shell=True, executable="/bin/bash", preexec_fn=os.setsid)
 
         timer = None
@@ -114,7 +145,7 @@ def start_recording(
         _active = _ActiveRecording(
             process=proc,
             channels=channels,
-            filename=out_file.name,
+            filenames=filenames,
             started_at=time.time(),
             max_timer=timer,
         )
@@ -153,7 +184,7 @@ def stop_recording() -> dict:
 
         result = {
             "recording": False,
-            "filename": rec.filename,
+            "filenames": rec.filenames,
             "channels": rec.channels,
             "duration_sec": round(time.time() - rec.started_at, 1),
         }
@@ -166,7 +197,7 @@ def _status_locked() -> dict:
         return {"recording": False}
     return {
         "recording": True,
-        "filename": _active.filename,
+        "filenames": _active.filenames,
         "channels": _active.channels,
         "elapsed_sec": round(time.time() - _active.started_at, 1),
     }

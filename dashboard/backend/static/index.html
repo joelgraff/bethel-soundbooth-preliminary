@@ -70,6 +70,9 @@
         <div class="rec-channel-grid" id="rec-channel-grid"></div>
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <input id="rec-name" placeholder="Recording name (optional)" style="flex:1; min-width:180px;">
+          <label style="display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-muted); cursor:pointer;">
+            <input type="checkbox" id="rec-split" style="cursor:pointer;"> Separate file per channel
+          </label>
           <button class="btn btn-primary btn-sm" id="rec-start-btn">Start Recording</button>
           <button class="btn btn-warn btn-sm" id="rec-stop-btn" style="display:none;">Stop Recording</button>
         </div>
