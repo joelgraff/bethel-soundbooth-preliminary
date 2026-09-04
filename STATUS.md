@@ -1,7 +1,47 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-09-04 (PreSonus USB fix confirmed via autosuspend+restart-cadence; capture-stall watchdog; system-review start)
+Updated: 2026-09-04 (board recording added to dashboard — PipeWire capture root-caused broken, raw ALSA used instead)
 
+## Current State (2026-09-04 late evening — board recording built; PipeWire capture confirmed broken for this device)
+
+- [x] **Root-caused why "record from the board" kept reading silence: it
+  was never the board.** Board's USB Sends confirmed correctly mapped 1:1
+  to channels 1-32 (operator-confirmed; also confirmed by this project
+  history recording successfully via Ardour in the past). Controlled test:
+  operator fed known signal landing on channels 17-20 (room mics) and
+  21/25/26 (test source); PipeWire-based capture (both
+  `input:multichannel-input` and `pro-audio` card profiles) read **zero
+  signal on all 32 channels**; raw ALSA (`arecord -D hw:3,0 -c 64`,
+  bypassing PipeWire entirely) read real signal at **exactly** those
+  channel numbers. The raw hardware device is fixed at 64 channels
+  (`CHANNELS: 64`, not negotiable) — PipeWire's 32-channel abstraction on
+  top of it is where the bug lives. See
+  [[presonus_32sx_pipewire_capture_broken]].
+- [x] **Built `record-board.sh`** (`audio-routing/scripts/`) — CLI tool,
+  `record-board.sh <channels> [name]`. arecord does the hardware capture
+  (ffmpeg's own ALSA input demuxer can't negotiate this device's
+  required S32_LE format on its own — confirmed, "cannot set sample
+  format ... Invalid argument"), piped to ffmpeg for channel selection
+  (pan filter) + WAV encoding. Verified: correct channels, correct order,
+  real signal, zero disruption to `presonus-foh-bridge.service`'s
+  concurrent playback on the same device.
+- [x] **Added board recording to the dashboard** — new "Board Recording"
+  card: 32-channel picker, name field, start/stop, past-recordings list
+  with download. Backend: `dashboard/backend/app/recording.py`, same
+  raw-ALSA approach as the CLI tool, not PipeWire. One recording at a
+  time (device is exclusive), clean SIGINT-based stop via process-group
+  signaling, 6h safety auto-stop (`RECORDING_MAX_DURATION_SEC` in
+  `dashboard.conf`) so an unattended recording can't silently fill the
+  disk, path-traversal guard on the download endpoint. Verified
+  end-to-end through the real HTTP API (not just unit-level): start →
+  live status polling → stop → correct file → download → path-traversal
+  attempt correctly 404s → FOH bridge unaffected throughout.
+- [ ] **Not yet done:** channel labeling is purely numeric (1-32) in the
+  UI — no semantic labels (e.g. "Room Mic 1", "Main L") since that
+  mapping isn't documented anywhere yet. Worth revisiting once/if the
+  operator wants to formalize it.
+
+## Current State (2026-09-04 evening — PreSonus root-caused to the Linux PC; capture-stall watchdog; cleanup started)
 ## Current State (2026-09-04 evening — PreSonus root-caused to the Linux PC; capture-stall watchdog; cleanup started)
 
 - [x] **PreSonus 32SX instability — corrected root cause, fixed, verified
