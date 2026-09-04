@@ -1,6 +1,55 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-09-01 (Dashboard local auto-login)
+Updated: 2026-09-04 (PreSonus USB protocol errors; CMP restart loop gated on real camera stream)
+
+## Current State (2026-09-04 — PreSonus USB protocol errors; CMP restart loop gated on real camera stream)
+
+- [x] **FOH silent (Spotify playing, nothing at the board) — root cause was
+  a flaky USB link to the 32SX, not routing.** All software checks passed
+  (`soundbooth-health.sh` foh-graph PASS, Spotify unmuted 54%, Mixer 100%,
+  `parec`/`aplay` bridge alive, real signal measured on `Mixer.monitor`
+  — RMS ~430/32767). Kernel log showed the 32SX failing enumeration twice
+  at boot (`usb 1-1: device descriptor read/64, error -71`) before
+  succeeding on a 3rd attempt, matching 11 failed
+  `presonus-foh-bridge.service` restarts ("Cannot get card index for
+  S32SX"). Even after it "settled," `amixer -c 3 cget numid=1` (the board's
+  `StudioLive Internal Clock Validity` control) returned **"Protocol
+  error"** — the board was never actually locking to the USB clock, so
+  `aplay` could hand it samples with zero reported xruns while the board
+  rendered nothing. Not the known ATEM-shares-a-USB-bus issue (32SX is on
+  bus 1 root port 1; ATEM is on bus 3) — a genuinely marginal
+  cable/port/connection to the 32SX itself.
+  - **Fix: power-cycling the 32SX board resolved it** (confirmed by the
+    operator). If it recurs, next steps are swapping the USB cable and/or
+    trying a different port.
+- [x] **camera-management.service (CMP / PTZOptics Camera Management
+  Platform) was crash/restart-looping — distracting flashing on the booth
+  screen — whenever the PTZ camera has no active stream.** Two compounding
+  causes: (1) CMP's own GPU/zygote process dies on every forced
+  stop/restart while the camera is off (`status=5/TRAP`, "GPU process
+  isn't usable. Goodbye."); (2) `camera-management-watch.service`
+  force-restarts the service every ~150-180s because `:9999` never binds
+  with no camera to transcode — which it was treating as "stuck," but is
+  actually expected with the camera off.
+  - **Fix:** new `~/bin/start-camera-management.sh` wraps the real binary
+    and waits for an actual RTSP frame pull to succeed before exec'ing
+    it — no window ever opens, nothing crashes, while the camera has no
+    stream. `camera-management.service`'s `ExecStart` now points at this
+    wrapper. **Ping alone is not a valid reachability check for this
+    camera** — same gotcha already documented in
+    `livestream-camera-watch.sh`: its RTSP server keeps answering
+    DESCRIBE/handshake requests with the video encoder off, so the check
+    must pull a real frame via `ffmpeg -rtsp_transport tcp ... -frames:v
+    1`. Verified live: ping succeeds against the camera right now, but the
+    frame-probe correctly returns "no stream." Updated
+    `camera-management-watch.sh` to use the same frame-probe instead of
+    treating `:9999` unbound as automatically "stuck," so it no longer
+    force-restarts CMP while the camera is legitimately off.
+  - Verified: service settles at `NRestarts=0`, wrapper process alone
+    (no Electron/GPU children) polling quietly, watcher stays quiet too.
+  - Files: `audio-routing/scripts/start-camera-management.sh` (new),
+    `audio-routing/scripts/camera-management-watch.sh`,
+    `audio-routing/systemd/camera-management.service`.
 
 ## Current State (2026-09-01 — Dashboard local auto-login)
 
