@@ -1,7 +1,45 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-09-04 (board recording added to dashboard — PipeWire capture root-caused broken, raw ALSA used instead)
+Updated: 2026-09-04 night (per-channel recording split option; FreeShow embedded-VLC volume fix)
 
+## Current State (2026-09-04 night — per-channel recording; FreeShow's real volume bug found)
+
+- [x] **Recording tool (CLI + dashboard) can now write one file per channel**
+  instead of only one multichannel file — `record-board.sh --split
+  <channels> [name]`, dashboard has a "Separate file per channel"
+  checkbox. Both use a single `arecord | ffmpeg` pipeline with `asplit`
+  internally (the capture device only supports one reader, so this is
+  NOT N separate arecord processes). Verified end-to-end both ways
+  (CLI and through the real dashboard API).
+- [x] **Root-caused why FreeShow's volume kept coming back maxed after
+  being turned down.** Not the `FREESHOW_VOLUME_PCT`/33% tuning from
+  2026-08-02 — that only ever applied to FreeShow's `Chromium`-identified
+  PipeWire stream. FreeShow also embeds LibVLC for its own video/media
+  playback, which appears in PipeWire as `application.name = "VLC media
+  player (LibVLC ...)"` — indistinguishable by name from a standalone VLC
+  process — and is already correctly routed to the `Mixer` sink. But
+  `ensure-audio-routes.sh`'s `apply_software_levels()` unconditionally
+  skipped anything VLC-named (a policy written for when VLC was the
+  program-display path, long since retired in favor of ffmpeg/ffplay),
+  so this stream's volume was never managed at all — it just sat at
+  PipeWire's fresh-stream default (unity gain). Compounding factor:
+  `ensure-audio-routes.service` is a boot-only `oneshot`, and this
+  particular stream only exists while a video is actively playing in
+  FreeShow, so it was structurally almost never present at boot to catch
+  anyway.
+  - Fix: `apply_software_levels()` now only skips a VLC-named stream when
+    it's NOT already on the Mixer sink (preserves the original intent —
+    leave a genuine standalone/manual VLC session alone — while catching
+    FreeShow's embedded player). Re-tuned `FREESHOW_VOLUME_PCT` default
+    33% → 50% per operator's ear tuning. Applied live via
+    `~/bin/ensure-audio-routes.sh` (confirmed idempotent/safe to re-run
+    anytime) — FreeShow's `Chromium` stream confirmed at 50% live. The
+    embedded-LibVLC stream itself wasn't live at time of fix (transient —
+    only exists during playback) so it couldn't be verified end-to-end in
+    the same session; will self-correct the next time FreeShow plays
+    video with audio — worth a spot-check next time that happens.
+
+## Current State (2026-09-04 late evening — board recording added to dashboard — PipeWire capture root-caused broken, raw ALSA used instead)
 ## Current State (2026-09-04 late evening — board recording built; PipeWire capture confirmed broken for this device)
 
 - [x] **Root-caused why "record from the board" kept reading silence: it
