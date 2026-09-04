@@ -47,6 +47,13 @@
           ]
         },
         {
+          "unit": "ffmpeg-capture-watch.service",
+          "display_name": "Capture Watchdog",
+          "actions": [
+            "restart"
+          ]
+        },
+        {
           "unit": "ffmpeg-display.service",
           "display_name": "Sanctuary TV Display",
           "actions": [

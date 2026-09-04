@@ -1,0 +1,14 @@
+[Unit]
+Description=Watch ffmpeg-capture (encode source) for a stall; restart if wedged
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+After=ffmpeg-capture.service
+Wants=ffmpeg-capture.service
+
+[Service]
+Type=simple
+ExecStart=%h/bin/ffmpeg-capture-watch.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=graphical-session.target
