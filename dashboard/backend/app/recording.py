@@ -211,8 +211,15 @@ def get_status() -> dict:
 def list_recordings(*, out_dir: Path) -> list[dict]:
     if not out_dir.is_dir():
         return []
+    # Exclude the file(s) for a recording still in progress — they already
+    # exist on disk (ffmpeg writes as it goes) but aren't "past" yet, and
+    # downloading one mid-recording would just get a partial/incomplete file.
+    with _lock:
+        in_progress = set(_status_locked().get("filenames", []))
     items = []
     for p in sorted(out_dir.glob("*.wav"), key=lambda f: f.stat().st_mtime, reverse=True):
+        if p.name in in_progress:
+            continue
         st = p.stat()
         items.append({"filename": p.name, "size_bytes": st.st_size, "mtime": st.st_mtime})
     return items
