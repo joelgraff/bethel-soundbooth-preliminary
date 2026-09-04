@@ -1,7 +1,31 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-09-04 night (per-channel recording split option; FreeShow embedded-VLC volume fix)
+Updated: 2026-09-04 late night (HDMI preview honest-staleness fix; PreSonus USB recurrence — improved, not eliminated)
 
+## Current State (2026-09-04 late night)
+
+- [x] **DP-2/DP-3 dashboard preview tiles no longer flash "unavailable" on
+  long static slides.** Root cause: Mutter's damage-based ScreenCast only
+  emits a frame when the screen's pixels change, so the old age-based
+  staleness check flagged normal static content as broken. Fixed by
+  checking whether the responsible capture service is actually running
+  instead — holds the last frame indefinitely while alive, only reports
+  unavailable if the service is genuinely down. Verified both directions
+  live (including manually stopping the service and confirming it
+  correctly flips to unavailable).
+- [x] **PreSonus 32SX instability recurred once more (~17:53), after
+  ~2h15m clean.** Same signature, same fix (power-cycle). Operator
+  suspected the new board-recording feature as a cause; checked the
+  kernel log across the entire window of that day's recording activity
+  and found zero correlated USB errors — recording does not appear to be
+  a contributing factor. The autosuspend + restart-cadence fixes from
+  earlier improved the recurrence interval (hours instead of well under
+  an hour) but did not fully eliminate it — see
+  [[presonus_32sx_usb_instability]] for the updated status. Treat further
+  recurrences at roughly this multi-hour cadence as the new baseline, not
+  a sign the fixes failed.
+
+## Current State (2026-09-04 night — per-channel recording split option; FreeShow embedded-VLC volume fix)
 ## Current State (2026-09-04 night — per-channel recording; FreeShow's real volume bug found)
 
 - [x] **Recording tool (CLI + dashboard) can now write one file per channel**
