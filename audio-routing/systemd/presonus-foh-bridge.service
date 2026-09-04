@@ -9,7 +9,16 @@ PartOf=soundbooth.target
 Type=simple
 ExecStart=%h/bin/start-presonus-foh-bridge.sh
 Restart=on-failure
-RestartSec=2
+# Was 2s. When the 32SX is having USB trouble, a 2s retry meant systemd was
+# re-opening the device every ~2-4s (ExecStartPre sleep + fast-fail) —
+# hammering an already-struggling device with fresh connection attempts
+# instead of giving it room to settle. The same board/cable ran on a
+# MacBook (single clean open, left alone) with zero failures over an
+# extended period — see audio-routing/udev/99-presonus-usb-power.rules for
+# the other half of this fix (USB autosuspend). 5s matches this project's
+# convention for other flaky-hardware retry loops (e.g.
+# camera-management.service).
+RestartSec=5
 # Give Mixer null sink time to appear after pulse
 ExecStartPre=/bin/sleep 2
 
