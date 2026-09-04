@@ -4,10 +4,10 @@
 // agent bridge) the UI says so instead of faking it.
 
 const HDMI_OUTPUTS = [
-  { display: "DP-1", name: "DP-1 · Booth Monitor", role: "Operator view" },
-  { display: "DP-2", name: "DP-2 · FreeShow Primary", role: "Sanctuary main screen" },
+  { display: "DP-4", name: "DP-4 · Back TVs", role: "Split that feeds the back-of-house TVs", program: true },
+  { display: "LIVESTREAM", name: "Livestream", role: "Encode leg sent to the SRT relay (Subsplash)" },
+  { display: "DP-2", name: "DP-2 · FreeShow Primary", role: "Front (sanctuary main screen)" },
   { display: "DP-3", name: "DP-3 · FreeShow Stage", role: "Stage confidence monitor" },
-  { display: "DP-4", name: "DP-4 · Sanctuary TV", role: "ATEM program feed", program: true },
 ];
 
 // Best-effort mapping from a health-check "section" to a real quick-fix
@@ -297,9 +297,13 @@ function renderLogPicker(data) {
 }
 
 // ---------- HDMI preview grid ----------
-// DP-2/DP-3/DP-4 poll a real captured JPEG (see dashboard/README.md for the
-// capture pipeline). DP-1 has no capture (deliberately — see the same doc)
-// and always shows the honest "not captured" placeholder.
+// All four tiles poll a real captured JPEG (see dashboard/README.md for the
+// capture pipeline): DP-2/DP-3 via Mutter ScreenCast, DP-4/LIVESTREAM via
+// dedicated ffmpeg-capture UDP tee legs (:5002 and :5001 respectively —
+// each its own port so neither competes with ffplay's :5000 or the SRT
+// relay's :5003 for an exclusive unicast reader). DP-1 (the booth's own
+// operator screen) is deliberately not shown — lowest value to preview
+// remotely, and it's what an operator standing at the booth already sees.
 
 function renderHdmiGrid() {
   const grid = document.getElementById("hdmi-grid");

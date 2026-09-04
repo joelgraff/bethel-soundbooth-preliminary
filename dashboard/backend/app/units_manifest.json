@@ -131,6 +131,13 @@
           "actions": [
             "restart"
           ]
+        },
+        {
+          "unit": "hdmi-preview-livestream.service",
+          "display_name": "Preview Capture (Livestream)",
+          "actions": [
+            "restart"
+          ]
         }
       ]
     },

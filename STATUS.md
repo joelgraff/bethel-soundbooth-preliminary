@@ -1,6 +1,83 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-09-04 (PreSonus USB protocol errors; CMP restart loop gated on real camera stream)
+Updated: 2026-09-04 (DP-4 boot-race fix; dashboard livestream/back-TV tiles; PreSonus USB port move)
+
+## Current State (2026-09-04 — back TVs showing desktop: DP-4 boot-race root-caused + fixed)
+
+- [x] **Real production bug, caught live: back-of-house TVs were showing the
+  Ubuntu desktop instead of program/livestream content**, and had been all
+  morning. `ffplay` (the process that drives DP-4, which feeds the back TVs
+  via a GoFanco HDMI-over-Cat splitter) was alive the whole time — so
+  `ffmpeg-display-guard.service` never flagged anything, because by design
+  it **only checks that the ffplay process exists**, not where its window
+  landed (its own comment explains why: wmctrl/window introspection under
+  Wayland caused false-restart loops in the past, so that check was
+  deliberately left out).
+- [x] **Root cause:** `vlc-display-lib.sh`'s `soundbooth_wait_for_vlc_display[_into]()`
+  accepts the **first** successful `xrandr`-based geometry resolution for
+  the preferred connector (DP-4) with no stability check. At boot
+  (07:56:59 this session), it resolved DP-4 as `+0+0` instead of the real
+  `+0+1080` — Mutter hadn't finished laying out the full 4-monitor virtual
+  desktop yet — and `start-ffmpeg-display.sh` launched `ffplay -left 0 -top
+  0 ... -fs`, which fullscreened onto whatever's at the origin instead of
+  DP-4. Confirmed via `ps`/`pgrep -af ffplay` (`-top 0` in the live cmdline)
+  and cross-checked against `xrandr --query` (`DP-4 connected
+  1920x1080+0+1080`). Verified visually with a one-off Mutter ScreenCast
+  grab of DP-4 showing the church's holding slide.
+- [x] **Immediate fix:** `systemctl --user restart ffmpeg-display.service`
+  re-resolved the geometry correctly (`-top 1080` in the new process) —
+  confirmed live via a fresh ScreenCast grab of DP-4 showing real program
+  content, not the desktop.
+- [x] **Durable fix:** `soundbooth_wait_for_vlc_display()` and
+  `soundbooth_wait_for_vlc_display_into()` in
+  `audio-routing/scripts/vlc-display-lib.sh` now require the **same**
+  resolved geometry on two consecutive 1s polls before trusting it — a
+  same-value debounce that targets the actual race (a transient bad read at
+  boot) without reintroducing the window-manager-introspection flakiness
+  `ffmpeg-display-guard.sh` deliberately avoids. Deployed to `~/bin`.
+- [x] **Dashboard HDMI preview tiles reworked**, per direction:
+  - Removed the `DP-1` tile from `dashboard.js`'s `HDMI_OUTPUTS` — the
+    frontend was listing it despite the backend (`PREVIEW_FILES` in
+    `agent_tools.py`) and the capture script's own docstring both saying
+    DP-1 is deliberately not captured. Frontend and backend now agree.
+  - Added a 4th tile, **Livestream** — new
+    `hdmi-preview-livestream.service` /
+    `start-hdmi-preview-livestream.sh`, reading `ffmpeg-capture`'s
+    `:5001` tee leg (`LOCAL_UDP_PREVIEW` — previously unused, already
+    purpose-built so a preview consumer doesn't compete with ffplay's
+    `:5000` for its exclusive unicast port). Deliberately **not** `:5003`
+    (the SRT relay's own exclusive input leg) — a second reader there
+    would risk the real broadcast to Subsplash. New backend key
+    `PREVIEW_FILES["LIVESTREAM"] = "livestream.jpg"` (not a real xrandr
+    connector; `get_output_status()` only does a file-mtime check, no
+    xrandr dependency, so this works with zero backend logic changes).
+  - Relabeled the `DP-4` tile "Back TVs" (was "Sanctuary TV") to match —
+    it already reads a dedicated tee leg (`:5002`) that's the same
+    content ffplay/back-TVs gets, just via a non-competing tap.
+  - `units_manifest.json`: added `hdmi-preview-livestream.service` to the
+    `preview` group (restart action) so it's visible/controllable from
+    the dashboard's service list.
+  - Verified end-to-end: both new/changed tiles report `available: true`
+    via `/api/outputs/{DP-4,LIVESTREAM}`, `DP-1` correctly reports
+    `not captured`.
+- [x] **PreSonus 32SX moved to a different USB port** (operator action,
+  cable swap) — now back on its own controller (`Bus 001`), separate from
+  the ATEM (`Bus 003`). Confirmed via `lsusb -t`, clean re-enumeration (no
+  more `error -71`), and `StudioLive Internal Clock Validity` reads `on`
+  (was returning `Protocol error` before the move) — see
+  [[presonus_32sx_usb_instability]]. Also explains an earlier Audacity
+  crash this session: monitoring in Audacity opened a second simultaneous
+  stream on the 32SX while it was still sharing a controller with the
+  ATEM's continuous SDI capture — kernel logged `Not enough bandwidth for
+  altsetting 1` / `usb_set_interface failed (-28)`. Should not recur now
+  that the two are on separate controllers; still avoid enabling
+  Audacity's software-playthrough/monitoring on this device as a matter of
+  practice (redundant anyway — the room already hears the board live).
+- [ ] **Backlog, not yet started:** a way to record from the board that
+  doesn't rely on Audacity's flakier paths; physically rewiring which USB
+  ports map to which controller/bus (so this doesn't need rediscovering
+  after every cable swap); a full audit pass for unnecessary
+  services/files, missing tests, and A/V pipeline failure points.
 
 ## Current State (2026-09-04 — PreSonus USB protocol errors; CMP restart loop gated on real camera stream)
 

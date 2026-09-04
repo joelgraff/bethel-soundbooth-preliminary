@@ -74,15 +74,32 @@ soundbooth_preferred_connector_ready() {
 soundbooth_wait_for_vlc_display() {
     soundbooth_load_vlc_conf
     local max="${1:-$DISPLAY_WAIT_SEC}"
-    local i mon
+    local i mon prev=""
     echo "Waiting up to ${max}s for X auth + connector ${PREFERRED_CONNECTOR}..." >&2
     for i in $(seq 1 "$max"); do
         if soundbooth_export_display_env 2>/dev/null; then
             if mon=$(soundbooth_resolve_vlc_monitor 2>/dev/null) && [[ -n "$mon" ]]; then
-                echo "Display ready after ${i}s (XAUTHORITY=${XAUTHORITY:-unset})" >&2
-                echo "$mon"
-                return 0
+                # Require the SAME geometry on two consecutive 1s polls before
+                # trusting it. At boot, Mutter can briefly report a connector
+                # at a wrong/default offset before the full multi-monitor
+                # layout settles (confirmed live 2026-09-04: DP-4 resolved as
+                # +0+0 instead of +0+1080 moments after login, and ffplay
+                # silently rendered fullscreen on the wrong monitor for the
+                # rest of the day — ffmpeg-display-guard.sh only checks that
+                # ffplay is *alive*, not where it landed, so nothing caught
+                # it). A same-value debounce is cheap and avoids reintroducing
+                # the window-manager-introspection flakiness noted above.
+                if [[ "$mon" == "$prev" ]]; then
+                    echo "Display ready after ${i}s (XAUTHORITY=${XAUTHORITY:-unset})" >&2
+                    echo "$mon"
+                    return 0
+                fi
+                prev="$mon"
+            else
+                prev=""
             fi
+        else
+            prev=""
         fi
         sleep 1
     done
@@ -98,15 +115,24 @@ soundbooth_wait_for_vlc_display_into() {
     local -n _soundbooth_mon_out="${1:?variable name required}"
     soundbooth_load_vlc_conf
     local max="${2:-$DISPLAY_WAIT_SEC}"
-    local i mon
+    local i mon prev=""
     echo "Waiting up to ${max}s for X auth + connector ${PREFERRED_CONNECTOR}..." >&2
     for i in $(seq 1 "$max"); do
         if soundbooth_export_display_env 2>/dev/null; then
             if mon=$(soundbooth_resolve_vlc_monitor 2>/dev/null) && [[ -n "$mon" ]]; then
-                echo "Display ready after ${i}s (XAUTHORITY=${XAUTHORITY:-unset})" >&2
-                _soundbooth_mon_out="$mon"
-                return 0
+                # See soundbooth_wait_for_vlc_display() for why this requires
+                # two consecutive matching reads before trusting the geometry.
+                if [[ "$mon" == "$prev" ]]; then
+                    echo "Display ready after ${i}s (XAUTHORITY=${XAUTHORITY:-unset})" >&2
+                    _soundbooth_mon_out="$mon"
+                    return 0
+                fi
+                prev="$mon"
+            else
+                prev=""
             fi
+        else
+            prev=""
         fi
         sleep 1
     done

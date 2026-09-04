@@ -28,6 +28,11 @@ PREVIEW_FILES = {
     "DP-2": "dp2.jpg",
     "DP-3": "dp3.jpg",
     "DP-4": "dp4.jpg",
+    # Not a real xrandr connector — the SRT-relay-bound encode leg (see
+    # start-hdmi-preview-livestream.sh). get_output_status() below only ever
+    # does a file mtime check, never touches xrandr, so a non-connector key
+    # works the same as a real one.
+    "LIVESTREAM": "livestream.jpg",
 }
 
 # Fixed allowlist for read_doc — not arbitrary filesystem access.

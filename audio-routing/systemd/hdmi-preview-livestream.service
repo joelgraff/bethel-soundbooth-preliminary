@@ -1,0 +1,18 @@
+[Unit]
+Description=Dashboard HDMI preview capture (Livestream feed, via ffmpeg-capture's :5001 tee)
+Documentation=file:///home/soundbooth/soundbooth-project/dashboard/README.md
+After=ffmpeg-capture.service graphical-session.target
+Wants=ffmpeg-capture.service
+
+[Service]
+Type=simple
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
+# ffmpeg's own SIGTERM handler exits 255 even for a clean stop — same
+# behavior as ffmpeg-capture.service/hdmi-preview-dp4.service.
+SuccessExitStatus=255
+ExecStart=%h/bin/start-hdmi-preview-livestream.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=graphical-session.target
