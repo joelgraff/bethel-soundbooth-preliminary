@@ -22,6 +22,8 @@
 #   CAMERA_MGMT_WATCH_MIN_GAP_SEC     debounce between restarts (default 180)
 #   CAMERA_MGMT_WATCH_MAX_PER_HOUR    cap restarts (default 4)
 #   CAMERA_MGMT_WATCH_PORT            websocket port to check (default 9999)
+#   CAMERA_NETWORK_IP                 camera IP (default 192.168.1.202)
+#   CAMERA_MGMT_WATCH_PROBE_TIMEOUT_SEC  RTSP frame-probe timeout (default 6)
 #   CAMERA_MGMT_WATCH_DISABLE=1       no-op loop (for testing)
 #
 # systemctl --user status camera-management-watch.service
@@ -33,6 +35,13 @@ GRACE="${CAMERA_MGMT_WATCH_GRACE_SEC:-150}"
 MIN_GAP="${CAMERA_MGMT_WATCH_MIN_GAP_SEC:-180}"
 MAX_HOUR="${CAMERA_MGMT_WATCH_MAX_PER_HOUR:-4}"
 PORT="${CAMERA_MGMT_WATCH_PORT:-9999}"
+CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.168.1.202}"
+PROBE_TIMEOUT="${CAMERA_MGMT_WATCH_PROBE_TIMEOUT_SEC:-6}"
+if [[ -f "${HOME}/.config/soundbooth/camera.conf" ]]; then
+    # shellcheck disable=SC1091
+    source "${HOME}/.config/soundbooth/camera.conf" 2>/dev/null || true
+    CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.168.1.202}"
+fi
 STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/soundbooth-camera-management-watch"
 mkdir -p "$STATE_DIR"
 RESTART_LOG="${STATE_DIR}/restarts.log"
@@ -41,6 +50,26 @@ log() { echo "[camera-management-watch $(date +%H:%M:%S)] $*"; }
 
 port_bound() {
     ss -tln 2>/dev/null | grep -qE ":${PORT}([[:space:]]|\$)"
+}
+
+# Ping is a fast pre-check for a fully-dead network path. It is NOT
+# sufficient on its own — this camera's RTSP server keeps responding even
+# with the video encoder off (see livestream-camera-watch.sh) — so a ping
+# success falls through to an actual frame pull before being trusted.
+camera_streaming() {
+    if ! ping -c 1 -W 1 "$CAMERA_NETWORK_IP" >/dev/null 2>&1; then
+        return 1
+    fi
+
+    local probe_file
+    probe_file="$(mktemp --suffix=.jpg 2>/dev/null)" || return 1
+    timeout "$PROBE_TIMEOUT" ffmpeg -y -loglevel error -rtsp_transport tcp \
+        -i "rtsp://${CAMERA_NETWORK_IP}" -frames:v 1 -q:v 2 "$probe_file" \
+        >/dev/null 2>&1
+    local got_frame=1
+    [[ -s "$probe_file" ]] && got_frame=0
+    rm -f "$probe_file"
+    return "$got_frame"
 }
 
 count_restarts_last_hour() {
@@ -114,6 +143,13 @@ while true; do
     fi
 
     if port_bound; then
+        continue
+    fi
+
+    if ! camera_streaming; then
+        # Camera has no active stream — :9999 not binding is expected
+        # (start-camera-management.sh is waiting on the camera, or CMP has
+        # nothing to transcode), not a stuck pipeline. Don't restart.
         continue
     fi
 
