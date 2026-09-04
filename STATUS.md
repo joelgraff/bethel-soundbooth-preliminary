@@ -1,6 +1,64 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-09-04 (DP-4 boot-race fix; dashboard livestream/back-TV tiles; PreSonus USB port move)
+Updated: 2026-09-04 (PreSonus USB fix confirmed via autosuspend+restart-cadence; capture-stall watchdog; system-review start)
+
+## Current State (2026-09-04 evening — PreSonus root-caused to the Linux PC; capture-stall watchdog; cleanup started)
+
+- [x] **PreSonus 32SX instability — corrected root cause, fixed, verified
+  stable.** Earlier the same day a single quick MacBook test was
+  misread as "fault is in the board" (see STATUS.md morning entries). A
+  more extensive same-board/same-cable comparison overturned that: zero
+  failures on the Mac over a sustained period, while it kept failing on
+  this PC across cable/port changes and power cycles. Two Linux-PC-side
+  causes found and fixed: **USB autosuspend enabled system-wide**
+  (fixed via `audio-routing/udev/99-presonus-usb-power.rules`, disables
+  it for this device specifically — needs manual `sudo` install, done
+  live this session) and **`presonus-foh-bridge.service` retrying every
+  2s** when the device struggled, hammering it with fresh connection
+  attempts (bumped `RestartSec` 2s → 5s). Verified with a 6-minute
+  continuous watch post-fix: zero restarts, clock-validity control
+  stayed locked (`on`) the entire window. See
+  [[presonus_32sx_usb_instability]] (corrected).
+- [x] **Added `ffmpeg-capture-watch.service`** — `ffmpeg-capture.service`
+  had `Restart=always` but nothing caught "alive but not actually
+  encoding," even though this one process is the single point of
+  failure for DP-4/back-TVs, both dashboard preview tiles, and the SRT
+  relay simultaneously. Watches the process's own CPU ticks (not a UDP
+  tee leg — every leg already has exactly one exclusive reader, and a
+  port-based check risks the same kind of collision that broke Audacity
+  earlier the same day). Verified against the live process (reads
+  ~119% CPU as healthy) and a 2.5-minute false-trigger check (clean).
+- [x] **Started on the "unnecessary services/files" pass** (item 3 of
+  the operator's backlog — full A/V pipeline review, not yet a full
+  session): disabled `sunday-grok.service` (confirmed no longer needed —
+  opened an interactive troubleshooting terminal, unrelated to the core
+  pipeline); archived three orphaned `~/bin` scripts to
+  `~/bin/.deprecated-2026-09-04/` (not deleted — untracked in git, so
+  that directory is the only undo path) after confirming zero live
+  references: `_autostart-ardour.sh` and `_autostart-qpwgraph.sh`
+  (pre-systemd autostart shims, fully superseded), and
+  `configure-multiview-workspace.sh` (retired along with booth
+  multiview — its only remaining referrer, `start-booth-multiview.sh`,
+  is itself unreferenced by anything active). Repo-tracked multiview
+  leftovers (`booth-multiview.py`, `start-booth-multiview.sh`,
+  `configure-multiview-workspace.sh` in `scripts/`,
+  `tests/multiview-checklist.md`) were **not** touched — flagged for the
+  operator rather than removed unilaterally, since deleting tracked
+  source is a bigger step than archiving untracked deploy artifacts.
+- [x] **Added `audio-routing/scripts/usb-port-map.sh`** — interactive
+  tool to build a permanent physical-port → USB bus/controller reference
+  (not yet run against real hardware; operator opted in, not yet
+  scheduled).
+- [ ] **Not started:** full A/V pipeline audit beyond the above (test
+  coverage gaps against failure modes actually hit this session;
+  systematic check of other watcher services for the same "checks the
+  wrong signal" blind spot `ffmpeg-display-guard` had); a non-Audacity
+  board recording tool (deprioritized — operator unclear it's worth
+  building given Audacity's crash cause is now understood, may revisit);
+  livestream-vs-back-TV audio latency tuning (separate open item, not
+  yet started — see `FFMPEG_TV_EXTRA_AUDIO_DELAY_SEC` in
+  `start-ffmpeg-display.sh` for the existing per-leg delay mechanism,
+  which only covers the back-TV leg today).
 
 ## Current State (2026-09-04 — back TVs showing desktop: DP-4 boot-race root-caused + fixed)
 
