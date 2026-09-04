@@ -35,6 +35,22 @@ PREVIEW_FILES = {
     "LIVESTREAM": "livestream.jpg",
 }
 
+# Which systemd unit is responsible for keeping each preview file fresh —
+# used to tell "genuinely broken" (capture service not running) apart from
+# "no new frame because nothing on screen changed". DP-2/DP-3 in particular
+# use Mutter's damage-based ScreenCast capture: it only emits a frame when
+# the screen's pixels actually change, so a static slide sitting on screen
+# for minutes produces no new frames and is completely normal, not broken.
+# Before this, get_output_status() only checked frame age, which flagged
+# every long-static slide as "unavailable" even though the capture pipeline
+# was fine — see STATUS.md 2026-09-04.
+PREVIEW_SERVICES = {
+    "DP-2": "hdmi-preview.service",
+    "DP-3": "hdmi-preview.service",
+    "DP-4": "hdmi-preview-dp4.service",
+    "LIVESTREAM": "hdmi-preview-livestream.service",
+}
+
 # Fixed allowlist for read_doc — not arbitrary filesystem access.
 _READABLE_DOCS = {
     "SYSTEM-STATE.md": "SYSTEM-STATE.md",
@@ -90,6 +106,26 @@ def get_output_status(*, display: str, preview_dir: Path, max_age_sec: int) -> d
     if not frame_path.is_file():
         return {"display": display, "available": False, "reason": "no frame captured yet"}
     age = time.time() - frame_path.stat().st_mtime
+
+    service = PREVIEW_SERVICES.get(display)
+    if service:
+        try:
+            service_active = systemctl_client.get_status(service)["active_state"] == "active"
+        except systemctl_client.SystemctlError:
+            service_active = False
+        if service_active:
+            # Capture pipeline is alive — hold the last frame indefinitely,
+            # however old, rather than flagging normal static content as
+            # broken (see PREVIEW_SERVICES comment above).
+            return {"display": display, "available": True, "age_sec": round(age, 1)}
+        return {
+            "display": display,
+            "available": False,
+            "reason": f"{service} not running — last frame {age:.0f}s ago",
+        }
+
+    # No known capture service for this display (shouldn't happen for any
+    # current PREVIEW_FILES entry) — fall back to a plain age check.
     if age > max_age_sec:
         return {
             "display": display,
