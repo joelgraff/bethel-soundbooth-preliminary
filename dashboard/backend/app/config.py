@@ -44,6 +44,8 @@ class Settings:
     calibrate_script: Path
     preview_dir: Path
     preview_frame_max_age_sec: int
+    recordings_dir: Path
+    recording_max_duration_sec: float
 
 
 def load_settings() -> Settings:
@@ -73,4 +75,10 @@ def load_settings() -> Settings:
             conf.get("HDMI_PREVIEW_DIR", "/dev/shm/soundbooth-dashboard")
         ),
         preview_frame_max_age_sec=int(conf.get("HDMI_PREVIEW_MAX_AGE_SEC", "10")),
+        recordings_dir=Path(
+            conf.get("RECORDINGS_DIR", str(Path.home() / "Recordings"))
+        ),
+        recording_max_duration_sec=float(
+            conf.get("RECORDING_MAX_DURATION_SEC", str(6 * 3600))
+        ),
     )

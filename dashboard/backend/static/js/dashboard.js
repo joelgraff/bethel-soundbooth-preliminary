@@ -424,11 +424,147 @@ function connectAgentChat() {
   });
 }
 
+// ---------- board recording ----------
+// Raw ALSA capture (hw:3,0, 64ch) under the hood — PipeWire's own capture
+// path for this device silently reads all-zero on every channel even with
+// real signal present (root-caused 2026-09-04). See
+// audio-routing/scripts/record-board.sh and
+// dashboard/backend/app/recording.py for the full story. USB Sends 1-32
+// map 1:1 to the board's own channel numbering, confirmed by the operator.
+
+const REC_CHANNEL_COUNT = 32;
+let recSelectedChannels = new Set();
+let recIsRecording = false;
+
+function renderRecChannelGrid() {
+  const grid = document.getElementById("rec-channel-grid");
+  grid.innerHTML = "";
+  for (let ch = 1; ch <= REC_CHANNEL_COUNT; ch++) {
+    const btn = document.createElement("div");
+    btn.className = "rec-chan-btn";
+    btn.textContent = ch;
+    btn.dataset.channel = ch;
+    btn.addEventListener("click", () => {
+      if (recIsRecording) return;
+      if (recSelectedChannels.has(ch)) recSelectedChannels.delete(ch);
+      else recSelectedChannels.add(ch);
+      btn.classList.toggle("active", recSelectedChannels.has(ch));
+    });
+    grid.appendChild(btn);
+  }
+}
+
+function formatBytes(n) {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatElapsed(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+async function refreshRecStatus() {
+  let status;
+  try {
+    status = await api.recordingStatus();
+  } catch (_) {
+    return;
+  }
+  recIsRecording = !!status.recording;
+  const pill = document.getElementById("rec-status-pill");
+  const startBtn = document.getElementById("rec-start-btn");
+  const stopBtn = document.getElementById("rec-stop-btn");
+  const info = document.getElementById("rec-active-info");
+  const nameInput = document.getElementById("rec-name");
+
+  if (recIsRecording) {
+    pill.className = "pill pill-warn";
+    pill.textContent = "Recording";
+    startBtn.style.display = "none";
+    stopBtn.style.display = "";
+    nameInput.disabled = true;
+    info.style.display = "";
+    info.textContent = `${status.filename} — ch ${status.channels.join(",")} — ${formatElapsed(status.elapsed_sec)}`;
+    document.querySelectorAll(".rec-chan-btn").forEach((b) => {
+      b.classList.toggle("active", status.channels.includes(Number(b.dataset.channel)));
+    });
+  } else {
+    pill.className = "pill pill-neutral";
+    pill.textContent = "Idle";
+    startBtn.style.display = "";
+    stopBtn.style.display = "none";
+    nameInput.disabled = false;
+    info.style.display = "none";
+  }
+}
+
+async function refreshRecList() {
+  let data;
+  try {
+    data = await api.recordingList();
+  } catch (_) {
+    return;
+  }
+  const list = document.getElementById("rec-list");
+  if (!data.recordings.length) {
+    list.innerHTML = `<div class="mono" style="font-size:12px; color:var(--text-faint);">No recordings yet.</div>`;
+    return;
+  }
+  list.innerHTML = data.recordings.map((r) => `
+    <div class="rec-item">
+      <div>
+        <div class="rec-item-name">${escapeHtml(r.filename)}</div>
+        <div class="rec-item-meta">${formatBytes(r.size_bytes)} · ${timeAgo(r.mtime * 1000)}</div>
+      </div>
+      <a class="btn btn-ghost btn-sm" href="/api/recording/download/${encodeURIComponent(r.filename)}" download>Download</a>
+    </div>`).join("");
+}
+
+async function startRecording() {
+  const channels = Array.from(recSelectedChannels).sort((a, b) => a - b);
+  if (!channels.length) {
+    showToast("Select at least one channel first");
+    return;
+  }
+  const name = document.getElementById("rec-name").value.trim();
+  try {
+    await api.recordingStart(channels, name);
+    showToast("Recording started");
+  } catch (err) {
+    showToast(err.message || "Failed to start recording");
+    return;
+  }
+  await refreshRecStatus();
+}
+
+async function stopRecording() {
+  try {
+    await api.recordingStop();
+    showToast("Recording saved");
+  } catch (err) {
+    showToast(err.message || "Failed to stop recording");
+  }
+  await refreshRecStatus();
+  await refreshRecList();
+}
+
+async function initRecording() {
+  renderRecChannelGrid();
+  document.getElementById("rec-start-btn").addEventListener("click", startRecording);
+  document.getElementById("rec-stop-btn").addEventListener("click", stopRecording);
+  await Promise.all([refreshRecStatus(), refreshRecList()]);
+  setInterval(refreshRecStatus, 2500);
+  setInterval(refreshRecList, 15000);
+}
+
 // ---------- init ----------
 
 (async function init() {
   await bootstrapLocalToken();
-  await Promise.all([loadHealth(), loadServices(), loadHdmiGrid()]);
+  await Promise.all([loadHealth(), loadServices(), loadHdmiGrid(), initRecording()]);
   connectAgentChat();
   setInterval(() => { loadHealth(); loadServices(); }, 8000);
 })();

@@ -50,6 +50,12 @@ const api = {
   loginLocal: (token) => apiFetch("/api/login/local", {
     method: "POST", body: JSON.stringify({ token }), redirectOn401: false,
   }),
+  recordingStatus: () => apiFetch("/api/recording/status"),
+  recordingStart: (channels, name) => apiFetch("/api/recording/start", {
+    method: "POST", body: JSON.stringify({ channels, name: name || null }),
+  }),
+  recordingStop: () => apiFetch("/api/recording/stop", { method: "POST" }),
+  recordingList: () => apiFetch("/api/recording/list"),
 };
 
 // Booth-PC-only bootstrap: start-booth-dashboard-view.sh launches the local

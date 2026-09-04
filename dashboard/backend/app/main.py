@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import agent_tools
+from . import recording as recording_mod
 from .auth import check_local_token, check_pin, require_session
 from .calibrate import CalibrationError
 from .config import load_settings
@@ -177,6 +178,51 @@ def api_calibrate(body: CalibrateBody, _: None = Depends(require_session)):
         return agent_tools.run_calibration(**kwargs)
     except CalibrationError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+class RecordingStartBody(BaseModel):
+    channels: list[int]
+    name: Optional[str] = None
+
+
+@app.get("/api/recording/status")
+def api_recording_status(_: None = Depends(require_session)):
+    return recording_mod.get_status()
+
+
+@app.post("/api/recording/start")
+def api_recording_start(body: RecordingStartBody, _: None = Depends(require_session)):
+    try:
+        return recording_mod.start_recording(
+            channels=body.channels,
+            name=body.name,
+            out_dir=settings.recordings_dir,
+            max_duration_sec=settings.recording_max_duration_sec,
+        )
+    except recording_mod.RecordingError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.post("/api/recording/stop")
+def api_recording_stop(_: None = Depends(require_session)):
+    try:
+        return recording_mod.stop_recording()
+    except recording_mod.RecordingError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+
+@app.get("/api/recording/list")
+def api_recording_list(_: None = Depends(require_session)):
+    return {"recordings": recording_mod.list_recordings(out_dir=settings.recordings_dir)}
+
+
+@app.get("/api/recording/download/{filename}")
+def api_recording_download(filename: str, _: None = Depends(require_session)):
+    try:
+        path = recording_mod.resolve_recording_path(out_dir=settings.recordings_dir, filename=filename)
+    except recording_mod.RecordingError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return FileResponse(path, media_type="audio/wav", filename=path.name)
 
 
 @app.websocket("/ws/agent")

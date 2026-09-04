@@ -60,6 +60,23 @@
         <div class="hdmi-grid" id="hdmi-grid"></div>
         <div id="calibrate-result" style="display:none; font-size:12.5px; padding:12px 14px; border-radius:10px; line-height:1.6;"></div>
       </div>
+
+      <div class="card svc-card" style="height:auto;">
+        <div class="svc-header">
+          <div class="svc-title">Board Recording</div>
+          <div class="pill" id="rec-status-pill">…</div>
+        </div>
+        <div class="lbl" style="padding-bottom:2px;">Channels (board numbering, 1-32)</div>
+        <div class="rec-channel-grid" id="rec-channel-grid"></div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <input id="rec-name" placeholder="Recording name (optional)" style="flex:1; min-width:180px;">
+          <button class="btn btn-primary btn-sm" id="rec-start-btn">Start Recording</button>
+          <button class="btn btn-warn btn-sm" id="rec-stop-btn" style="display:none;">Stop Recording</button>
+        </div>
+        <div class="mono" id="rec-active-info" style="display:none; font-size:12px; color:var(--text-muted);"></div>
+        <div class="lbl" style="padding-top:6px;">Past Recordings</div>
+        <div id="rec-list" style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;"></div>
+      </div>
     </div>
 
     <div class="col">
