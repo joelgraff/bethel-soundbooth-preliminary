@@ -96,10 +96,43 @@ def normalize(x):
     return [a / mag for a in c] if mag > 0 else c
 
 
+def write_comparison_wav(path, sent, v, chan_idx, nh):
+    """Stereo clip: LEFT = what we sent, RIGHT = what the board returned.
+
+    Each side is normalized independently — the returned signal comes back
+    at roughly 1% of full scale, so without this the right channel would be
+    inaudible next to the left.
+    """
+    import wave
+    back = [v[f * HW_CHANNELS + chan_idx] for f in range(nh)]
+    n = min(len(sent), len(back))
+    if n == 0:
+        raise ValueError("no frames to write")
+    ps = max(1, max(abs(x) for x in sent[:n]))
+    pb = max(1, max(abs(x) for x in back[:n]))
+    gs = (32767 * 0.85) / ps
+    gb = (32767 * 0.85) / pb
+    with wave.open(path, "wb") as w:
+        w.setnchannels(2)
+        w.setsampwidth(2)
+        w.setframerate(RATE)
+        frames = bytearray()
+        for i in range(n):
+            l = int(max(-32768, min(32767, sent[i] * gs)))
+            r = int(max(-32768, min(32767, back[i] * gb)))
+            frames += struct.pack("<hh", l, r)
+        w.writeframes(bytes(frames))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--seconds", type=float, default=3.0)
     ap.add_argument("--verbose", action="store_true")
+    ap.add_argument("--save-wav", metavar="PATH",
+                    help="write a stereo comparison clip: LEFT = what we "
+                         "sent the board, RIGHT = what it returned on the "
+                         "best-correlating Send channel. Both normalized, "
+                         "so the round-trip delay is audible.")
     args = ap.parse_args()
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -115,7 +148,10 @@ def main() -> int:
             print("ERROR: sent capture too short")
             return 3
         s = struct.unpack(f"<{ns}h", raw[:ns * 2])
-        sent = [abs(s[i * 2]) for i in range(ns // 2)]
+        # Correlation works on magnitudes (envelope); the WAV clip needs the
+        # signed samples or it comes out rectified and distorted.
+        sent_signed = [s[i * 2] for i in range(ns // 2)]
+        sent = [abs(x) for x in sent_signed]
 
         sent_rms = (sum(v * v for v in sent) / len(sent)) ** 0.5 / 32768
         if sent_rms < MIN_SENT_RMS:
@@ -148,6 +184,13 @@ def main() -> int:
         if args.verbose:
             print(f"sent_rms={sent_rms:.6f} best_ch={best_ch} "
                   f"corr={best_corr:.3f} lag={best_lag}ms")
+
+        if args.save_wav and best_ch is not None:
+            try:
+                write_comparison_wav(args.save_wav, sent_signed, v, best_ch - 1, nh)
+                print(f"clip: {args.save_wav} (L=sent, R=returned ch{best_ch})")
+            except Exception as exc:   # never let clip-writing mask the verdict
+                print(f"note: could not write clip: {exc}")
 
         if best_corr >= CORR_THRESHOLD:
             print(f"OK: loopback confirmed on ch{best_ch} "
