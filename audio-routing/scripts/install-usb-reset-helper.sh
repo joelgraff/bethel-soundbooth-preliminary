@@ -42,21 +42,51 @@ echo "    ok: ${perms}"
 
 echo "==> syntax-checking the sudoers fragment before installing it"
 TMP_SUDOERS="$(mktemp)"
-trap 'rm -f "$TMP_SUDOERS"' EXIT
+trap 'rm -f "$TMP_SUDOERS" "${TMP_SUDOERS}.before" "${TMP_SUDOERS}.after"' EXIT
 install -o root -g root -m 0440 "$SRC_SUDOERS" "$TMP_SUDOERS"
 if ! visudo -cf "$TMP_SUDOERS"; then
     die "sudoers fragment FAILED validation — nothing installed, sudo untouched"
 fi
 
+# Baseline the EXISTING problems before touching anything.
+#
+# The first version of this installer required `visudo -c` to come back
+# completely clean afterward, and rolled our fragment back when it didn't.
+# On 2026-09-05 that rejected a perfectly good install because of an
+# unrelated pre-existing fault: /etc/sudoers.d/090-companion_sudo is mode
+# 0644 instead of 0440. Demanding a globally clean config makes this
+# installer hostage to every other file in sudoers.d. What actually matters
+# is that WE introduce no new error, so diff the before/after error sets.
+echo "==> baselining existing sudoers problems"
+visudo -c 2>&1 | grep -vE ': parsed OK$' | sort > "${TMP_SUDOERS}.before" || true
+if [[ -s "${TMP_SUDOERS}.before" ]]; then
+    echo "    NOTE: sudoers already has pre-existing problems, unrelated to this install:"
+    sed 's/^/      /' "${TMP_SUDOERS}.before"
+    echo "    (sudo IGNORES a drop-in with wrong permissions, so any grant in such a"
+    echo "     file is currently inactive. Reported, not touched — fixing it would"
+    echo "     ACTIVATE a dormant grant, which is your call, not this installer's.)"
+else
+    echo "    none"
+fi
+
 echo "==> installing sudoers fragment to ${DST_SUDOERS}"
 install -o root -g root -m 0440 "$TMP_SUDOERS" "$DST_SUDOERS"
 
-echo "==> re-validating the whole sudoers configuration"
-if ! visudo -c >/dev/null; then
+echo "==> re-validating: did we introduce anything new?"
+visudo -c 2>&1 | grep -vE ': parsed OK$' | sort > "${TMP_SUDOERS}.after" || true
+NEW_ERRORS="$(comm -13 "${TMP_SUDOERS}.before" "${TMP_SUDOERS}.after")"
+if [[ -n "$NEW_ERRORS" ]]; then
     rm -f "$DST_SUDOERS"
-    die "full sudoers validation failed — fragment REMOVED, sudo left as it was"
+    echo "New problems introduced by this install:" >&2
+    echo "$NEW_ERRORS" | sed 's/^/  /' >&2
+    die "fragment REMOVED, sudo left exactly as it was"
 fi
-echo "    ok"
+# Independent of the diff: our own file must parse and be readable by sudo.
+if ! visudo -cf "$DST_SUDOERS" >/dev/null; then
+    rm -f "$DST_SUDOERS"
+    die "installed fragment failed its own validation — REMOVED, sudo left as it was"
+fi
+echo "    ok — no new problems"
 
 echo "==> verifying the grant resolves for ${GRANT_USER}"
 if sudo -u "$GRANT_USER" sudo -n -l "$DST_HELPER" >/dev/null 2>&1; then
