@@ -60,11 +60,15 @@ fi
 echo "==> baselining existing sudoers problems"
 visudo -c 2>&1 | grep -vE ': parsed OK$' | sort > "${TMP_SUDOERS}.before" || true
 if [[ -s "${TMP_SUDOERS}.before" ]]; then
-    echo "    NOTE: sudoers already has pre-existing problems, unrelated to this install:"
+    echo "    NOTE: sudoers already has pre-existing complaints, unrelated to this install:"
     sed 's/^/      /' "${TMP_SUDOERS}.before"
-    echo "    (sudo IGNORES a drop-in with wrong permissions, so any grant in such a"
-    echo "     file is currently inactive. Reported, not touched — fixing it would"
-    echo "     ACTIVATE a dormant grant, which is your call, not this installer's.)"
+    echo "    Reported, not touched."
+    echo "    Careful reading a 'bad permissions, should be mode 0440' line: visudo -c"
+    echo "    wants exactly 0440, but sudo's RUNTIME rule is only that the file not be"
+    echo "    group/other WRITABLE. A 0644 drop-in is therefore still loaded and its"
+    echo "    grants are LIVE — verified 2026-09-05 for 090-companion_sudo, whose"
+    echo "    grants were observed working in the journal. Do not read this warning as"
+    echo "    'that grant is inactive'."
 else
     echo "    none"
 fi
