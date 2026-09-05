@@ -148,11 +148,9 @@ while true; do
         # whether the host thinks it sent it. Every check opens a second
         # stream on the device, so it runs infrequently (see
         # LOOPBACK_EVERY). Exit 1 = confirmed silent failure. Exit 2 =
-        # nothing playing, can't judge. Exit 3 = couldn't capture (device
-        # busy — e.g. an operator recording is in progress — or absent);
-        # logged but NOT treated as failure, since the three host-side
-        # signals already cover hard failures and a false restart during a
-        # service would be worse than a missed check.
+        # nothing playing, can't judge. Exit 3 = couldn't capture — benign
+        # only if something actually holds the capture device (operator
+        # recording); otherwise it's a failure in its own right (see below).
         LOOPBACK_BAD=false
         POLL_COUNT=$((POLL_COUNT + 1))
         if (( POLL_COUNT % LOOPBACK_EVERY == 0 )) && [[ -x "$LOOPBACK_CHECK" ]]; then
@@ -162,7 +160,23 @@ while true; do
                 0) log "loopback OK — $LB_OUT" ;;
                 1) LOOPBACK_BAD=true; log "loopback check FAILED: $LB_OUT" ;;
                 2) log "loopback skipped — nothing playing" ;;
-                *) log "loopback check could not run (rc=$LB_RC): $LB_OUT" ;;
+                *)
+                    # rc=3 means the capture itself wouldn't open. Originally
+                    # treated as "unknown, don't act" on the theory that an
+                    # operator recording legitimately holds the device. That
+                    # was wrong and cost ~48 minutes of blindness on
+                    # 2026-09-05 00:51-01:39: nothing held the device, every
+                    # failed attempt was itself generating a kernel -71, and
+                    # the watchdog logged it as benign the whole time.
+                    # Correct discriminator: if nothing actually holds the
+                    # capture device, a capture failure IS a device failure.
+                    if fuser /dev/snd/pcmC${CARD}D0c >/dev/null 2>&1; then
+                        log "loopback check skipped — capture device busy (recording in progress?)"
+                    else
+                        LOOPBACK_BAD=true
+                        log "loopback check FAILED to open capture and nothing holds the device (rc=$LB_RC): $LB_OUT"
+                    fi
+                    ;;
             esac
         fi
 
