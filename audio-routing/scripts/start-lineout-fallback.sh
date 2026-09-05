@@ -88,7 +88,12 @@ apply_makeup_gain() {
     # on this bus would land peaks at +27 dBFS — total clipping. Verified
     # 2026-09-05: 215% reported 19.95 dB and moved the line-out from
     # peak -33.0 to -11.9 dBFS with zero clipped samples.
-    local want="${LINEOUT_MAKEUP_GAIN:-215%}" id
+    # 126% is +6 dB. Was 215% (+20 dB) while the board was receiving only the
+    # L-R difference signal; restoring the centre (see the mono routing below)
+    # hands back 13.1 dB on its own, so the makeup comes down by a matching
+    # amount to leave the level at the board roughly where the operator
+    # already had it trimmed.
+    local want="${LINEOUT_MAKEUP_GAIN:-126%}" id
     for _ in $(seq 1 20); do
         # $3 on the header line is "#3433" — pactl needs the bare integer, and
         # rejects the "#" form silently, which is why the first version of
@@ -108,9 +113,31 @@ apply_makeup_gain() {
 apply_makeup_gain &
 
 log "mirroring ${SOURCE} → ${SINK} (latency ${LATENCY_MS}ms)"
+# MONO SUM ON ONE LEG, not stereo.
+#
+# Board channel 32 is a BALANCED input, so it computes (tip - ring). Fed a
+# stereo signal (L on tip, R on ring) it therefore renders L-R: every
+# centre-panned element — lead vocals above all — subtracts to nothing, and
+# what survives is the decorrelated edges, which is why it sounded thin and
+# "digitally dirty" rather than merely quiet. Measured 2026-09-05 on real
+# program material: MID (L+R)/2 = -49.6 dBFS, SIDE (L-R)/2 = -62.7 dBFS,
+# L/R correlation +0.910 — the board was hearing 13.1 dB less than it should,
+# minus the vocals.
+#
+# --channels 1 makes the capture a mono downmix (audioconvert sums L+R), and
+# audio.position=[FL] puts it on the tip alone with the ring at digital
+# silence. The balanced input then computes (M - 0) = M: full centre content,
+# correct level. This is also correct for an unbalanced TS input, and is safe
+# if the ring happens to be shorted to sleeve, so it needs no assumption about
+# which cable is in use.
+#
+# Do NOT "fix" this by sending the mono sum to BOTH legs — that gives a
+# balanced input (M - M) = 0, i.e. total silence.
 exec pw-loopback \
     --capture-props="stream.capture.sink=true node.target=${SOURCE}" \
     --capture "$SOURCE" \
     --playback "$SINK" \
+    --playback-props="audio.position=[FL]" \
+    --channels 1 \
     --latency "${LATENCY_MS}" \
     --name "FOH-Lineout-Fallback"
