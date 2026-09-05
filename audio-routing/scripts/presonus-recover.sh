@@ -89,9 +89,24 @@ if (( 8#${mode} & 0022 )); then
     exit 3
 fi
 
-if ! sudo -n -l "$HELPER" >/dev/null 2>&1; then
+# Check the grant by actually exercising it, not with `sudo -n -l "$HELPER"`.
+#
+# `sudo -l CMD` answers "is this user AUTHORIZED to run CMD", not "can they
+# run it WITHOUT a password". soundbooth is in the sudo group and therefore
+# has a blanket `(ALL : ALL) ALL` entry, so that check returns success for
+# literally any command and is worthless here. It passed on 2026-09-05 while
+# the NOPASSWD fragment was not installed at all, and the run went on to fail
+# at the real sudo call.
+#
+# --probe is the safe way to exercise it: read-only, takes no action.
+PROBE_OUT="$(sudo -n "$HELPER" --probe 2>&1)"; PROBE_RC=$?
+if grep -qi "password is required" <<< "$PROBE_OUT"; then
     verdict "REFUSING: no passwordless sudo grant for ${HELPER}."
     verdict "Install it: sudo audio-routing/scripts/install-usb-reset-helper.sh"
+    exit 3
+fi
+if (( PROBE_RC != 0 )); then
+    verdict "REFUSING: could not run ${HELPER} --probe (rc=${PROBE_RC}): ${PROBE_OUT}"
     exit 3
 fi
 
@@ -124,6 +139,17 @@ sleep 1
 log "invoking privileged reset"
 RESET_OUT="$(sudo -n "$HELPER" 2>&1)"; RESET_RC=$?
 echo "$RESET_OUT" | sed 's/^/    /'
+
+# sudo being denied is not a statement about the device. Reporting it as
+# "device still unresponsive — needs a physical power-cycle" sends someone
+# to the building over a permissions problem; that exact misreport happened
+# on 2026-09-05 07:47 before the grant was installed.
+if grep -qi "password is required\|sudo: a password" <<< "$RESET_OUT"; then
+    verdict "FAILED: sudo denied the reset helper — the NOPASSWD grant is missing or broken."
+    verdict "This says NOTHING about the board. Install: sudo audio-routing/scripts/install-usb-reset-helper.sh"
+    systemctl --user start "$BRIDGE" 2>/dev/null
+    exit 3
+fi
 
 if [[ $RESET_RC -eq 2 ]]; then
     verdict "board is not attached at all — it is powered off or unplugged. Nothing to reset."

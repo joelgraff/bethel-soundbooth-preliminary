@@ -131,9 +131,16 @@ count_resets_last_hour() {
 # Both halves must be present: the unprivileged orchestrator AND the sudo
 # grant for the privileged helper. Checking only the former would report the
 # escalation "armed" while every attempt refused at the sudo step.
+# NOT `sudo -n -l <cmd>` — that answers "is the user authorized", not "can
+# they run it without a password". soundbooth is in the sudo group and so
+# has a blanket (ALL : ALL) ALL entry, making that check return true for any
+# command. It reported the escalation armed on 2026-09-05 while no NOPASSWD
+# fragment existed. Exercise the grant instead, via the read-only --probe.
 reset_available() {
     [[ -x "$RESET_HELPER_CALLER" ]] || return 1
-    sudo -n -l /usr/local/sbin/presonus-usb-reset >/dev/null 2>&1 || return 1
+    local out
+    out="$(sudo -n /usr/local/sbin/presonus-usb-reset --probe 2>&1)"
+    grep -qi "password is required" <<< "$out" && return 1
     return 0
 }
 
