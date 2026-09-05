@@ -1,0 +1,15 @@
+[Unit]
+Description=Watch PreSonus 32SX for FOH-silencing failures invisible to a single check
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+After=presonus-foh-bridge.service
+Wants=presonus-foh-bridge.service
+PartOf=soundbooth.target
+
+[Service]
+Type=simple
+ExecStart=%h/bin/presonus-usb-watch.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=soundbooth.target
