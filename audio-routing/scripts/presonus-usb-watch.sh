@@ -184,7 +184,14 @@ do_usb_reset() {
 
 log "watching PreSonus 32SX (amixer + kernel log + hw_ptr) — poll ${POLL}s, min gap ${MIN_GAP}s, max ${MAX_HOUR}/h"
 if reset_available; then
-    log "USB reset escalation ARMED: after ${RESET_AFTER_BAD_POLLS} consecutive bad polls, max ${RESET_MAX_HOUR}/h"
+    if (( RESET_AFTER_BAD_POLLS >= 100000 )); then
+        # Deliberately-disabled sentinel (see the no-reset-escalation drop-in).
+        # Reporting this as "ARMED after 999999 polls" invites someone to
+        # believe recovery is covered when it is switched off.
+        log "USB reset escalation DISABLED by configuration (RESET_AFTER=${RESET_AFTER_BAD_POLLS}) — bridge restarts only"
+    else
+        log "USB reset escalation ARMED: after ${RESET_AFTER_BAD_POLLS} consecutive bad polls, max ${RESET_MAX_HOUR}/h"
+    fi
 else
     log "USB reset escalation NOT available (orchestrator or sudo grant missing) — bridge restarts only." \
         "Install with: sudo audio-routing/scripts/install-usb-reset-helper.sh"
