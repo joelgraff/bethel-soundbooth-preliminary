@@ -86,9 +86,36 @@ Three possible outcomes, all informative:
 
 | Result | Meaning |
 |---|---|
-| `RECOVERED — loopback confirmed` | **The wedge is remotely recoverable.** This is the big one: it means last night's 4-hour outage would have self-healed. |
-| `FAILED ... needs a physical power-cycle` | The reset is not sufficient for this failure mode. Still worth keeping for the disconnect-style failures, but the contingency stays "someone must be present." |
+| `RECOVERED — loopback confirmed` | **The wedge is remotely recoverable.** |
+| `FAILED ... needs a physical power-cycle` | The reset is not sufficient for this failure mode. |
 | `board is not attached at all` | Board is powered off — not a valid test. |
+
+**RESULT, 2026-09-05 07:52 — the answer is FAILED.** Run against the live
+wedge that had persisted since 00:51, all three mechanisms were tried and
+all three failed:
+
+```
+step 1/3: USBDEVFS_RESET port reset          -> still not responding
+step 2/3: usb driver unbind/rebind           -> still not responding
+step 3/3: authorized 0 -> 1 (re-enumeration) -> still not responding
+FAILED: device still not responding after all three steps.
+```
+
+So **this wedge is not remotely recoverable**, and the wedding-day
+contingency remains "someone must be physically present to power-cycle the
+board." Do not plan around unattended recovery for this failure mode.
+
+The helper is still worth keeping: it is cheap, it is the correct first
+response, and it has not yet been tested against the *other* failure
+signature (disconnect / failed re-enumeration, the mode seen all day on
+Sep 4), which a port reset has a much better chance of clearing.
+
+Diagnostically the negative result is informative: `authorized 0 -> 1`
+forces the host to redo enumeration from scratch, and the device still
+would not answer. The host side did everything it can do. Whatever state
+the board is stuck in only clears when its power is removed. That does not
+by itself move the *cause* back to the board — the host can still be what
+provokes it — but the stuck state itself lives on the board.
 
 Have Spotify playing before this step, or the loopback check returns
 inconclusive (exit 2) and verifies nothing.
