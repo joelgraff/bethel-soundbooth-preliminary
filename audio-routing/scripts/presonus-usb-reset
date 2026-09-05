@@ -1,0 +1,228 @@
+#!/bin/bash
+# presonus-usb-reset — privileged USB reset for the PreSonus StudioLive 32SX.
+#
+# THIS FILE IS INSTALLED AS ROOT-OWNED /usr/local/sbin/presonus-usb-reset.
+# The copy in this repo is the source of truth; the installed copy must NOT
+# be writable by the soundbooth user. A NOPASSWD sudo grant on a script the
+# calling user can edit is a full root escalation — that is the whole reason
+# this is a separate, tiny, argument-free program instead of a flag on
+# presonus-usb-watch.sh.
+#
+# WHY THIS EXISTS
+# On 2026-09-05 at 00:51 the 32SX entered a failure mode it had not shown
+# before: it stayed enumerated at 480M with snd-usb-audio bound, authorized=1,
+# and never disconnected — but every control transfer returned -71
+# (usb_set_interface failed / clock source 41 is not valid). FOH went silent
+# at 01:39 and stayed silent for the rest of the night. 1,375 bridge restarts
+# did nothing, because there was no stream to reopen: the endpoint would not
+# answer. A USB port reset is the one remedy short of physically power-cycling
+# the board, and every mechanism for it needs root — usbreset on
+# /dev/bus/usb/... (node is root:root 0664), driver unbind/rebind, and the
+# authorized toggle. The soundbooth user is in the sudo group but has no
+# passwordless sudo, so the unattended session could not recover it and FOH
+# stayed down until someone was physically present.
+#
+# SCOPE
+# Hardcoded to idVendor=194f idProduct=0809. It cannot be pointed at any
+# other device: there is no argument that selects one. If more than one
+# matching device is attached it refuses to act rather than guess.
+#
+# ESCALATION (stops at the first step that restores the device)
+#   1. USBDEVFS_RESET ioctl  — a port reset; electrically the closest thing
+#                              to unplugging and replugging, without dropping
+#                              bus power. Least disruptive, most likely to
+#                              clear a wedged control endpoint.
+#   2. unbind/rebind         — forces the usb driver to tear down and re-init
+#                              the device's driver state.
+#   3. authorized 0 -> 1     — de-authorize and re-authorize, forcing a full
+#                              re-enumeration from scratch.
+#
+# It does NOT touch presonus-foh-bridge.service. That is a --user unit owned
+# by soundbooth, and reaching into another user's systemd session from root
+# would mean dragging XDG_RUNTIME_DIR/DBUS plumbing into a privileged script
+# for no benefit. The unprivileged caller (presonus-recover.sh) stops the
+# bridge before calling this and starts it afterward.
+#
+# Usage:
+#   presonus-usb-reset            perform the reset
+#   presonus-usb-reset --probe    report what it would do; touches nothing
+#
+# Exit codes:
+#   0  device present and responding after reset (or, with --probe, found)
+#   1  device found but still not responding after all three steps
+#   2  no matching device attached at all (board powered off / unplugged)
+#   3  refused to act (multiple matches, or not running as root)
+
+set -uo pipefail
+
+VID="194f"
+PID="0809"
+PROBE=0
+
+case "${1-}" in
+    --probe) PROBE=1 ;;
+    "")      ;;
+    *)       echo "presonus-usb-reset: unknown argument '${1}'" >&2; exit 3 ;;
+esac
+if [[ $# -gt 1 ]]; then
+    echo "presonus-usb-reset: takes at most one argument" >&2
+    exit 3
+fi
+
+log() { echo "[presonus-usb-reset $(date +%H:%M:%S)] $*"; }
+
+# --probe only reads sysfs and /proc/asound, so it deliberately does NOT
+# require root — that keeps the diagnostic half testable without invoking a
+# privileged path. Only the reset actions below check for root.
+if [[ "$(id -u)" != "0" ]] && (( ! PROBE )); then
+    log "ERROR: must run as root (via the sudoers.d grant)"
+    exit 3
+fi
+
+# --- locate the device by vid:pid, never by a caller-supplied path ---------
+find_device() {
+    local d found=()
+    for d in /sys/bus/usb/devices/*/; do
+        [[ -f "${d}idVendor" && -f "${d}idProduct" ]] || continue
+        [[ "$(cat "${d}idVendor" 2>/dev/null)" == "$VID" ]] || continue
+        [[ "$(cat "${d}idProduct" 2>/dev/null)" == "$PID" ]] || continue
+        found+=("$d")
+    done
+    if [[ ${#found[@]} -eq 0 ]]; then return 2; fi
+    if [[ ${#found[@]} -gt 1 ]]; then
+        log "ERROR: ${#found[@]} devices match ${VID}:${PID} — refusing to guess which to reset:"
+        printf '  %s\n' "${found[@]}" >&2
+        return 3
+    fi
+    DEV_PATH="${found[0]%/}"
+    DEV_ID="$(basename "$DEV_PATH")"
+    BUSNUM="$(cat "${DEV_PATH}/busnum" 2>/dev/null)"
+    DEVNUM="$(cat "${DEV_PATH}/devnum" 2>/dev/null)"
+    DEV_NODE="$(printf '/dev/bus/usb/%03d/%03d' "$BUSNUM" "$DEVNUM")"
+    return 0
+}
+
+alsa_card_num() {
+    local c
+    for c in /proc/asound/card*/; do
+        [[ -f "${c}usbid" ]] || continue
+        [[ "$(cat "${c}usbid" 2>/dev/null)" == "${VID}:${PID}" ]] || continue
+        local n="${c%/}"; echo "${n##*card}"; return 0
+    done
+    return 1
+}
+
+# Responding = an ALSA PCM stream can actually be opened on the device.
+#
+# DO NOT use amixer here. Reading mixer controls (`amixer controls`, or
+# `amixer cget numid=1` for StudioLive Internal Clock Validity) is served
+# from the driver's cached control set and generates no bus traffic, so it
+# returns healthy against a completely wedged device. Verified 2026-09-05
+# 05:49: `amixer -c 3 controls` succeeded while the board had been silent
+# and throwing usb_set_interface -71 continuously for four hours. Trusting
+# amixer is what let the earlier watchdog call this state healthy.
+#
+# Opening a PCM stream is the operation that actually fails, and the capture
+# side is the right one to probe: it wedges first (48 minutes before playback
+# did on 2026-09-05) and nothing normally holds it, whereas the playback
+# device is held by presonus-foh-bridge whenever it is running.
+device_responding() {
+    local num
+    num="$(alsa_card_num)" || return 1
+
+    # If something legitimately holds the capture device (an operator
+    # recording), we cannot probe without stealing it. Report inconclusive
+    # as "responding" rather than resetting a device that is in active use.
+    if fuser "/dev/snd/pcmC${num}D0c" >/dev/null 2>&1; then
+        log "  note: capture device busy, cannot probe — assuming responsive"
+        return 0
+    fi
+
+    timeout 5 arecord -D "hw:${num},0" -f S32_LE -r 48000 -c 64 \
+        -t raw -d 1 /dev/null >/dev/null 2>&1
+}
+
+wait_for_device() {
+    local deadline=$((SECONDS + ${1:-20}))
+    while (( SECONDS < deadline )); do
+        if find_device && device_responding; then return 0; fi
+        sleep 2
+    done
+    return 1
+}
+
+# --- reset mechanisms -----------------------------------------------------
+reset_ioctl() {
+    # USBDEVFS_RESET = _IO('U', 20). Done inline rather than shelling out to
+    # usbreset(8) so this has no dependency on usbutils being installed.
+    python3 - "$DEV_NODE" <<'PY' 2>&1
+import fcntl, os, sys
+USBDEVFS_RESET = (ord('U') << 8) | 20
+try:
+    fd = os.open(sys.argv[1], os.O_WRONLY)
+except OSError as e:
+    print(f"open failed: {e}"); sys.exit(1)
+try:
+    fcntl.ioctl(fd, USBDEVFS_RESET, 0)
+except OSError as e:
+    print(f"ioctl failed: {e}"); sys.exit(1)
+finally:
+    os.close(fd)
+PY
+}
+
+reset_rebind() {
+    local drv=/sys/bus/usb/drivers/usb
+    echo "$DEV_ID" > "${drv}/unbind" 2>&1 || return 1
+    sleep 2
+    echo "$DEV_ID" > "${drv}/bind" 2>&1 || return 1
+}
+
+reset_authorized() {
+    echo 0 > "${DEV_PATH}/authorized" 2>&1 || return 1
+    sleep 2
+    echo 1 > "${DEV_PATH}/authorized" 2>&1 || return 1
+}
+
+# --- main -----------------------------------------------------------------
+find_device
+rc=$?
+case $rc in
+    2) log "no device matching ${VID}:${PID} is attached — board powered off or unplugged"; exit 2 ;;
+    3) exit 3 ;;
+esac
+
+log "found ${VID}:${PID} at ${DEV_ID} (${DEV_NODE}), speed $(cat "${DEV_PATH}/speed" 2>/dev/null)M"
+
+if (( PROBE )); then
+    if device_responding; then
+        log "PROBE: device is responding to control transfers — a reset would not be needed now"
+    else
+        log "PROBE: device is present but NOT responding — a reset is what this would clear"
+    fi
+    log "PROBE: no action taken"
+    exit 0
+fi
+
+for step in ioctl rebind authorized; do
+    case "$step" in
+        ioctl)      log "step 1/3: USBDEVFS_RESET port reset"; out=$(reset_ioctl) ;;
+        rebind)     log "step 2/3: usb driver unbind/rebind";  out=$(reset_rebind 2>&1) ;;
+        authorized) log "step 3/3: authorized 0 -> 1 (full re-enumeration)"; out=$(reset_authorized 2>&1) ;;
+    esac
+    [[ -n "${out:-}" ]] && log "  ${step}: ${out}"
+
+    # The device number changes across a reset, so re-locate rather than
+    # reusing the stale path.
+    sleep 2
+    if wait_for_device 15; then
+        log "SUCCESS after ${step}: device responding at ${DEV_ID}"
+        exit 0
+    fi
+    log "  still not responding after ${step}"
+    find_device || { log "device vanished entirely after ${step}"; exit 1; }
+done
+
+log "FAILED: device still not responding after all three steps."
+log "This needs a physical power-cycle of the board."
+exit 1

@@ -103,10 +103,89 @@ do_restart() {
     fi
 }
 
+# --- USB reset escalation -------------------------------------------------
+# Restarting the bridge only helps when the host side lost its stream. It is
+# useless against the wedged-but-attached failure found 2026-09-05, where the
+# device stays enumerated and answers no control transfers: 1,375 bridge
+# restarts across that night changed nothing, because there was nothing to
+# reopen. A USB port reset is the only remedy short of physically
+# power-cycling the board, so once restarts have demonstrably not worked,
+# escalate to one. Rate-limited separately and much more tightly than
+# restarts — a reset is disruptive, and hammering a marginal link with them
+# is exactly the pattern that made things worse before.
+RESET_HELPER_CALLER="${PRESONUS_WATCH_RECOVER:-$HOME/bin/presonus-recover.sh}"
+RESET_AFTER_BAD_POLLS="${PRESONUS_WATCH_RESET_AFTER:-6}"
+RESET_MIN_GAP="${PRESONUS_WATCH_RESET_MIN_GAP_SEC:-300}"
+RESET_MAX_HOUR="${PRESONUS_WATCH_MAX_RESETS_PER_HOUR:-3}"
+RESET_LOG="${STATE_DIR}/resets.log"
+RESET_UNAVAILABLE_LOGGED=false
+
+count_resets_last_hour() {
+    local cutoff now
+    now=$(date +%s)
+    cutoff=$((now - 3600))
+    [[ -f "$RESET_LOG" ]] || { echo 0; return; }
+    awk -v c="$cutoff" '$1 >= c { n++ } END { print n+0 }' "$RESET_LOG"
+}
+
+# Both halves must be present: the unprivileged orchestrator AND the sudo
+# grant for the privileged helper. Checking only the former would report the
+# escalation "armed" while every attempt refused at the sudo step.
+reset_available() {
+    [[ -x "$RESET_HELPER_CALLER" ]] || return 1
+    sudo -n -l /usr/local/sbin/presonus-usb-reset >/dev/null 2>&1 || return 1
+    return 0
+}
+
+do_usb_reset() {
+    local reason="$1" now n
+    if [[ "${PRESONUS_WATCH_DISABLE:-0}" == "1" ]]; then
+        log "DISABLE set — would attempt USB reset for: $reason"
+        return
+    fi
+    if ! reset_available; then
+        if ! $RESET_UNAVAILABLE_LOGGED; then
+            log "USB reset escalation unavailable (orchestrator or sudo grant missing)." \
+                "Install with: sudo audio-routing/scripts/install-usb-reset-helper.sh"
+            RESET_UNAVAILABLE_LOGGED=true
+        fi
+        return
+    fi
+    now=$(date +%s)
+    if [[ -n "${LAST_RESET:-}" ]] && (( now - LAST_RESET < RESET_MIN_GAP )); then
+        return   # silent: this is checked every poll, don't spam the journal
+    fi
+    n=$(count_resets_last_hour)
+    if (( n >= RESET_MAX_HOUR )); then
+        log "MAX USB resets/hour (${RESET_MAX_HOUR}) reached — NOT resetting ($reason)." \
+            "The board needs a physical power-cycle."
+        LAST_RESET=$now   # re-arm the gap so this doesn't log every poll
+        return
+    fi
+    log "ESCALATING to USB reset (${reason}) [hour count $((n + 1))/${RESET_MAX_HOUR}]"
+    LAST_RESET=$now
+    local out rc
+    out="$("$RESET_HELPER_CALLER" --quiet 2>&1)"; rc=$?
+    while IFS= read -r line; do [[ -n "$line" ]] && log "  $line"; done <<< "$out"
+    case $rc in
+        0) log "USB reset reported success — will re-verify on the next poll" ;;
+        2) log "USB reset: board not attached (powered off/unplugged)" ;;
+        3) log "USB reset refused (recording in progress, or grant not installed)" ;;
+        *) log "USB reset did not recover the device — physical power-cycle required" ;;
+    esac
+}
+
 log "watching PreSonus 32SX (amixer + kernel log + hw_ptr) — poll ${POLL}s, min gap ${MIN_GAP}s, max ${MAX_HOUR}/h"
+if reset_available; then
+    log "USB reset escalation ARMED: after ${RESET_AFTER_BAD_POLLS} consecutive bad polls, max ${RESET_MAX_HOUR}/h"
+else
+    log "USB reset escalation NOT available (orchestrator or sudo grant missing) — bridge restarts only." \
+        "Install with: sudo audio-routing/scripts/install-usb-reset-helper.sh"
+fi
 
 LAST_STATE="unknown"
 POLL_COUNT=0
+BAD_STREAK=0
 while true; do
     sleep "$POLL"
 
@@ -188,6 +267,12 @@ while true; do
         fi
     fi
 
+    if [[ "$STATE" == "bad" ]]; then
+        BAD_STREAK=$((BAD_STREAK + 1))
+    else
+        BAD_STREAK=0
+    fi
+
     if [[ "$STATE" == "bad" && "$LAST_STATE" == "ok" ]]; then
         log "ALERT: PreSonus 32SX unhealthy ($REASON)"
         do_restart "$REASON"
@@ -196,6 +281,11 @@ while true; do
         # (covers the case where a software restart alone won't fix it, but
         # is still worth attempting periodically in case it does).
         do_restart "$REASON (still bad)"
+        # Restarts have now had several attempts and the device is still
+        # bad, which is the signature of a wedge a restart cannot fix.
+        if (( BAD_STREAK >= RESET_AFTER_BAD_POLLS )); then
+            do_usb_reset "$REASON (bad for ${BAD_STREAK} consecutive polls)"
+        fi
     fi
     if [[ "$STATE" == "ok" && "$LAST_STATE" == "bad" ]]; then
         log "RECOVERED"
