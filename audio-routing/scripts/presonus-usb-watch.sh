@@ -41,6 +41,11 @@ set -uo pipefail
 POLL="${PRESONUS_WATCH_POLL_SEC:-15}"
 MIN_GAP="${PRESONUS_WATCH_MIN_GAP_SEC:-60}"
 MAX_HOUR="${PRESONUS_WATCH_MAX_PER_HOUR:-10}"
+# Run the far-side loopback check every Nth poll (default every 20 polls =
+# ~5 min). Deliberately not every poll: each check opens a second stream on
+# a device that has proven fragile, so it's kept infrequent.
+LOOPBACK_EVERY="${PRESONUS_WATCH_LOOPBACK_EVERY:-20}"
+LOOPBACK_CHECK="${PRESONUS_WATCH_LOOPBACK_CHECK:-$HOME/bin/presonus-loopback-check.py}"
 STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/soundbooth-presonus-usb-watch"
 mkdir -p "$STATE_DIR"
 RESTART_LOG="${STATE_DIR}/restarts.log"
@@ -48,7 +53,13 @@ RESTART_LOG="${STATE_DIR}/restarts.log"
 log() { echo "[presonus-usb-watch $(date +%H:%M:%S)] $*"; }
 
 card_num() {
-    aplay -l 2>/dev/null | awk '/S32SX/{ match($0,/card ([0-9]+)/,a); print a[1]; exit }'
+    # Portable form — the 3-arg match(s, r, array) capture syntax used
+    # previously is a gawk extension; this system's /usr/bin/awk is mawk,
+    # which doesn't support it and threw "syntax error at or near ,"
+    # every time a match was attempted (found live 2026-09-04 21:17,
+    # right after the post-reboot re-test — mawk vs gawk wasn't checked
+    # before deploying the first version).
+    aplay -l 2>/dev/null | grep -oP 'card \K[0-9]+(?=.*S32SX)' | head -1
 }
 
 count_restarts_last_hour() {
@@ -95,6 +106,7 @@ do_restart() {
 log "watching PreSonus 32SX (amixer + kernel log + hw_ptr) — poll ${POLL}s, min gap ${MIN_GAP}s, max ${MAX_HOUR}/h"
 
 LAST_STATE="unknown"
+POLL_COUNT=0
 while true; do
     sleep "$POLL"
 
@@ -131,11 +143,34 @@ while true; do
             fi
         fi
 
-        if $AMIXER_OK && ! $KERNEL_BAD && ! $HWPTR_STUCK; then
+        # Far-side loopback check — the only signal that observes whether
+        # the BOARD is actually processing our audio, rather than just
+        # whether the host thinks it sent it. Every check opens a second
+        # stream on the device, so it runs infrequently (see
+        # LOOPBACK_EVERY). Exit 1 = confirmed silent failure. Exit 2 =
+        # nothing playing, can't judge. Exit 3 = couldn't capture (device
+        # busy — e.g. an operator recording is in progress — or absent);
+        # logged but NOT treated as failure, since the three host-side
+        # signals already cover hard failures and a false restart during a
+        # service would be worse than a missed check.
+        LOOPBACK_BAD=false
+        POLL_COUNT=$((POLL_COUNT + 1))
+        if (( POLL_COUNT % LOOPBACK_EVERY == 0 )) && [[ -x "$LOOPBACK_CHECK" ]]; then
+            LB_OUT=$("$LOOPBACK_CHECK" 2>&1)
+            LB_RC=$?
+            case "$LB_RC" in
+                0) log "loopback OK — $LB_OUT" ;;
+                1) LOOPBACK_BAD=true; log "loopback check FAILED: $LB_OUT" ;;
+                2) log "loopback skipped — nothing playing" ;;
+                *) log "loopback check could not run (rc=$LB_RC): $LB_OUT" ;;
+            esac
+        fi
+
+        if $AMIXER_OK && ! $KERNEL_BAD && ! $HWPTR_STUCK && ! $LOOPBACK_BAD; then
             STATE="ok"
         else
             STATE="bad"
-            REASON="amixer_ok=$AMIXER_OK kernel_bad=$KERNEL_BAD hwptr_stuck=$HWPTR_STUCK"
+            REASON="amixer_ok=$AMIXER_OK kernel_bad=$KERNEL_BAD hwptr_stuck=$HWPTR_STUCK loopback_bad=$LOOPBACK_BAD"
         fi
     fi
 
