@@ -327,7 +327,7 @@ Updated: 2026-09-04 late night (HDMI preview honest-staleness fix; PreSonus USB 
   PIN still gates LAN access.
 - [x] **Deliberately not an IP check.** While verifying, found that at
   least one local browser context's requests to `127.0.0.1:8420` arrive at
-  the server showing the machine's real LAN IP (`192.168.2.200`) instead of
+  the server showing the machine's real LAN IP (redacted) instead of
   loopback — no proxy configured, cause not fully root-caused (traced it as
   far as: it's not the dashboard-viewer's own dedicated process tree, which
   *does* correctly show `127.0.0.1`; some other/older browser context on
@@ -547,7 +547,7 @@ Updated: 2026-09-04 late night (HDMI preview honest-staleness fix; PreSonus USB 
 - [x] **Smoke-tested locally** (booth PC, test PIN, cleaned up after):
   unauthenticated/wrong-PIN requests correctly 401; `/api/health` returned
   real live output (**58 pass / 0 warn / 1 fail** at test time — ATEM not
-  reachable at 192.168.2.252, expected outside service hours); `/api/services`
+  reachable at its LAN IP (redacted), expected outside service hours); `/api/services`
   returned real `systemctl --user` status for all 13 units; a restart request
   for a unit not on the manifest was rejected before ever calling
   `systemctl`; a stop request for the livestream relay correctly staged a
@@ -575,7 +575,7 @@ Updated: 2026-09-04 late night (HDMI preview honest-staleness fix; PreSonus USB 
 - [x] **Follow-up to the split above:** operators power the camera off well
   before the booth PC/ATEM at end of service, so `/dev/video0` never
   disappears and can't signal "camera off". Confirmed the PTZOptics camera
-  at 192.168.1.202 is the *same physical unit* feeding the ATEM's SDI
+  at its LAN IP (redacted) is the *same physical unit* feeding the ATEM's SDI
   program input, so its network reachability is a safe proxy for "camera
   lost power" — no false-positive risk from just showing a dark scene.
 - [x] **Built `livestream-camera-watch.service`** (`livestream-camera-watch.sh`):
@@ -642,7 +642,7 @@ Updated: 2026-09-04 late night (HDMI preview honest-staleness fix; PreSonus USB 
 ## Current State (2026-08-16 — Sunday service)
 
 - [x] Health: **55 pass / 0 warn / 0 fail**. Encode, DP-4 ffplay, FOH bridge, multiview, session apps up.
-- [x] **CMP detected PT12X at 192.168.1.202 but showed no video.** Phone PTZ app OK.
+- [x] **CMP detected PT12X at its LAN IP (redacted) but showed no video.** Phone PTZ app OK.
   - Snapshot path is empty (`/snapshot.jpg` Content-Length 0). Switching to RTSP-MPEG removed the error GIF but stayed blank.
   - Real RTSP-MPEG fault: packed AppImage `import("get-port")` → `ENOTDIR` on `app.asar/node_modules/get-port`. No ffmpeg, no `:9999`.
   - Fix: extracted AppImage + unpacked `app.asar` to `~/AppImage/Camera-Management-Platform-1.9.7.extracted/`; unit runs that binary; loosened ffmpeg flags (`-timeout 3` / 250M analyze were also fatal). Verified: ffmpeg 1080p→mpeg1, WS `:9999`, renderer connected.
@@ -875,7 +875,7 @@ Updated: 2026-07-30 (FFmpeg lip-sync delay restored to 0.25)
 - [x] **Root cause:** `soundbooth.target` still `Wants=vlc.service` → VLC owned `/dev/video0` → `ffmpeg-srt` crash-looped
 - [x] Stopped VLC; started `ffmpeg-srt` + `ffmpeg-display` + guard
 - [x] Fixed live unit: `~/.config/systemd/user/soundbooth.target` now Wants FFmpeg stack (not VLC)
-- [x] Camera health IP corrected: **192.168.1.202** (was wrong default 192.168.2.202); ping OK
+- [x] Camera health IP corrected (redacted; was pointed at the wrong default); ping OK
 - [x] **Post-reboot races fixed:**
   - Sunday Grok skipped: **calendar-day stamp** from earlier session → now **once per `boot_id`**
   - Grok waits for **network/DNS** (default 180s) + settle, then opens terminal for diagnostics
