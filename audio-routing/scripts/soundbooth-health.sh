@@ -5,8 +5,8 @@
 #   - Software audio → Mixer / Presonus (default sink preference)
 #   - Program: FFmpeg SRT + ffplay on DP-4 / HDMI TV
 #   - ATEM capture device + USB
-#   - ATEM network control (ping ATEM_NETWORK_IP, default 192.168.2.252)
-#   - Camera network (ping CAMERA_NETWORK_IP, default 192.168.1.202)
+#   - ATEM network control (ping ATEM_NETWORK_IP, default 192.0.2.252)
+#   - Camera network (ping CAMERA_NETWORK_IP, default 192.0.2.202)
 #   - Camera management (CMP): camera-management.service active + RTSP-MPEG
 #     websocket actually bound on :9999 (service "active" alone does not
 #     guarantee the transcode pipeline is up — see STATUS.md 2026-08-16)
@@ -63,17 +63,17 @@ if [[ -f "${HOME}/.config/soundbooth/vlc-display.conf" ]]; then
 fi
 VIDEO_DEV="${VLC_VIDEO_DEV:-/dev/video0}"
 # Network devices (override via env or ~/.config/soundbooth/*.conf)
-ATEM_NETWORK_IP="${ATEM_NETWORK_IP:-192.168.2.252}"
-CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.168.1.202}"
+ATEM_NETWORK_IP="${ATEM_NETWORK_IP:-192.0.2.252}"
+CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.0.2.202}"
 if [[ -f "${HOME}/.config/soundbooth/atem.conf" ]]; then
     # shellcheck disable=SC1091
     source "${HOME}/.config/soundbooth/atem.conf" 2>/dev/null || true
-    ATEM_NETWORK_IP="${ATEM_NETWORK_IP:-192.168.2.252}"
+    ATEM_NETWORK_IP="${ATEM_NETWORK_IP:-192.0.2.252}"
 fi
 if [[ -f "${HOME}/.config/soundbooth/camera.conf" ]]; then
     # shellcheck disable=SC1091
     source "${HOME}/.config/soundbooth/camera.conf" 2>/dev/null || true
-    CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.168.1.202}"
+    CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.0.2.202}"
 fi
 EXPECTED_SERVICES=(
     ffmpeg-capture.service

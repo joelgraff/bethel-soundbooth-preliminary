@@ -1,0 +1,8 @@
+# PTZOptics camera network settings.
+# Install: cp to ~/.config/soundbooth/camera.conf and set the real LAN IP
+# (kept out of git — this venue's internal address is not committed).
+#
+# Read by: soundbooth-health.sh, camera-management-watch.sh,
+# livestream-camera-watch.sh, start-camera-management.sh
+
+# CAMERA_NETWORK_IP=192.0.2.202

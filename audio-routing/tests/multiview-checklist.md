@@ -23,7 +23,7 @@ Required PASS when multiview is running:
 
 | # | Tile | Pass criteria |
 |---|------|----------------|
-| 1 | Primary/FOH | FreeShow Primary content (not Grok/desktop) |
+| 1 | Primary/FOH | FreeShow Primary content (not terminal/desktop) |
 | 2 | Stage | FreeShow Stage content |
 | 3 | Program DP-4 | ATEM program; may show windows really on DP-4 |
 | 4 | FFmpeg encode | Matches program video; **not black**; no browser UI |

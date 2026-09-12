@@ -22,7 +22,7 @@
 #   CAMERA_MGMT_WATCH_MIN_GAP_SEC     debounce between restarts (default 180)
 #   CAMERA_MGMT_WATCH_MAX_PER_HOUR    cap restarts (default 4)
 #   CAMERA_MGMT_WATCH_PORT            websocket port to check (default 9999)
-#   CAMERA_NETWORK_IP                 camera IP (default 192.168.1.202)
+#   CAMERA_NETWORK_IP                 camera IP (default 192.0.2.202)
 #   CAMERA_MGMT_WATCH_PROBE_TIMEOUT_SEC  RTSP frame-probe timeout (default 6)
 #   CAMERA_MGMT_WATCH_DISABLE=1       no-op loop (for testing)
 #
@@ -35,12 +35,12 @@ GRACE="${CAMERA_MGMT_WATCH_GRACE_SEC:-150}"
 MIN_GAP="${CAMERA_MGMT_WATCH_MIN_GAP_SEC:-180}"
 MAX_HOUR="${CAMERA_MGMT_WATCH_MAX_PER_HOUR:-4}"
 PORT="${CAMERA_MGMT_WATCH_PORT:-9999}"
-CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.168.1.202}"
+CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.0.2.202}"
 PROBE_TIMEOUT="${CAMERA_MGMT_WATCH_PROBE_TIMEOUT_SEC:-6}"
 if [[ -f "${HOME}/.config/soundbooth/camera.conf" ]]; then
     # shellcheck disable=SC1091
     source "${HOME}/.config/soundbooth/camera.conf" 2>/dev/null || true
-    CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.168.1.202}"
+    CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.0.2.202}"
 fi
 STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/soundbooth-camera-management-watch"
 mkdir -p "$STATE_DIR"

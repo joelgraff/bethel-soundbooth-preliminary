@@ -18,18 +18,18 @@
 # post-launch crash once the app is actually running.
 #
 # Env (optional, or ~/.config/soundbooth/camera.conf):
-#   CAMERA_NETWORK_IP              camera IP (default 192.168.1.202)
+#   CAMERA_NETWORK_IP              camera IP (default 192.0.2.202)
 #   CAMERA_MGMT_WAIT_POLL_SEC      poll interval seconds while waiting (default 15)
 #   CAMERA_MGMT_WAIT_LOG_EVERY     log a "still waiting" line every Nth poll (default 4, ~60s)
 #   CAMERA_MGMT_WAIT_PROBE_TIMEOUT_SEC  RTSP frame-probe timeout (default 6)
 
 set -uo pipefail
 
-CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.168.1.202}"
+CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.0.2.202}"
 if [[ -f "${HOME}/.config/soundbooth/camera.conf" ]]; then
     # shellcheck disable=SC1091
     source "${HOME}/.config/soundbooth/camera.conf" 2>/dev/null || true
-    CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.168.1.202}"
+    CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.0.2.202}"
 fi
 
 POLL="${CAMERA_MGMT_WAIT_POLL_SEC:-15}"

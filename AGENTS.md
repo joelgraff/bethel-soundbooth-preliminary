@@ -1,4 +1,4 @@
-# Soundbooth project rules (Grok)
+# Soundbooth project rules
 
 You are working on the **church soundbooth** machine and its setup system.
 

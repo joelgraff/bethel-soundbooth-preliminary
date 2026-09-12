@@ -83,9 +83,6 @@ Offline regression test for synthetic-mode delay measurement accuracy
 # ~/bin/av-sync-calibrate capture-udp --apply-restart
 ```
 
-Grok skill (on request): `/av-sync-calibrate`  
-Skill doc: `.grok/skills/av-sync-calibrate/SKILL.md`
-
 ### Failures
 | Symptom | Fix |
 |---------|-----|
@@ -169,7 +166,7 @@ Skill doc: `.grok/skills/av-sync-calibrate/SKILL.md`
 
 1. Presonus on before/with PC.
 2. Reboot; wait for graphical login + network.
-3. Run `~/bin/soundbooth-health.sh` (or Sunday Grok session).
+3. Run `~/bin/soundbooth-health.sh`.
 4. Confirm FFmpeg stack active, FOH graph PASS, displays 4-head.
 5. Start FreeShow if not autostarted; multiview should autostart (~18s) or `~/bin/start-booth-multiview.sh`.
 6. Spot-check Subsplash + sanctuary TV.

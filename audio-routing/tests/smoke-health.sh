@@ -24,7 +24,7 @@ if [[ ! -f "$HEALTH" ]]; then
     exit 3
 fi
 
-# Display cookie for headless/Grok sessions (same as health itself)
+# Display cookie for headless sessions (same as health itself)
 export DISPLAY="${DISPLAY:-:0}"
 if [[ -z "${XAUTHORITY:-}" || ! -f "${XAUTHORITY:-}" ]]; then
     if [[ -f "${HOME}/bin/vlc-display-lib.sh" ]]; then

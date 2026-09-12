@@ -21,6 +21,8 @@ Goal: Every app that produces audio (Spotify, browsers, FreeShow, etc.) is autom
 - `patchbay/soundbooth.qpwgraph` — qpwgraph profile (Mixer→Presonus; Spotify→Mixer).
 - `systemd/` — user units (`soundbooth.target`, FFmpeg stack, `ensure-audio-routes.service`, …).
 - `ffmpeg-srt.conf.example` — template for `~/.config/soundbooth/ffmpeg-srt.conf` (shared by capture + relay).
+- `camera.conf.example` — template for `~/.config/soundbooth/camera.conf` (real camera LAN IP; kept out of git).
+- `atem.conf.example` — template for `~/.config/soundbooth/atem.conf` (real ATEM LAN IP; kept out of git).
 - `tests/` — Manual verification steps.
 
 ## Boot chain (FOH)
@@ -51,8 +53,7 @@ Livestream verify (browser): https://dashboard.subsplash.com/-d/#/media/live
 
 ### A/V lip-sync calibrator (optional — never automatic)
 
-On-demand only. Not part of health/boot. Grok: `/av-sync-calibrate`  
-Skill: `.grok/skills/av-sync-calibrate/SKILL.md`
+On-demand only. Not part of health/boot.
 
 ```bash
 ~/bin/av-sync-calibrate              # synthetic: prove adelay + detector (offline)

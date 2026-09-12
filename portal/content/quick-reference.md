@@ -25,11 +25,6 @@ They should appear automatically on the board (via the Mixer virtual sink → Pr
 5. Listen / watch board meters.
 6. Full check: `~/bin/soundbooth-health.sh` (includes **FOH graph** Mixer→board).
 
-## Sunday Grok helper
-On **Sunday** after login, a terminal should open with **Grok** ready to troubleshoot (runs health automatically).  
-- Disable: `systemctl --user disable sunday-grok.service` or set `SOUNDBOOTH_SUNDAY_GROK=0` in `~/.config/soundbooth/sunday-grok.conf`  
-- Test any day: `SOUNDBOOTH_SUNDAY_GROK_FORCE=1 ~/bin/sunday-grok-session.sh`
-
 ## Livestream + sanctuary TV (FFmpeg stack)
 - Capture: `systemctl --user status ffmpeg-capture` — ATEM → local UDP tees (display, multiview, livestream). Always-on; does not touch Subsplash directly.
 - Livestream: `systemctl --user status ffmpeg-srt-relay` — the only thing that talks to **SRT (Subsplash)**

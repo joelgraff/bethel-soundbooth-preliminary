@@ -1,0 +1,7 @@
+# Blackmagic ATEM Mini Extreme network control IP.
+# Install: cp to ~/.config/soundbooth/atem.conf and set the real LAN IP
+# (kept out of git — this venue's internal address is not committed).
+#
+# Read by: soundbooth-health.sh
+
+# ATEM_NETWORK_IP=192.0.2.252

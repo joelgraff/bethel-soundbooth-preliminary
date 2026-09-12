@@ -1,8 +1,8 @@
 """Config loading for the soundbooth dashboard.
 
 Follows the same KEY=VALUE conf-file convention used elsewhere in this project
-(ffmpeg-srt.conf, sunday-grok.conf) so it's editable the same way, even though
-this consumer is Python rather than bash.
+(ffmpeg-srt.conf) so it's editable the same way, even though this consumer is
+Python rather than bash.
 """
 from __future__ import annotations
 

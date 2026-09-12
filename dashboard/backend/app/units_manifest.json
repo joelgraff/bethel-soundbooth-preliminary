@@ -147,20 +147,6 @@
           ]
         }
       ]
-    },
-    {
-      "id": "system",
-      "label": "System",
-      "units": [
-        {
-          "unit": "sunday-grok.service",
-          "display_name": "AI Agent Session",
-          "actions": [
-            "restart",
-            "stop"
-          ]
-        }
-      ]
     }
   ],
   "quick_actions": [

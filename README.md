@@ -17,7 +17,7 @@ This directory contains the organized work for making the church soundbooth comp
 
 ## Structure
 
-See the master plan (in the Grok session or copied here) for the full intended layout.
+See the master plan (copied here) for the full intended layout.
 
 All artifacts created for these initiatives should land here so the entire "setup system" can be versioned (git recommended) and deployed to a fresh machine.
 
@@ -27,10 +27,8 @@ All artifacts created for these initiatives should land here so the entire "setu
 |------|---------|
 | **`SYSTEM-STATE.md`** | Canonical “how the system works” — every session should read this |
 | **`STATUS.md`** | Progress / next steps across sessions |
-| **`AGENTS.md`** | Rules Grok loads for this project |
+| **`AGENTS.md`** | Rules an AI agent session loads for this project |
 | **`docs/MULTI-SESSION.md`** | How to run diagnostics vs troubleshooting vs feature sessions |
-
-Grok also loads `~/AGENTS.md` and `~/.grok/rules/soundbooth.md` so new sessions pick up the same pointers. Optional skill: `/soundbooth`.
 
 ## License / Notes
 

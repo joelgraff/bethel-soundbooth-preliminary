@@ -1,7 +1,7 @@
 # Soundbooth System State (canonical)
 
 **Living document.** Update this when hardware, routing, displays, or services change.  
-All Grok sessions should treat this as the source of truth for “how the system works now.”
+All AI agent sessions should treat this as the source of truth for “how the system works now.”
 
 Last updated: 2026-09-01
 
@@ -20,8 +20,8 @@ Ubuntu Linux PC in the church soundbooth: presentation, capture, recording, and 
 | PC | ASRock B450M Pro4, Ryzen 5 3600X, ~40 GB RAM |
 | GPU | AMD Radeon PRO WX 3200 (Polaris12) — **no VP9 HW decode**; H.264/HEVC VAAPI OK |
 | Mixer | PreSonus StudioLive 32SX (USB) — power on before/with boot |
-| Capture | Blackmagic **ATEM Mini Extreme** (UVC → `/dev/video0`, Pulse audio slave; Ethernet control **192.168.2.252**) |
-| Network camera (health) | PTZOptics **PT12X-SDI-xx-G2** **192.168.1.202** (LAN `.1.x`; booth PC is `.2.10` via `192.168.2.1`. Not on ATEM subnet.) |
+| Capture | Blackmagic **ATEM Mini Extreme** (UVC → `/dev/video0`, Pulse audio slave; Ethernet control IP in `~/.config/soundbooth/atem.conf`, not tracked in git) |
+| Network camera (health) | PTZOptics **PT12X-SDI-xx-G2** — IP in `~/.config/soundbooth/camera.conf`, not tracked in git (separate subnet from the ATEM's control network) |
 | Stagebox / monitors | NSB 16.8 (2), Earmix 16M (7), etc. (see `~/booth_ai/booth-context.md`) |
 | Sanctuary displays | 85" Sony Bravia (2) + stage TV + outside monitors |
 | HDMI extension | **GoFanco 1080p HDMI-over-Cat** multi-port + single stage TX (2020). Longest run ~**200 ft**. Plan: HDBaseT (e.g. Monoprice Blackbird) on locked Cat; fiber where new cable can be pulled. |
@@ -77,7 +77,6 @@ Layout also stored in `~/.config/monitors.xml`. After hotplug, **connectors** ar
   - Browser: **Vivaldi** via `~/bin/start-booth-browser.sh` — forced onto **DP-1** (booth), not program DP-4  
   - Dashboard: `~/bin/start-booth-dashboard-view.sh` (Vivaldi `--app=` mode, own profile); lands on **workspace 2** — see "Control dashboard (booth session)" below  
   - Not systemd: GUI apps inherit the full GNOME session (DISPLAY/Wayland/DBus); closing a window does **not** auto-restart
-- **Sunday Grok:** `sunday-grok.service` (WantedBy=`graphical-session.target`) runs `~/bin/sunday-grok-session.sh` — **Sundays only**, opens interactive Grok in `gnome-terminal` **after network (DNS) + settle delay**, then health-ready prompt. Config: `~/.config/soundbooth/sunday-grok.conf` (`NET_WAIT`, `DELAY`). Stamp is **once per boot** (`boot_id`), not once per calendar day (so reboot re-launches). Disable: `SOUNDBOOTH_SUNDAY_GROK=0` or `systemctl --user disable sunday-grok.service`. Test any day: `SOUNDBOOTH_SUNDAY_GROK_FORCE=1 ~/bin/sunday-grok-session.sh`.
 
 ---
 
@@ -117,8 +116,8 @@ keeping a live event open for up to 8 hours if not explicitly ended.
   - Connector target still from `vlc-display.conf` → `VLC_OUTPUT_CONNECTOR=DP-4` (shared name)
 - Encode: **libx264** veryfast/zerolatency; audio delay `FFMPEG_AUDIO_DELAY_SEC` via **`adelay`** (live conf **0.25** — raw ATEM path audio leads ~0.25s; A/B 2026-07-30: delay 0 → lead, delay 0.25 → match). Edit `~/.config/soundbooth/ffmpeg-srt.conf` then `systemctl --user restart ffmpeg-capture ffmpeg-display`
 - Local UDP tees: **:5000** ffplay · **:5001** unconsumed since multiview retired 2026-09-01 · **:5002** free probe (`av-sync-calibrate capture-udp`) · **:5003** livestream relay input
-- A/V calibrator (manual only, **not** boot/health): `~/bin/av-sync-calibrate` + Grok skill `/av-sync-calibrate`  
-  (`.grok/skills/av-sync-calibrate/SKILL.md`; script `audio-routing/scripts/av-sync-calibrate.py`)
+- A/V calibrator (manual only, **not** boot/health): `~/bin/av-sync-calibrate`  
+  (script `audio-routing/scripts/av-sync-calibrate.py`)
 - **Boot races:** waits for openable `/dev/video0` (udev/ACL). No longer waits on SRT/DNS — that's the relay's problem now, so a slow/down network never delays the TV.
 - All 4 local tee legs are `onfail=ignore` — none of them can take capture down, and (since 2026-08-23) neither can a Subsplash outage, because SRT delivery no longer lives in this process at all.
 - `ExecStartPost` `try-restart` on both `ffmpeg-display.service` and `ffmpeg-srt-relay.service` so both reattach after a capture (re)start — no-ops for either if it wasn't already running (e.g. relay intentionally stopped between services).
@@ -134,7 +133,7 @@ keeping a live event open for up to 8 hours if not explicitly ended.
 - `SuccessExitStatus=255` set (see capture, above) so `stop-live-stream.sh` reads as a clean "inactive", not "failed".
 - **Not yet built:** tying `stop-live-stream.sh` to a physical ATEM Mini button press (deferred; command-line control shipped first).
 - **Auto-end on camera power-off (`livestream-camera-watch.service`, 2026-08-23):**
-  the PTZOptics camera at `CAMERA_NETWORK_IP` (default `192.168.1.202`) is the
+  the PTZOptics camera at `CAMERA_NETWORK_IP` (set in `~/.config/soundbooth/camera.conf`) is the
   *same physical unit* whose SDI output feeds the ATEM's program input —
   confirmed operators power the camera off well before the booth PC/ATEM, so
   `/dev/video0` never disappears in the normal end-of-service sequence and
@@ -167,9 +166,9 @@ keeping a live event open for up to 8 hours if not explicitly ended.
 
 Program video is **SDI → ATEM**, not this IP stream. CMP is PTZ + operator preview only.
 
-- Camera: **PT12X-SDI-xx-G2** `192.168.1.202` (VISCA `:5678`, RTSP `:554`, HTTP `:80`). NDI is **off**.
+- Camera: **PT12X-SDI-xx-G2**, IP in `~/.config/soundbooth/camera.conf` (VISCA `:5678`, RTSP `:554`, HTTP `:80`). NDI is **off**.
 - App: PTZOptics **CMP 1.9.7**, run **unpacked** from `~/AppImage/Camera-Management-Platform-1.9.7.extracted/` (user unit `camera-management.service`). Packed AppImage `import("get-port")` hits `app.asar` as a file (`ENOTDIR`) → RTSP-MPEG never starts (blank pane, no error GIF).
-- Preview: `~/.cmp_config/app_settings.json` **`usePreview`: `rtsp stream - mpeg`**. ffmpeg transcodes `rtsp://192.168.1.202` → MPEG1, JSMpeg on `ws://localhost:9999`.
+- Preview: `~/.cmp_config/app_settings.json` **`usePreview`: `rtsp stream - mpeg`**. ffmpeg transcodes `rtsp://$CAMERA_NETWORK_IP` → MPEG1, JSMpeg on `ws://localhost:9999`.
 - **HTTP snapshot does not work:** `/snapshot.jpg` is HTTP 200 + **Content-Length 0**. Phone app uses RTSP, which is fine.
 - HTTP Basic auth is **on** on the camera web UI. Firmware **SOC v6.2.82** (CMP lists **v6.3.62**) — do not flash mid-service.
 
@@ -208,7 +207,7 @@ case they're ever wanted again — reinstate via
 ~/soundbooth-project/     # git repo — setup system + docs
   SYSTEM-STATE.md         # THIS file (canonical)
   STATUS.md               # task progress across sessions
-  AGENTS.md               # project rules for Grok
+  AGENTS.md               # project rules for AI agent sessions
   audio-routing/
   replicability/
   portal/

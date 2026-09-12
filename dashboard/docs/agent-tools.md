@@ -8,19 +8,18 @@ run at `effort: low`. Tool functions and their Anthropic schemas are in
 
 ## Why this exists
 
-The boot-time `sunday-grok.service` launches an interactive CLI agent (`grok`) in a
-terminal with full shell/file access to the machine — see
-`audio-routing/scripts/sunday-grok-session.sh`. That's acceptable when the only way to
-reach it is sitting at the booth PC. The dashboard's chat panel needs to be reachable
-from the soundbooth LAN subnet as well (password-protected, separate from guest
-Wi-Fi — confirmed 2026-09-01), so giving it that same unrestricted shell access would
-mean anyone with the dashboard PIN gets arbitrary command execution on a live
+A now-retired boot-time service used to launch an interactive CLI agent in a
+terminal with full shell/file access to the machine. That was acceptable when the only
+way to reach it is sitting at the booth PC. The dashboard's chat panel needs to be
+reachable from the soundbooth LAN subnet as well (password-protected, separate from
+guest Wi-Fi — confirmed 2026-09-01), so giving it that same unrestricted shell access
+would mean anyone with the dashboard PIN gets arbitrary command execution on a live
 production machine from across the building.
 
-Decision: the web-facing agent (engine: Claude, not Grok) gets a **fixed, code-enforced
-toolset that mirrors exactly what the dashboard's own buttons can do** — nothing more.
-One session (no per-device agent instances). This replaces the terminal-based Sunday
-Grok launch as the canonical agent surface once it's built.
+Decision: the web-facing agent gets a **fixed, code-enforced toolset that mirrors
+exactly what the dashboard's own buttons can do** — nothing more. One session (no
+per-device agent instances). This is now the canonical agent surface; the old
+terminal-based session has been retired.
 
 ## Tool list
 
@@ -41,7 +40,7 @@ Actions, backed by `units_manifest.json`:
 | `restart_service(unit)` | `systemctl --user restart <unit>` | low-stakes, self-healing — executes directly |
 | `start_service(unit)` / `stop_service(unit)` | Same, for units meant to be manually toggled | today just `ffmpeg-srt-relay.service` (the livestream leg) |
 
-Explicitly **excluded**, unlike the terminal Grok session: arbitrary shell exec,
+Explicitly **excluded**, unlike the old terminal session: arbitrary shell exec,
 arbitrary file read/write, any unit not on the manifest, journalctl beyond allowlisted
 units, outbound network calls.
 
@@ -70,7 +69,6 @@ turn.
 
 ## Not yet done
 
-- Retiring `sunday-grok.service`'s terminal launch once the bridge is trusted.
 - A "New chat" control in the panel (the `reset` message type is handled
   backend-side already).
 - Persisting the conversation across a dashboard restart (currently in-memory

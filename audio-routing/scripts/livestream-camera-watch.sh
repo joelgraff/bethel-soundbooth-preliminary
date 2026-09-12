@@ -23,7 +23,7 @@
 # ~/bin/start-live-stream.sh.
 #
 # Env (optional, ~/.config/soundbooth/camera.conf or service Environment=):
-#   CAMERA_NETWORK_IP              camera IP to ping (default 192.168.1.202)
+#   CAMERA_NETWORK_IP              camera IP to ping (default 192.0.2.202)
 #   LIVESTREAM_CAMERA_POLL_SEC     poll interval (default 15)
 #   LIVESTREAM_CAMERA_GRACE_SEC    seconds unreachable before ending stream (default 60)
 #   LIVESTREAM_CAMERA_WATCH_DISABLE=1   no-op loop (for testing)
@@ -37,7 +37,7 @@ if [[ -f "${HOME}/.config/soundbooth/camera.conf" ]]; then
     # shellcheck disable=SC1091
     source "${HOME}/.config/soundbooth/camera.conf" 2>/dev/null || true
 fi
-CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.168.1.202}"
+CAMERA_NETWORK_IP="${CAMERA_NETWORK_IP:-192.0.2.202}"
 
 POLL="${LIVESTREAM_CAMERA_POLL_SEC:-15}"
 GRACE="${LIVESTREAM_CAMERA_GRACE_SEC:-60}"
