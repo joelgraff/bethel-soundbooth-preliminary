@@ -10,7 +10,7 @@ StartLimitBurst=30
 
 [Service]
 Type=simple
-Environment=PATH=%h/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
 TimeoutStartSec=180
 # ffmpeg's own signal handler exits 255 on SIGTERM even for a clean stop
 # (confirmed 2026-08-23) — without this, `systemctl stop` (stop-live-stream.sh)

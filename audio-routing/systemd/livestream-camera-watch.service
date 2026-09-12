@@ -6,7 +6,7 @@ PartOf=soundbooth.target
 
 [Service]
 Type=simple
-Environment=PATH=%h/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
 ExecStart=%h/bin/livestream-camera-watch.sh
 Restart=always
 RestartSec=5

@@ -7,7 +7,7 @@ Wants=ffmpeg-capture.service
 
 [Service]
 Type=simple
-Environment=PATH=%h/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
 Environment=DISPLAY=:0
 ExecStart=%h/bin/start-ffmpeg-display.sh
 Restart=always

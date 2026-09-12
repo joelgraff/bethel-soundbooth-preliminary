@@ -7,7 +7,7 @@ PartOf=soundbooth.target
 
 [Service]
 Type=simple
-Environment=PATH=%h/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
 # Debounce / rate limit (override in drop-in or conf if needed)
 # Environment=FFMPEG_SRT_WATCH_MIN_GAP_SEC=90
 # Environment=FFMPEG_SRT_WATCH_MAX_PER_HOUR=8
