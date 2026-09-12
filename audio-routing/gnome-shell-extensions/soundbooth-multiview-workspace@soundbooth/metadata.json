@@ -1,0 +1,7 @@
+{
+  "uuid": "soundbooth-multiview-workspace@soundbooth",
+  "name": "Soundbooth Dashboard Workspace",
+  "description": "Moves the Soundbooth Control dashboard window to GNOME workspace 2 (Wayland-native). Repurposed from the retired Soundbooth Multiview extension — same UUID/mechanism, new target window.",
+  "shell-version": ["46"],
+  "version": 1
+}

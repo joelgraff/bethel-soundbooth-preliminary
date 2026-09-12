@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Soundbooth Spotify
+Comment=FOH media player (routes to Mixer/Presonus)
+Exec=/snap/bin/spotify
+Icon=spotify
+Terminal=false
+Categories=Audio;Music;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
+# After PipeWire/virtual sinks settle
+X-GNOME-Autostart-Delay=8
+OnlyShowIn=GNOME;Unity;XFCE;

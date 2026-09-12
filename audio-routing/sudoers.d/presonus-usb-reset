@@ -1,0 +1,27 @@
+# Allow the soundbooth user to reset the PreSonus StudioLive 32SX's USB
+# device without a password, and nothing else.
+#
+# Installed as /etc/sudoers.d/presonus-usb-reset, root:root, mode 0440.
+# Validate with `visudo -cf` BEFORE moving it into place — a malformed file
+# in /etc/sudoers.d can lock every user out of sudo on this machine.
+#
+# WHY THIS GRANT IS SAFE
+# The two argument vectors below are exact and exhaustive:
+#   ""        means the command may be run with NO arguments at all
+#   --probe   is the only other permitted argument vector
+# There is no wildcard, so this cannot be used to run the helper with
+# attacker-chosen arguments, and the helper itself has no argument that
+# selects a device — the vid:pid is hardcoded.
+#
+# The grant is only as strong as the file permissions on the target. If
+# /usr/local/sbin/presonus-usb-reset were writable by soundbooth, this entry
+# would be a one-line root escalation: edit the script, run it via sudo, own
+# the box. install-usb-reset-helper.sh enforces root:root 0755 on it, and
+# presonus-recover.sh re-checks ownership at runtime and refuses to call
+# sudo if the helper is group- or world-writable. Do not relax either.
+#
+# Deliberately NOT granted: systemctl, modprobe, usbreset, tee, or any
+# general-purpose binary. Each of those would be trivially escapable into a
+# full root shell.
+
+soundbooth ALL=(root) NOPASSWD: /usr/local/sbin/presonus-usb-reset "", /usr/local/sbin/presonus-usb-reset --probe

@@ -1,0 +1,15 @@
+[Desktop Entry]
+Type=Application
+Name=Soundbooth Dashboard
+Comment=Control dashboard (Vivaldi app mode, GNOME workspace 2)
+Exec=/home/soundbooth/bin/start-booth-dashboard-view.sh
+Icon=vivaldi
+Terminal=false
+Categories=Network;Monitor;
+# Vivaldi --class=SoundboothDashboard sets this WM_CLASS.
+# GNOME Shell matches StartupWMClass -> this .desktop -> Auto Move Windows (backup path).
+# Primary path: the soundbooth-multiview-workspace Shell extension, title-matched
+# on the page title "Soundbooth Control" (see configure-dashboard-workspace.sh).
+StartupWMClass=SoundboothDashboard
+StartupNotify=false
+X-GNOME-UsesNotifications=false

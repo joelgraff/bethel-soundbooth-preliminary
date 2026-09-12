@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Soundbooth Portal</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 800px; margin: 2rem auto; padding: 1rem; line-height: 1.5; }
+  h1 { color: #1a365d; }
+  .card { border: 1px solid #ccc; padding: 1rem; margin: 1rem 0; border-radius: 6px; }
+  pre { background: #f4f4f4; padding: .5rem; overflow-x: auto; }
+</style>
+</head>
+<body>
+<h1>🎚️ Soundbooth Operator Portal</h1>
+<p><strong>Local only</strong> — for church sound &amp; presentation volunteers.</p>
+
+<div class="card">
+<h2>Golden Rule</h2>
+<p><strong>Any app that produces audio goes to the Presonus 32SX board.</strong></p>
+<p><strong>Exception:</strong> VLC is sent to the HDMI TVs (deliberate).</p>
+</div>
+
+<div class="card">
+<h2>Quick Checks</h2>
+<ul>
+  <li>Spotify or browser playing? It should be audible on FOH / visible on the board.</li>
+  <li>Use <code>~/bin/ensure-audio-routes.sh</code> if something is missing.</li>
+  <li>Open qpwgraph to see the graph.</li>
+</ul>
+</div>
+
+<div class="card">
+<h2>Key Files (in soundbooth-project/)</h2>
+<ul>
+  <li><code>audio-routing/</code> — rules and scripts for automatic routing</li>
+  <li><code>replicability/</code> — how to rebuild everything from a fresh Ubuntu install</li>
+  <li><code>portal/content/</code> — source for this portal and more docs</li>
+</ul>
+</div>
+
+<p>Full details: see the files in <code>portal/content/</code> and the master plan.</p>
+<p><em>Edit this file or replace with a TiddlyWiki export for richer editing.</em></p>
+</body>
+</html>

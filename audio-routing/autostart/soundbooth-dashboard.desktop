@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=Soundbooth Dashboard
+Comment=Control dashboard (Vivaldi app mode) on GNOME workspace 2
+Exec=/home/soundbooth/bin/start-booth-dashboard-view.sh
+Icon=vivaldi
+Terminal=false
+Categories=Network;Monitor;
+StartupWMClass=SoundboothDashboard
+StartupNotify=false
+X-GNOME-Autostart-enabled=true
+# After the dashboard backend + preview capture services settle
+X-GNOME-Autostart-Delay=20
+OnlyShowIn=GNOME;Unity;XFCE;

@@ -1,0 +1,15 @@
+[Unit]
+Description=Auto-end Subsplash livestream when program camera loses power/network
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+After=graphical-session.target
+PartOf=soundbooth.target
+
+[Service]
+Type=simple
+Environment=PATH=%h/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/bin/livestream-camera-watch.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=soundbooth.target

@@ -1,0 +1,27 @@
+[Unit]
+Description=Watch FFmpeg SRT relay for mid-stream failure/hang; restart relay only
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+After=ffmpeg-srt-relay.service
+Wants=ffmpeg-srt-relay.service
+PartOf=soundbooth.target
+
+[Service]
+Type=simple
+Environment=PATH=%h/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin
+# Debounce / rate limit (override in drop-in or conf if needed)
+# Environment=FFMPEG_SRT_WATCH_MIN_GAP_SEC=90
+# Environment=FFMPEG_SRT_WATCH_MAX_PER_HOUR=8
+ExecStart=%h/bin/ffmpeg-srt-watch.sh
+Restart=always
+RestartSec=5
+
+[Install]
+# WantedBy=graphical-session.target removed 2026-08-02: it added an implicit
+# Before=graphical-session.target, which combined with this unit's own
+# After=<the encode unit, then ffmpeg-srt.service, now ffmpeg-srt-relay.service>
+# and that unit's own After=graphical-session.target formed a 3-way ordering
+# cycle. systemd broke it by silently deleting the encode unit's start job
+# every boot (never started). soundbooth.target (PartOf= above) already pulls
+# this in. (2026-08-23: encode/SRT split into ffmpeg-capture.service +
+# ffmpeg-srt-relay.service — this watcher now tracks the relay only.)
+WantedBy=soundbooth.target

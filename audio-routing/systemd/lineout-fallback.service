@@ -1,0 +1,15 @@
+[Unit]
+Description=FOH contingency: mirror the Mixer bus to the analog line-out (board ch 32)
+Documentation=file:///home/soundbooth/soundbooth-project/audio-routing/tests/usb-reset-checklist.md
+After=virtual-audio.service ensure-audio-routes.service
+Wants=virtual-audio.service
+PartOf=soundbooth.target
+
+[Service]
+Type=simple
+ExecStart=%h/bin/start-lineout-fallback.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=soundbooth.target

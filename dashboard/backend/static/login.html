@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soundbooth Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+<div class="login-wrap">
+  <div class="card login-card">
+    <div class="brand-mark">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="4" height="18" rx="1.5"/><rect x="10" y="7" width="4" height="14" rx="1.5"/><rect x="16" y="11" width="4" height="10" rx="1.5"/></svg>
+    </div>
+    <div style="text-align:center;">
+      <div class="brand-title">Soundbooth Control</div>
+      <div class="brand-sub">Enter the booth PIN to continue</div>
+    </div>
+    <form id="login-form" style="width:100%; display:flex; flex-direction:column; gap:12px;">
+      <input id="pin-input" type="password" inputmode="numeric" autocomplete="off" placeholder="••••" autofocus>
+      <div class="login-error" id="login-error"></div>
+      <button type="submit" class="btn btn-primary" style="width:100%; justify-content:center;" id="login-btn">Unlock</button>
+    </form>
+  </div>
+</div>
+<script src="/js/api.js"></script>
+<script src="/js/login.js"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+[Unit]
+Description=FFmpeg SRT relay (local capture → Subsplash livestream)
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+After=ffmpeg-capture.service graphical-session.target
+Wants=ffmpeg-capture.service
+PartOf=soundbooth.target
+# Script waits for DNS of SRT host + ffmpeg-capture readiness
+StartLimitIntervalSec=600
+StartLimitBurst=30
+
+[Service]
+Type=simple
+Environment=PATH=%h/bin:%h/.grok/bin:/usr/local/bin:/usr/bin:/bin
+TimeoutStartSec=180
+# ffmpeg's own signal handler exits 255 on SIGTERM even for a clean stop
+# (confirmed 2026-08-23) — without this, `systemctl stop` (stop-live-stream.sh)
+# shows as "failed" instead of a clean stop, which would needlessly alarm an
+# operator who just intentionally ended the stream.
+SuccessExitStatus=255
+ExecStart=%h/bin/start-ffmpeg-srt-relay.sh
+# Auto-reconnect on unexpected death (network blip, Subsplash hiccup). A
+# deliberate `systemctl --user stop` (stop-live-stream.sh) does NOT trigger
+# this — that's the whole point: it's how the stream is ended on purpose.
+Restart=always
+RestartSec=8
+
+[Install]
+WantedBy=soundbooth.target

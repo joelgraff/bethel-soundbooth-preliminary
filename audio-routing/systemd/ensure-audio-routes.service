@@ -1,0 +1,16 @@
+[Unit]
+Description=Re-assert Mixer→Presonus and software→Mixer audio routes
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+# After graph + sinks exist. qpwgraph -a alone may miss Mixer→board at boot.
+After=qpwgraph.service pipewire.service wireplumber.service virtual-sinks-loaded.target
+Wants=qpwgraph.service virtual-sinks-loaded.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+# Brief settle so Presonus multichannel ports and qpwgraph are up
+ExecStartPre=/bin/sleep 3
+ExecStart=/home/soundbooth/bin/ensure-audio-routes.sh
+
+[Install]
+WantedBy=soundbooth.target

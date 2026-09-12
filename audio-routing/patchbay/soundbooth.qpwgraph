@@ -1,0 +1,38 @@
+<!DOCTYPE patchbay>
+<!--
+  Soundbooth PipeWire patchbay (qpwgraph).
+
+  Full StudioLive 32SX pro-audio (64ch) stays in PipeWire for Ardour + patchbay.
+  FOH software path: apps → Mixer → pro-output AUX0/1 (USB return 1–2).
+
+  Port names: pro-audio profile uses
+    alsa_output…pro-output-0:playback_AUX0.. 
+    alsa_input…pro-input-0:capture_AUX0..
+  (multichannel-output names differ — re-capture in qpwgraph if profile changes.)
+
+  Prefer qpwgraph -a only (never exclusive -x).
+  Boot: ensure-audio-routes.service re-asserts Mixer→AUX0/1 + soft volumes.
+-->
+<patchbay version="0.6.1" name="soundbooth">
+ <items>
+  <!-- Mixer → PreSonus USB return 1–2 (FOH software) -->
+  <item node-type="pipewire" port-type="pipewire-audio">
+   <output port="Mixer:monitor_FL" node="Mixer"/>
+   <input port="alsa_output.usb-PreSonus_StudioLive_32SX_SD6E19040134-00.pro-output-0:playback_AUX0" node="StudioLive 32SX Pro"/>
+  </item>
+  <item node-type="pipewire" port-type="pipewire-audio">
+   <output port="Mixer:monitor_FR" node="Mixer"/>
+   <input port="alsa_output.usb-PreSonus_StudioLive_32SX_SD6E19040134-00.pro-output-0:playback_AUX1" node="StudioLive 32SX Pro"/>
+  </item>
+
+  <!-- Spotify → Mixer (aid; also WirePlumber + ensure-audio-routes) -->
+  <item node-type="pipewire" port-type="pipewire-audio">
+   <output port="spotify:output_FL" node="spotify"/>
+   <input port="Mixer:playback_FL" node="Mixer"/>
+  </item>
+  <item node-type="pipewire" port-type="pipewire-audio">
+   <output port="spotify:output_FR" node="spotify"/>
+   <input port="Mixer:playback_FR" node="Mixer"/>
+  </item>
+ </items>
+</patchbay>

@@ -1,0 +1,196 @@
+{
+  "_comment": "Single source of truth for every systemd --user unit the dashboard (and the agent bridge) may touch. Both the REST endpoints and agent_tools.py read this file \u2014 never add a unit name anywhere else. Groups match the mockup at dashboard/docs (and the published design canvas).",
+  "groups": [
+    {
+      "id": "audio",
+      "label": "Audio Routing",
+      "units": [
+        {
+          "unit": "ensure-audio-routes.service",
+          "display_name": "Audio Routes",
+          "actions": [
+            "restart"
+          ]
+        },
+        {
+          "unit": "virtual-audio.service",
+          "display_name": "Virtual Mixer",
+          "actions": [
+            "restart"
+          ]
+        },
+        {
+          "unit": "presonus-foh-bridge.service",
+          "display_name": "FOH Bridge",
+          "actions": [
+            "restart"
+          ]
+        },
+        {
+          "unit": "qpwgraph.service",
+          "display_name": "Patch Bay",
+          "actions": [
+            "restart"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "program",
+      "label": "Program & Capture",
+      "units": [
+        {
+          "unit": "ffmpeg-capture.service",
+          "display_name": "Camera Capture",
+          "actions": [
+            "restart"
+          ]
+        },
+        {
+          "unit": "ffmpeg-capture-watch.service",
+          "display_name": "Capture Watchdog",
+          "actions": [
+            "restart"
+          ]
+        },
+        {
+          "unit": "ffmpeg-display.service",
+          "display_name": "Sanctuary TV Display",
+          "actions": [
+            "restart"
+          ]
+        },
+        {
+          "unit": "ffmpeg-display-guard.service",
+          "display_name": "Display Guard",
+          "actions": [
+            "restart"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "livestream",
+      "label": "Livestream",
+      "units": [
+        {
+          "unit": "ffmpeg-srt-relay.service",
+          "display_name": "Livestream Relay",
+          "actions": [
+            "start",
+            "stop"
+          ],
+          "confirm": {
+            "start": "This starts sending the program feed to Subsplash live. Only do this when you're ready to go live.",
+            "stop": "This ends the live broadcast on Subsplash immediately. The sanctuary TV and camera capture are not affected."
+          }
+        },
+        {
+          "unit": "ffmpeg-srt-watch.service",
+          "display_name": "Stream Watchdog",
+          "actions": [
+            "restart"
+          ]
+        },
+        {
+          "unit": "livestream-camera-watch.service",
+          "display_name": "Camera-Loss Auto-Stop",
+          "actions": [
+            "restart"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "camera",
+      "label": "Camera Preview",
+      "units": [
+        {
+          "unit": "camera-management.service",
+          "display_name": "PTZ Camera Preview",
+          "actions": [
+            "restart"
+          ]
+        },
+        {
+          "unit": "camera-management-watch.service",
+          "display_name": "Preview Watchdog",
+          "actions": [
+            "restart"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "preview",
+      "label": "HDMI Preview",
+      "units": [
+        {
+          "unit": "hdmi-preview.service",
+          "display_name": "Preview Capture (DP-2/DP-3)",
+          "actions": [
+            "restart"
+          ]
+        },
+        {
+          "unit": "hdmi-preview-dp4.service",
+          "display_name": "Preview Capture (DP-4)",
+          "actions": [
+            "restart"
+          ]
+        },
+        {
+          "unit": "hdmi-preview-livestream.service",
+          "display_name": "Preview Capture (Livestream)",
+          "actions": [
+            "restart"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "system",
+      "label": "System",
+      "units": [
+        {
+          "unit": "sunday-grok.service",
+          "display_name": "AI Agent Session",
+          "actions": [
+            "restart",
+            "stop"
+          ]
+        }
+      ]
+    }
+  ],
+  "quick_actions": [
+    {
+      "id": "livestream_start",
+      "label": "Start Livestream",
+      "unit": "ffmpeg-srt-relay.service",
+      "action": "start",
+      "caption": "Currently off"
+    },
+    {
+      "id": "audio_restart",
+      "label": "Restart Audio Routing",
+      "unit": "ensure-audio-routes.service",
+      "action": "restart",
+      "caption": "Fixes silent FOH"
+    },
+    {
+      "id": "display_restart",
+      "label": "Restart Program Display",
+      "unit": "ffmpeg-display.service",
+      "action": "restart",
+      "caption": "Fixes frozen TV feed"
+    },
+    {
+      "id": "camera_restart",
+      "label": "Restart Camera Preview",
+      "unit": "camera-management.service",
+      "action": "restart",
+      "caption": "Fixes blank PTZ view"
+    }
+  ]
+}

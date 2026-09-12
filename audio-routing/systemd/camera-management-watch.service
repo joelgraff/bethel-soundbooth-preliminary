@@ -1,0 +1,27 @@
+[Unit]
+Description=Watch camera-management (CMP) for a stuck RTSP-MPEG pipeline; restart if wedged
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+After=camera-management.service
+Wants=camera-management.service
+PartOf=camera-management.service
+
+[Service]
+Type=simple
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
+# Tuning (override in drop-in or conf if needed)
+# Environment=CAMERA_MGMT_WATCH_POLL_SEC=30
+# Environment=CAMERA_MGMT_WATCH_GRACE_SEC=150
+# Environment=CAMERA_MGMT_WATCH_MIN_GAP_SEC=180
+# Environment=CAMERA_MGMT_WATCH_MAX_PER_HOUR=4
+ExecStart=%h/bin/camera-management-watch.sh
+Restart=always
+RestartSec=5
+
+[Install]
+# Deliberately NOT WantedBy=graphical-session.target: this unit's own
+# After=camera-management.service combined with camera-management.service's
+# own After=graphical-session.target would form the same 3-way ordering cycle
+# documented in ffmpeg-srt-watch.service (fixed 2026-08-02). Pulled in via
+# soundbooth.target's Wants= instead, which has no ordering edge back to
+# graphical-session.target or camera-management.service.
+WantedBy=soundbooth.target
