@@ -13,7 +13,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -21,6 +21,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import agent_tools
 from . import recording as recording_mod
+from .agent import AgentBridge
 from .auth import check_local_token, check_pin, require_session
 from .calibrate import CalibrationError
 from .config import load_settings
@@ -32,6 +33,10 @@ settings = load_settings()
 
 app = FastAPI(title="Soundbooth Dashboard")
 app.add_middleware(SessionMiddleware, secret_key=settings.session_secret or "dev-only-insecure-secret")
+
+# One agent session for the whole dashboard — every chat panel shares it (see
+# dashboard/docs/agent-tools.md).
+agent_bridge = AgentBridge(settings)
 
 
 class LoginBody(BaseModel):
@@ -233,14 +238,28 @@ async def ws_agent(websocket: WebSocket):
         await websocket.close(code=4401)
         return
     await websocket.accept()
-    await websocket.send_json(
-        {
-            "role": "system",
-            "text": "The AI agent bridge isn't wired up yet — see "
-            "dashboard/docs/agent-tools.md for what's left.",
-        }
-    )
-    await websocket.close(code=4501)
+    await agent_bridge.connect(websocket)
+    try:
+        while True:
+            msg = await websocket.receive_json()
+            kind = msg.get("type")
+            if kind == "user_message":
+                await agent_bridge.handle_user_message(websocket, msg.get("text", ""))
+            elif kind == "confirm_result":
+                await agent_bridge.operator_confirmed(
+                    unit=msg.get("unit", ""),
+                    action=msg.get("action", ""),
+                    ok=bool(msg.get("ok")),
+                    detail=msg.get("detail", ""),
+                )
+            elif kind == "reset":
+                await agent_bridge.reset()
+            # Anything else is ignored — the frontend and this handler are the
+            # only speakers on this socket.
+    except WebSocketDisconnect:
+        pass
+    finally:
+        agent_bridge.disconnect(websocket)
 
 
 # Mounted last and at "/" so it never shadows the /api or /ws routes above —

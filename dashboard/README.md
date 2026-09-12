@@ -48,10 +48,15 @@ Working:
   suggested delay, never writes it to the live config or restarts the
   program encode — applying a fix stays a manual step for now.
 
-Not working yet / deliberately honest placeholders in the UI:
-- `/ws/agent` is still a stub — the chat panel connects, shows the backend's
-  "not wired up yet" message, and leaves the input disabled rather than
-  faking a conversation; see `docs/agent-tools.md` for what's left
+- AI agent chat panel — `/ws/agent` runs a real Claude session (one shared
+  session for every connected panel) with the fixed toolset in
+  `backend/app/agent.py` / `agent_tools.py`: health, service list/logs, HDMI
+  output status, a few reference docs, `restart`, and *staging* (not
+  completing) the livestream `start`/`stop`. Confirm-gated actions surface a
+  Yes/No dialog and execute via the same REST endpoint a button uses — the
+  model never holds the confirm token. Needs `ANTHROPIC_API_KEY` in
+  `dashboard.conf` (see "Getting an API key" below); without it the panel
+  loads but stays disabled with a notice.
 
 ## HDMI preview capture
 
@@ -121,8 +126,10 @@ dashboard/
       confirm.py           — confirm-token flow for destructive actions
       calibrate.py          — orchestrates av-sync-calibrate.py around the
                                shared :5002 port (see "A/V sync calibration")
-      agent_tools.py       — tool functions for the future agent bridge
-                              (same allowlist/confirm gates as the REST API)
+      agent_tools.py       — the agent's tool functions + Anthropic tool
+                              specs (same allowlist/confirm gates as the REST API)
+      agent.py             — AgentBridge: the one shared Claude session behind
+                              /ws/agent (streaming loop, tool dispatch, staging)
       auth.py               — PIN check + session dependency
     static/                 — the real frontend (FastAPI serves this directly)
       login.html / index.html / service.html
@@ -165,6 +172,29 @@ yet, run them directly to try it:
 ~/bin/hdmi-preview-capture.py &          # or audio-routing/scripts/ path if not yet deployed to ~/bin
 ~/bin/start-hdmi-preview-dp4.sh &
 ```
+
+## Getting an API key
+
+The agent chat panel calls the Anthropic API, which is billed pay-as-you-go
+and separate from any Claude.ai subscription.
+
+1. Sign in at <https://console.anthropic.com/> and create (or join) an
+   organization.
+2. **Billing → ** add a payment method and a small amount of prepaid credit.
+   Set a low monthly spend limit as a backstop — a booth troubleshooting
+   chat is a few thousand tokens, cents per session on `claude-sonnet-5`
+   ($3 / $15 per million in / out).
+3. **API keys → Create key.** Give it a name like `soundbooth-dashboard`.
+   Copy the `sk-ant-...` value now — it's shown once. A workspace-scoped key
+   lets you track and cap this dashboard's usage on its own and revoke it
+   without touching anything else.
+4. Put it in `~/.config/soundbooth/dashboard.conf`:
+   ```
+   ANTHROPIC_API_KEY=sk-ant-...
+   ```
+   then restart the dashboard (`systemctl --user restart soundbooth-dashboard`
+   once it's installed, or just re-run `run.py`). Until a real key is set the
+   chat panel loads but stays disabled with an "add a key" notice.
 
 ## Security model
 

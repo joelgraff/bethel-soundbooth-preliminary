@@ -23,6 +23,16 @@ LOCAL_TOKEN=changeme
 DASHBOARD_HOST=0.0.0.0
 DASHBOARD_PORT=8420
 
+# AI agent chat panel. Get a key from https://console.anthropic.com/ (see
+# "Getting an API key" in dashboard/README.md). Same trust tier as the PIN —
+# this file already holds secrets. Left as "changeme" (or unset), the chat
+# panel loads but stays disabled with an "add a key" notice; an exported
+# ANTHROPIC_API_KEY in the service environment is used as a fallback.
+ANTHROPIC_API_KEY=changeme
+# Model for the agent. claude-sonnet-5 is the default; claude-opus-5 for
+# heavier troubleshooting, claude-haiku-4-5 for the cheapest/fastest.
+# AGENT_MODEL=claude-sonnet-5
+
 # Defaults match the live deployment layout; override only if yours differs.
 # PROJECT_DIR=/home/soundbooth/soundbooth-project
 # HEALTH_SCRIPT=/home/soundbooth/bin/soundbooth-health.sh

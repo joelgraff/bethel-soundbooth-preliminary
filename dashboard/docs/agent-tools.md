@@ -1,7 +1,10 @@
 # AI agent bridge — tool list
 
-Status: design settled, not yet wired to a model. See `dashboard/backend/app/agent_tools.py`
-for the scaffolded (but not-yet-model-connected) implementations.
+Status: **wired.** `dashboard/backend/app/agent.py` (`AgentBridge`) runs one
+shared Claude session behind `/ws/agent`, streaming to every connected chat
+panel. Model defaults to `claude-sonnet-5` (`AGENT_MODEL` in `dashboard.conf`),
+run at `effort: low`. Tool functions and their Anthropic schemas are in
+`dashboard/backend/app/agent_tools.py` (`build_tool_specs` / `call_tool`).
 
 ## Why this exists
 
@@ -28,8 +31,8 @@ Read-only:
 | `get_health_status()` | Runs/reads `soundbooth-health.sh --json` | pass/warn/fail counts + individual check results |
 | `list_services()` | Status of every unit in `units_manifest.json` | `systemctl --user show <unit>` |
 | `get_service_log(unit, lines)` | `journalctl --user -u <unit> -n <lines>` | `unit` must be in the manifest; `lines` capped at 200 |
-| `get_output_status(display)` | Signal-present / last-updated for DP-1..4 | metadata only, no video — depends on the HDMI-preview subsystem (not built yet) |
-| `read_doc(name)` | One of: `SYSTEM-STATE.md`, `STATUS.md`, `portal/content/quick-reference.md`, `AGENTS.md` | fixed allowlist, not arbitrary file access |
+| `get_output_status(display)` | Preview-frame freshness for `DP-2`, `DP-3`, `DP-4`, `LIVESTREAM` | metadata only, no video; DP-1 is deliberately not captured |
+| `read_doc(name)` | One of: `SYSTEM-STATE.md`, `STATUS.md`, `quick-reference.md`, `AGENTS.md` | fixed allowlist, not arbitrary file access |
 
 Actions, backed by `units_manifest.json`:
 
@@ -52,11 +55,23 @@ surfaces this as an explicit Yes/No prompt, and the actual execution endpoint
 session. This holds even if the model misjudges a request — nothing that ends a live
 broadcast fires without a human confirming in the UI.
 
+## How the model runs
+
+Official `anthropic` Python SDK, `AsyncAnthropic`, **manual streaming loop** in
+`AgentBridge._run_turn` (not the beta tool runner — the loop needs to
+intercept a confirm-gated tool result before it reaches the model and turn it
+into an operator prompt). One `AgentBridge` per process; `_turn_lock`
+serialises turns; events are broadcast to every connected socket. History is
+trimmed to the last ~40 messages, never below a valid user-first prefix.
+
+`run_calibration` is intentionally **not** in the model's toolset — it juggles
+the shared `:5002` UDP port and belongs to its own dashboard card, not a chat
+turn.
+
 ## Not yet done
 
-- The actual Claude Agent SDK wiring (registering these tools, streaming the
-  conversation to the chat panel over `/ws/agent`) — `agent_tools.py` has the
-  functions ready to register but the endpoint is a stub. Needs an API key /
-  credential storage decision before it's live.
 - Retiring `sunday-grok.service`'s terminal launch once the bridge is trusted.
-- The HDMI output-preview subsystem that `get_output_status()` depends on.
+- A "New chat" control in the panel (the `reset` message type is handled
+  backend-side already).
+- Persisting the conversation across a dashboard restart (currently in-memory
+  only).

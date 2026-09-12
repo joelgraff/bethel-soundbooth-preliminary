@@ -1,5 +1,34 @@
 # Soundbooth Project — Cross-Session Status
 
+Updated: 2026-09-06 (dashboard AI agent bridge wired to Claude)
+
+## Current State (2026-09-06 — dashboard AI agent chat is live code, not a stub)
+
+- [x] **`/ws/agent` now runs a real Claude session.** New
+  `dashboard/backend/app/agent.py` (`AgentBridge`): one shared session for
+  every connected chat panel, official `anthropic` SDK, async manual
+  streaming loop. Model `claude-sonnet-5` at `effort: low`
+  (`AGENT_MODEL` in `dashboard.conf` overrides). Tool surface built in
+  `agent_tools.py` (`build_tool_specs` / `call_tool`): health, service
+  list/logs, HDMI output status, `read_doc`, `restart_service`, and
+  *staging only* for the livestream `start`/`stop`. Every unit/action
+  still passes `units.check_action_allowed` + `confirm_store` — the agent
+  can't touch anything the buttons can't.
+- [x] **Livestream start/stop from chat = model stages, human clicks.** A
+  confirm-gated tool call comes back as `requires_confirmation`; the
+  bridge strips the token out of the model's view, emits a
+  `confirm_request`, and the frontend runs the real action via the same
+  `POST /api/services/{unit}/{start,stop}` endpoint a button uses.
+  `operator_confirmed()` feeds the outcome back so the agent can react.
+- [x] **Verified without a key** (unconfigured path: panel loads, disabled,
+  notice shown) **and with a mocked Anthropic client** (tool-call loop,
+  streaming, staging with token withheld, confirm-feedback turn). Live
+  end-to-end needs `ANTHROPIC_API_KEY` in `~/.config/soundbooth/dashboard.conf`
+  — see "Getting an API key" in `dashboard/README.md`.
+- [ ] Not done: retire `sunday-grok.service`'s terminal launch once trusted;
+  "New chat" control in the panel (`reset` is handled backend-side);
+  conversation does not survive a dashboard restart (in-memory).
+
 Updated: 2026-09-04 late night (HDMI preview honest-staleness fix; PreSonus USB recurrence — improved, not eliminated)
 
 ## Current State (2026-09-04 late night)

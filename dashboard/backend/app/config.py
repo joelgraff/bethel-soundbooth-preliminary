@@ -46,6 +46,8 @@ class Settings:
     preview_frame_max_age_sec: int
     recordings_dir: Path
     recording_max_duration_sec: float
+    anthropic_api_key: str
+    agent_model: str
 
 
 def load_settings() -> Settings:
@@ -81,4 +83,14 @@ def load_settings() -> Settings:
         recording_max_duration_sec=float(
             conf.get("RECORDING_MAX_DURATION_SEC", str(6 * 3600))
         ),
+        # The agent bridge (dashboard/backend/app/agent.py) reads this. An
+        # env ANTHROPIC_API_KEY wins if the conf key is unset/placeholder, so
+        # the SDK's own resolution still works in dev. "changeme" (the
+        # value shipped in dashboard.conf.example) counts as unset.
+        anthropic_api_key=(
+            conf.get("ANTHROPIC_API_KEY", "").strip()
+            if conf.get("ANTHROPIC_API_KEY", "").strip() not in ("", "changeme")
+            else os.environ.get("ANTHROPIC_API_KEY", "")
+        ),
+        agent_model=conf.get("AGENT_MODEL", "claude-sonnet-5"),
     )

@@ -15,12 +15,16 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from . import calibrate as calibrate_mod
 from . import health as health_mod
 from . import systemctl_client
 from . import units as units_mod
 from .confirm import confirm_store
+
+if TYPE_CHECKING:
+    from .config import Settings
 
 # Which HDMI output maps to which preview-capture output file. DP-1 is
 # deliberately not captured — see dashboard/README.md.
@@ -197,3 +201,176 @@ def run_calibration(*, calibrate_script: Path, duration: float = calibrate_mod.D
     action (--apply-restart) deliberately not wired up here; the operator
     applies it by hand for now."""
     return calibrate_mod.run_calibration(script_path=calibrate_script, duration=duration)
+
+
+# ---------------------------------------------------------------------------
+# Model-facing tool surface — the agent bridge (app/agent.py) registers these
+# with the Anthropic API. Each name maps 1:1 to a function above, and every
+# unit/action still passes through units.check_action_allowed() +
+# confirm_store, so this list can't widen what the agent may touch beyond
+# what units_manifest.json and the REST endpoints already allow. Deliberately
+# NOT exposed: run_calibration (it moves a shared UDP port around and the
+# operator runs it from its own card) and any confirm_token plumbing — the
+# agent can only *stage* a confirm-gated action, never complete one.
+# ---------------------------------------------------------------------------
+
+_OUTPUT_DISPLAYS = sorted(PREVIEW_FILES)  # DP-2, DP-3, DP-4, LIVESTREAM
+
+
+def build_tool_specs(manifest_path: Path) -> list[dict]:
+    """Anthropic tool definitions, with unit names enumerated straight from
+    the manifest so the model gets a 400-free schema and can't invent a unit.
+    Sorted for a stable (cache-friendly) prompt prefix."""
+    units = units_mod.load_units(manifest_path)
+    all_units = sorted(units)
+    restartable = sorted(u for u, e in units.items() if "restart" in e.actions)
+    startable = sorted(u for u, e in units.items() if "start" in e.actions)
+    stoppable = sorted(u for u, e in units.items() if "stop" in e.actions)
+
+    return [
+        {
+            "name": "get_health_status",
+            "description": (
+                "Run the soundbooth health check and return pass/warn/fail "
+                "counts plus each individual check result. Start here when "
+                "asked 'is anything wrong'."
+            ),
+            "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+        },
+        {
+            "name": "list_services",
+            "description": (
+                "Current active/sub state of every systemd --user unit the "
+                "dashboard manages, grouped as on the dashboard."
+            ),
+            "input_schema": {"type": "object", "properties": {}, "additionalProperties": False},
+        },
+        {
+            "name": "get_service_log",
+            "description": "Tail the journal for one managed unit.",
+            "input_schema": {
+                "type": "object",
+                "properties": {
+                    "unit": {"type": "string", "enum": all_units},
+                    "lines": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": MAX_LOG_LINES,
+                        "description": f"How many lines (default 50, max {MAX_LOG_LINES}).",
+                    },
+                },
+                "required": ["unit"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "get_output_status",
+            "description": (
+                "Whether a video output currently has a fresh preview frame. "
+                "Metadata only — no image. LIVESTREAM is the encode leg sent "
+                "to Subsplash, not a physical connector."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {"display": {"type": "string", "enum": _OUTPUT_DISPLAYS}},
+                "required": ["display"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "read_doc",
+            "description": (
+                "Read one project reference doc for context on how the booth "
+                "is meant to be set up."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {"name": {"type": "string", "enum": sorted(_READABLE_DOCS)}},
+                "required": ["name"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "restart_service",
+            "description": (
+                "Restart one managed unit. Low-stakes and self-healing — runs "
+                "immediately, no confirmation. Use for a frozen/stuck service."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {"unit": {"type": "string", "enum": restartable}},
+                "required": ["unit"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "start_service",
+            "description": (
+                "Start one manually-toggled unit. If it is confirm-gated (the "
+                "livestream relay is), this only STAGES the action and shows "
+                "the operator a Yes/No prompt in the dashboard — you cannot "
+                "complete it yourself; tell the operator to click to confirm."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {"unit": {"type": "string", "enum": startable}},
+                "required": ["unit"],
+                "additionalProperties": False,
+            },
+        },
+        {
+            "name": "stop_service",
+            "description": (
+                "Stop one manually-toggled unit. Same confirm-gating as "
+                "start_service — stopping the livestream relay ends the live "
+                "broadcast, so it only stages and waits for the operator."
+            ),
+            "input_schema": {
+                "type": "object",
+                "properties": {"unit": {"type": "string", "enum": stoppable}},
+                "required": ["unit"],
+                "additionalProperties": False,
+            },
+        },
+    ]
+
+
+def call_tool(name: str, tool_input: dict, *, settings: "Settings") -> object:
+    """Dispatch one model tool call to the function above. Raises
+    AgentToolError / UnknownUnitError / ActionNotAllowedError / SystemctlError
+    on bad input or a failed action — the caller turns those into an
+    is_error tool result. Return value is always JSON-serialisable.
+
+    start_service / stop_service are always called with confirm_token=None:
+    the agent can stage a confirm-gated action but never redeem the token —
+    that stays a human click in the operator's own session (see
+    dashboard/docs/agent-tools.md)."""
+    manifest = settings.manifest_path
+    tool_input = tool_input or {}
+
+    if name == "get_health_status":
+        return get_health_status(health_script=settings.health_script)
+    if name == "list_services":
+        return list_services(manifest_path=manifest)
+    if name == "get_service_log":
+        return get_service_log(
+            manifest_path=manifest,
+            unit=tool_input["unit"],
+            lines=int(tool_input.get("lines", 50)),
+        )
+    if name == "get_output_status":
+        return get_output_status(
+            display=tool_input["display"],
+            preview_dir=settings.preview_dir,
+            max_age_sec=settings.preview_frame_max_age_sec,
+        )
+    if name == "read_doc":
+        return read_doc(project_dir=settings.project_dir, name=tool_input["name"])
+    if name == "restart_service":
+        return restart_service(manifest_path=manifest, unit=tool_input["unit"])
+    if name == "start_service":
+        return start_service(manifest_path=manifest, unit=tool_input["unit"], confirm_token=None)
+    if name == "stop_service":
+        return stop_service(manifest_path=manifest, unit=tool_input["unit"], confirm_token=None)
+
+    raise AgentToolError(f"unknown tool {name!r}")
