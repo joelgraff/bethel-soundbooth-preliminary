@@ -33,10 +33,28 @@ Updated: 2026-09-13 (rebuild reproducibility closed; livestream schedule added)
 - [x] **Assertion, not just omission:** the installer fails if `ffmpeg-srt-relay.service`,
   `ardour.service` or `virtual-sinks-loaded.target` is ever enabled. The first is the
   boot-streaming regression; the other two are manual/ordering-only by design.
-- [ ] Leftover from the retired Grok surface (commit 78da888): `~/bin/sunday-grok-session.sh`
-  and `~/.config/systemd/user/sunday-grok.service` still exist on the live box
-  (`disabled`/`inactive`, so harmless). Not in git, so a rebuild won't recreate them —
-  delete when convenient.
+- [x] **Retired Grok surface removed from the live box** (commit 78da888 retired it in
+  git; the machine still carried it). Deleted `~/.config/systemd/user/sunday-grok.service`,
+  `~/bin/sunday-grok-session.sh`, `~/.config/soundbooth/sunday-grok.conf`, and the staged
+  `~/grok-sudoers-{full,limited}`. None were in git, so a rebuild never recreated them.
+- [x] **SECURITY: `/etc/sudoers.d/grok-agent` was still installed and active — removed.**
+  Despite being labelled "limited" it granted `soundbooth` **passwordless** `rm`, `chown`,
+  `chmod`, `visudo`, `systemctl`, `apt-get`, `dpkg`, `snap` and `cat` — i.e. root-equivalent:
+  `visudo` rewrites sudoers, `chown`/`chmod` take any file, `cat` reads `/etc/shadow`.
+  It directly contradicted the reasoning already written into
+  `audio-routing/sudoers.d/presonus-usb-reset` ("Deliberately NOT granted: systemctl,
+  modprobe, usbreset, tee, or any general-purpose binary — each trivially escapable into
+  a full root shell").
+  - Verified before removing that `soundbooth` is in the `sudo` group, so normal password
+    sudo is unaffected; `visudo -c` parsed clean beforehand; confirmed afterwards that a
+    previously-granted command (`sudo -n df`) is now refused, and that the narrow
+    `presonus-usb-reset` grant still works.
+  - Worth considering a `soundbooth-health.sh` check that flags any broad NOPASSWD grant
+    for this user, so a future agent install can't quietly reintroduce one.
+- [x] **Grok CLI credential dropped, tool kept** (operator's call): removed
+  `~/.grok/auth.json`; the 544 MB install stays. Confirmed no `xai-`/`sk-` style secret
+  remains anywhere in `~/.grok` (the one credential-shaped hit in `config.toml` was a
+  plugin marketplace git URL). Note `/` is at **88 %** (5.5 GB free) if space is ever needed.
 
 Updated: 2026-09-13 (livestream boot-autostart removed; recurring schedule added)
 
