@@ -76,14 +76,25 @@ Updated: 2026-09-13 (livestream boot-autostart removed; recurring schedule added
     important one: a spec too complex for the controls renders **read-only** so the
     UI can't rewrite it. It re-reads the source each run (no copied fixture to drift)
     and fails loudly if the section marker comments are renamed.
-  - [ ] **Appearance/CSS never rendered.** No usable headless browser on this box:
-    no Chrome (the claude-in-chrome skill needs it), Vivaldi 8.2 strips headless
-    support (`--headless` and `--headless=new` both hang), Firefox `--screenshot`
-    exits 0 without writing a file, and GNOME 46 denies the
-    `org.gnome.Shell.Screenshot` D-Bus API to unsandboxed callers (portal needs a
-    click). Vivaldi also runs native Wayland here, so X11 tools (`import`, `xwd`)
-    can't capture it — only `ffplay` appears in the XWayland tree. Worth one glance
-    at the card next time someone is at the booth.
+- [x] **Rendered and visually verified** — both the editable state (armed pill, Sun
+  highlighted, 09:23 AM, Save/Disarm) and the read-only state (raw spec shown, day/time
+  controls correctly hidden), confirming the complex-spec branch end to end against a
+  real CLI-set schedule. Found and fixed one cosmetic bug only a render would catch:
+  a stray "." left floating after the inline "switch to a simple weekly time" button;
+  both buttons now sit on one row.
+  - **How to screenshot a GUI app on this machine** (non-obvious, cost a lot of dead
+    ends — see [[booth_gui_screenshot_method]]): launch it with
+    **`vivaldi --ozone-platform=x11`** + a temp `--user-data-dir`, then capture with
+    ImageMagick **`import -window <id>`**. Vivaldi normally runs *native Wayland*, so
+    X11 tools can't see it — forcing the X11 ozone backend puts it in the XWayland
+    tree where `xdotool search` and `import` work. Make the window taller than the
+    page (`--window-size=1450,2350`) and crop afterwards: synthetic scroll/key events
+    do **not** reach these windows reliably, so never depend on scrolling.
+  - Dead ends, for the record: no Chrome (the claude-in-chrome skill needs it);
+    Vivaldi strips headless support (`--headless` / `--headless=new` both hang);
+    Firefox `--screenshot` exits 0 writing nothing (its `-CreateProfile` silently
+    fails to register, so `-P` then finds no profile and it exits); GNOME 46 denies
+    `org.gnome.Shell.Screenshot` over D-Bus to unsandboxed callers.
 
 Updated: 2026-09-06 (dashboard AI agent bridge wired to Claude)
 

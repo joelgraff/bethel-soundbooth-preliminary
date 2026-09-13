@@ -143,10 +143,23 @@ is why it gets a panel rather than staying CLI-only.
 Tests: `node dashboard/tests/livestream-schedule-ui-test.js` (exit 0 = pass). It
 slices the schedule block out of the real `static/js/dashboard.js` and runs it against
 a DOM stub, so it can't drift from the shipped code. Covers every `refreshSchedule()`
-branch plus the spec parse/build helpers. It checks **behaviour, not appearance** —
-this machine has no usable headless browser (no Chrome; Vivaldi strips headless;
-Firefox `--screenshot` writes nothing; GNOME 46 denies the Shell screenshot D-Bus API
-to unsandboxed callers), so the rendered card still wants one human glance.
+branch plus the spec parse/build helpers. It checks **behaviour, not appearance**.
+
+To check appearance, there is no headless browser on this machine that works (Vivaldi
+strips headless support, Firefox `--screenshot` writes nothing, GNOME 46 denies the
+Shell screenshot D-Bus API to unsandboxed callers). What *does* work:
+
+```bash
+vivaldi --ozone-platform=x11 --user-data-dir=/tmp/vx --no-first-run \
+        --window-position=0,0 --window-size=1450,2350 \
+        --app="http://127.0.0.1:8420/?local_token=$LOCAL_TOKEN" &
+WID=$(xdotool search --onlyvisible --name '^Soundbooth Control$' | head -1)
+import -window "$WID" /tmp/dash.png       # ImageMagick
+```
+
+`--ozone-platform=x11` is the load-bearing part: Vivaldi normally runs native Wayland,
+where X11 capture tools can't see it at all. Size the window taller than the page and
+crop afterwards — synthetic scroll and key events do not reach these windows reliably.
 
 ## Layout
 
