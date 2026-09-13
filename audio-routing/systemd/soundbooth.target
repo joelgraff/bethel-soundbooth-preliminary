@@ -2,7 +2,15 @@
 Description=Church Presentation Rig - All Services
 # Program: FFmpeg SRT + ffplay on DP-4. No VLC services. Ardour optional (manual).
 # FOH: Mixer virtual sink + presonus-foh-bridge (ALSA) — not PW multichannel volume
-Wants=virtual-sinks-loaded.target qpwgraph.service ensure-audio-routes.service presonus-foh-bridge.service ffmpeg-srt.service ffmpeg-display.service ffmpeg-display-guard.service ffmpeg-srt-watch.service camera-management-watch.service
+# DELIBERATELY ABSENT: ffmpeg-srt-relay.service. Listing it here would start a
+# livestream at every boot — the exact regression removed 2026-09-13 (see that
+# unit's own comment). The stream starts only via start-live-stream.sh, the
+# livestream-autostart.timer schedule, or the dashboard button. Do not add it.
+#
+# ffmpeg-srt.service (the pre-2026-08-23 combined capture+SRT unit) was listed here
+# until 2026-09-13 and has not existed since the split — it resolved to "not-found"
+# on every start. Its always-on half is ffmpeg-capture.service, now listed instead.
+Wants=virtual-sinks-loaded.target qpwgraph.service ensure-audio-routes.service presonus-foh-bridge.service ffmpeg-capture.service ffmpeg-display.service ffmpeg-display-guard.service ffmpeg-srt-watch.service livestream-camera-watch.service camera-management-watch.service
 After=virtual-sinks-loaded.target qpwgraph.service ensure-audio-routes.service
 
 [Install]

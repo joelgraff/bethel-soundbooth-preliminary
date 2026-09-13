@@ -19,9 +19,19 @@ Updated: 2026-09-13 (livestream boot-autostart removed; recurring schedule added
     inactive. Verified via `show -p Wants/Requires` on `soundbooth.target` — the
     only remaining reverse edge is `ConsistsOf` (from `PartOf=`), which propagates
     stop/restart but never starts.
-  - Note `soundbooth.target`'s `Wants=` line still names the retired
-    `ffmpeg-srt.service` and omits `ffmpeg-capture`/`livestream-camera-watch`;
-    harmless today (the `.wants` symlinks do the real work) but stale. Not touched.
+  - [x] **`soundbooth.target`'s `Wants=` line corrected** (2026-09-13). It still named
+    the retired pre-split `ffmpeg-srt.service`, which had resolved to `not-found` on
+    every start since 2026-08-23, and omitted `ffmpeg-capture`/`livestream-camera-watch`.
+    Replaced the dead name with `ffmpeg-capture.service` (its always-on half) and added
+    `livestream-camera-watch.service`. Every name in the line now resolves.
+    - This was **not** purely cosmetic: on a from-scratch rebuild, REBUILD.md enables
+      only `soundbooth.target`, so that `Wants=` line — not the `.wants` symlinks,
+      which don't exist yet on a fresh machine — is what pulls units in. `ffmpeg-capture`
+      being absent meant a rebuilt booth would not have started capture from the target.
+    - `ffmpeg-srt-relay.service` is deliberately **still absent**, with a comment in the
+      unit saying so: adding it would restore boot-time streaming, the regression this
+      session removed. Verified after the change that the target's resolved `Wants` does
+      not contain the relay, and that nothing started or stopped as a result.
 - [x] **Recurring auto-start schedule: every Sunday 09:23** (`livestream-autostart.timer`
   → `livestream-autostart.service` → `~/bin/livestream-autostart.sh`). Managed with
   **`~/bin/livestream-schedule.sh`** (show / `--set "<calendar spec>"` / `--clear` /
