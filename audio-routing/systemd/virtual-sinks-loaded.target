@@ -1,0 +1,4 @@
+[Unit]
+Description=Virtual sinks have been loaded
+After=pipewire.service wireplumber.service
+Requires=pipewire.service wireplumber.service

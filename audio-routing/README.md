@@ -6,7 +6,19 @@ Goal: Every app that produces audio (Spotify, browsers, FreeShow, etc.) is autom
 **Program exception**: FFmpeg/ffplay program audio → HDMI TV (DP-4), not Mixer/FOH.  
 **Manual VLC**: may be used as a normal media player; **no VLC systemd services**.
 
+## Install / verify
+
+```
+./scripts/install-soundbooth-system.sh          # scripts -> ~/bin, units -> systemd, enable
+./scripts/install-soundbooth-system.sh --check  # read-only drift report (exit 1 if drift)
+```
+
+This is the supported way to get this repo onto the booth PC — see
+`replicability/REBUILD.md`. `--check` is safe against a running booth and is the quickest
+way to confirm the live machine still matches git. It never starts or stops anything.
+
 ## Contents
+- `scripts/install-soundbooth-system.sh` — installs scripts + units and enables the right set; `--check` verifies without changing anything.
 - `wireplumber/` — Lua policy scripts for auto linking (WirePlumber 0.4 style).
 - `pipewire-pulse/virtual-controllers.conf` — **Mixer** + **LocalLive** null sinks.
 - `scripts/ensure-audio-routes.sh` — Repair default sink, app→Mixer, **Mixer→Presonus AUX0/1**.

@@ -1,5 +1,43 @@
 # Soundbooth Project — Cross-Session Status
 
+Updated: 2026-09-13 (rebuild reproducibility closed; livestream schedule added)
+
+## Current State (2026-09-13 — a fresh rebuild now actually reproduces this machine)
+
+- [x] **`install-soundbooth-system.sh` replaces the hand-copy rebuild step.** Installs
+  scripts → `~/bin`, units → `~/.config/systemd/user` (incl. `dashboard/systemd/` and
+  the flat-stored `*.service.d-*.conf` drop-in), then enables the 19 units that should
+  run. `--check` reports drift read-only and exits 1 — runnable against the live booth
+  any time. Never starts/stops anything, so it's safe to run mid-service.
+- [x] **The old flow did not reproduce this machine.** It copied units and enabled only
+  `soundbooth.target`. But `enable`-created `.wants` symlinks don't exist on a fresh
+  box, so everything wired only that way — `soundbooth-dashboard`, all three
+  `hdmi-preview*`, `camera-management`, `ffmpeg-capture-watch` — was never enabled at
+  all on a rebuild.
+- [x] **Three load-bearing units existed only on the live box, not in git:**
+  `qpwgraph.service` and `virtual-sinks-loaded.target` (both named in
+  `soundbooth.target`'s `Wants=`, so a rebuild would have failed to start them) and
+  `ardour.service`, plus its `start-ardour.sh`. All now in the repo, with their
+  hardcoded `/home/soundbooth/bin/...` normalised to `%h/bin/...`.
+- [x] **Found and fixed real drift while doing it:** `~/bin`'s copies of
+  `camera-management-watch.sh`, `livestream-camera-watch.sh` and
+  `start-camera-management.sh` predated commit 78da888 and still carried the **real
+  camera LAN IP** as their fallback default, long after the repo had externalised it.
+  Verified empirically that `camera.conf`'s plain assignment overwrites the fallback
+  before installing, so the effective IP was unchanged; restarted the three services
+  afterwards (`install` rewrites the same inode, and these are long-running scripts).
+  `~/bin` now contains no real LAN IPs.
+  - REBUILD.md step 4 previously said to restore `~/bin` from backup — which is how
+    that drift survived. It now says to install those from the repo instead, and
+    restore from backup only what genuinely isn't in git.
+- [x] **Assertion, not just omission:** the installer fails if `ffmpeg-srt-relay.service`,
+  `ardour.service` or `virtual-sinks-loaded.target` is ever enabled. The first is the
+  boot-streaming regression; the other two are manual/ordering-only by design.
+- [ ] Leftover from the retired Grok surface (commit 78da888): `~/bin/sunday-grok-session.sh`
+  and `~/.config/systemd/user/sunday-grok.service` still exist on the live box
+  (`disabled`/`inactive`, so harmless). Not in git, so a rebuild won't recreate them —
+  delete when convenient.
+
 Updated: 2026-09-13 (livestream boot-autostart removed; recurring schedule added)
 
 ## Current State (2026-09-13 — livestream no longer auto-starts at boot; Sunday 09:23 schedule)

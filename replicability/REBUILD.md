@@ -25,7 +25,13 @@ cd soundbooth-project/replicability/provision
 This installs packages, snaps, and notes the unused ollama/webui cleanup.
 
 ## 4. Restore user configuration
-- Restore `~/.config/pipewire*`, `~/.config/systemd/user`, `~/bin`, `~/patchbay_profile`, etc.
+- `~/bin` and `~/.config/systemd/user` are installed **from this repo** in step 6 —
+  don't restore those from backup, or you'll reintroduce whatever drifted on the old
+  machine. (That has already happened once: `~/bin` carried real LAN IPs long after
+  the repo had externalised them.)
+- Restore from backup only what is genuinely not in git: `~/.config/pipewire*`,
+  `~/.config/soundbooth/*.conf` (real IPs / SRT streamid), `~/patchbay_profile`,
+  `~/.config/monitors.xml`, `~/.config/freeshow`.
 - Or use the `backup-configs.sh` / `restore-configs.sh` pair once they are completed.
 - Copy Documents, Ardour (templates + important sessions), FreeShow shows from separate media backup.
 
@@ -35,20 +41,41 @@ This installs packages, snaps, and notes the unused ollama/webui cleanup.
 - Reboot.
 
 ## 6. Enable & test services
+One command installs scripts to `~/bin`, units to `~/.config/systemd/user`, and
+enables exactly the right set:
+
 ```
-# From project units (also under audio-routing/systemd/):
-cp audio-routing/systemd/*.service audio-routing/systemd/*.target \
-  audio-routing/systemd/*.timer ~/.config/systemd/user/
-systemctl --user daemon-reload
-systemctl --user enable --now soundbooth.target
-# soundbooth.target pulls: qpwgraph, ensure-audio-routes, ffmpeg-capture, ffmpeg-display, guard, livestream-camera-watch
-# NOT ffmpeg-srt-relay — the livestream is deliberately never started at boot
-# (it is `static`). Arm the recurring schedule explicitly instead:
-systemctl --user enable --now livestream-autostart.timer
-~/bin/livestream-schedule.sh          # confirm: expect "Sundays 09:23" + next run
-# Optional multitrack only when needed: systemctl --user start ardour.service
-# Do NOT install or enable vlc.service — ATEM UVC is exclusive; program path is FFmpeg
+./audio-routing/scripts/install-soundbooth-system.sh
 ```
+
+Then reboot (or log out and back in) so the user session starts them.
+
+**Do not hand-copy units instead.** The previous instructions here copied unit files
+and enabled only `soundbooth.target`, which did *not* reproduce this machine: the
+`.wants` symlinks that `enable` creates don't exist on a fresh box, so everything
+wired only that way — the dashboard, HDMI previews, camera management,
+`ffmpeg-capture-watch` — was never enabled at all.
+
+Verify at any time, including against a running booth (read-only, exits 1 on drift):
+
+```
+./audio-routing/scripts/install-soundbooth-system.sh --check
+~/bin/livestream-schedule.sh      # expect "Sun *-*-* 09:23:00" + a next run
+```
+
+Two things the installer deliberately does **not** enable, and asserts stay that way:
+
+- **`ffmpeg-srt-relay.service`** — enabling it streams to Subsplash at *every* boot.
+  It is `static`; the stream starts only via `~/bin/start-live-stream.sh`, the
+  `livestream-autostart.timer` schedule, or the dashboard button.
+- **`ardour.service`** — manual only: `systemctl --user start ardour.service`.
+
+Do NOT install or enable `vlc.service` — ATEM UVC is exclusive; the program path is FFmpeg.
+
+Real values for `~/.config/soundbooth/*.conf` (SRT streamid, camera and ATEM LAN IPs)
+are **not** in git — copy them from the config backup, or from the `*.conf.example`
+templates. Scripts fall back to RFC-5737 placeholder addresses, so a missing
+`camera.conf` fails in a confusing way rather than loudly.
 
 Run:
 ```

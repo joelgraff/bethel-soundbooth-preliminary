@@ -1,0 +1,13 @@
+[Unit]
+Description=qpwgraph with saved patchbay
+After=graphical-session.target virtual-sinks-loaded.target
+Requires=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/bin/start-qpwgraph.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=default.target

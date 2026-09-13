@@ -1,0 +1,13 @@
+[Unit]
+Description=Ardour DAW with PreSonus wait (soundbooth, optional)
+After=graphical-session.target virtual-sinks-loaded.target qpwgraph.service wireplumber.service
+Requires=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=%h/bin/start-ardour.sh
+Restart=on-failure
+RestartSec=10
+
+# No [Install] WantedBy — start only when needed:
+#   systemctl --user start ardour.service

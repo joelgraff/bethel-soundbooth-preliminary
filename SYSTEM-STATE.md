@@ -284,7 +284,9 @@ case they're ever wanted again — reinstate via
   replicability/
   portal/
   docs/
-~/bin/                    # live scripts used by services
+~/bin/                    # live scripts used by services — INSTALLED FROM THE REPO,
+                          # not hand-edited: audio-routing/scripts/install-soundbooth-system.sh
+                          # (`--check` reports drift read-only; safe on a running booth)
 ~/booth_ai/booth-context.md  # older hardware notes (supplement)
 ```
 
