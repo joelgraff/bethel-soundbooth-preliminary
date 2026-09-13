@@ -289,3 +289,23 @@ button { font-family: inherit; cursor: pointer; }
 }
 .rec-item .rec-item-name { font-family: 'IBM Plex Mono', ui-monospace, monospace; color: var(--text); }
 .rec-item .rec-item-meta { color: var(--text-muted); font-size: 11px; }
+
+/* ---- livestream schedule ---- */
+.sched-day-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+.sched-day-btn {
+  padding: 7px 0; border-radius: 7px; border: 1px solid var(--border); background: var(--surface-2);
+  color: var(--text-muted); font-size: 12px; cursor: pointer; text-align: center; user-select: none;
+}
+.sched-day-btn:hover { border-color: var(--accent-border); color: var(--text); }
+.sched-day-btn.active { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); font-weight: 700; }
+#sched-time {
+  background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 8px 12px; font-size: 12.5px; font-family: inherit; outline: none;
+}
+#sched-time:focus { border-color: var(--accent-border); }
+.sched-warn {
+  padding: 8px 12px; border-radius: 8px; font-size: 12px; line-height: 1.5;
+  background: var(--warn-bg, rgba(220, 160, 40, 0.12));
+  border: 1px solid var(--warn-border, rgba(220, 160, 40, 0.4));
+  color: var(--warn, #d8a53a);
+}

@@ -56,6 +56,13 @@ const api = {
   }),
   recordingStop: () => apiFetch("/api/recording/stop", { method: "POST" }),
   recordingList: () => apiFetch("/api/recording/list"),
+  scheduleGet: () => apiFetch("/api/livestream/schedule"),
+  scheduleSet: (schedule) => apiFetch("/api/livestream/schedule", {
+    method: "POST", body: JSON.stringify({ schedule }),
+  }),
+  scheduleArm: (armed) => apiFetch("/api/livestream/schedule/arm", {
+    method: "POST", body: JSON.stringify({ armed: !!armed }),
+  }),
 };
 
 // Booth-PC-only bootstrap: start-booth-dashboard-view.sh launches the local

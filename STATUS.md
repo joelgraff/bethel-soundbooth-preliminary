@@ -47,9 +47,43 @@ Updated: 2026-09-13 (livestream boot-autostart removed; recurring schedule added
     silently beat env, inverting the house `env > conf > default` order and making
     a dry-run override probe the real camera. Now captures env first and reapplies,
     matching `soundbooth-health.sh`'s idiom.
-- [ ] Not done: no dashboard UI for the schedule yet (CLI only) — the timer isn't in
-  `units_manifest.json`, so the dashboard can't show or arm it. Worth adding next to
-  the existing livestream start/stop buttons.
+- [x] **Dashboard panel for the schedule** (added later the same day). New
+  `dashboard/backend/app/livestream_schedule.py` + `GET/POST /api/livestream/schedule`
+  and `POST /api/livestream/schedule/arm`; "Livestream Schedule" card in the left
+  column with day toggles, a time picker, and an arm/disarm button.
+  - Reads via `systemctl --user show -p`; writes via `~/bin/livestream-schedule.sh`
+    so the OnCalendar-reset rule lives in exactly one place. Deliberately **not** in
+    `units_manifest.json` — that models start/stop/restart on a service, not "set a
+    recurring time", so `ConfirmStore` doesn't apply; the frontend confirms
+    *disarming* with its own modal (same precedent as `recording.py`/`calibrate.py`).
+  - Specs are validated twice before reaching a unit file (character allowlist, then
+    `systemd-analyze calendar`), always passed as a single argv element. Confirmed
+    `systemd-analyze` alone already rejects newline/`;`/backtick/`$(...)` payloads.
+  - The day/time controls only render for a simple weekly spec; anything richer is
+    shown read-only with a pointer to the CLI, so the UI can't silently rewrite a
+    schedule set deliberately. Panel also warns if the relay ever reads `enabled`.
+  - **Verified:** all three endpoints over real HTTP with a session — GET, set
+    (valid / invalid → 400 / injection → 400), disarm → re-arm → restore, and no
+    `OnCalendar` accumulation through the API path. New HTML/JS/CSS confirmed served
+    (not stale); every `sched-*` ID cross-checked between HTML and JS; the two pure
+    functions (`parseSimpleSpec`/`buildSpec`) unit-tested in Node, 13 cases incl. the
+    negative ones.
+  - **Frontend behaviour is tested, appearance is not.** New
+    `dashboard/tests/livestream-schedule-ui-test.js` (`node` it; exit 0 = pass, 34
+    assertions) slices the schedule block out of the real `dashboard.js` and runs it
+    against a DOM stub, covering every `refreshSchedule()` branch — armed, disarmed,
+    streaming-now, the relay-boot-enabled warning, timer-not-installed, and the
+    important one: a spec too complex for the controls renders **read-only** so the
+    UI can't rewrite it. It re-reads the source each run (no copied fixture to drift)
+    and fails loudly if the section marker comments are renamed.
+  - [ ] **Appearance/CSS never rendered.** No usable headless browser on this box:
+    no Chrome (the claude-in-chrome skill needs it), Vivaldi 8.2 strips headless
+    support (`--headless` and `--headless=new` both hang), Firefox `--screenshot`
+    exits 0 without writing a file, and GNOME 46 denies the
+    `org.gnome.Shell.Screenshot` D-Bus API to unsandboxed callers (portal needs a
+    click). Vivaldi also runs native Wayland here, so X11 tools (`import`, `xwd`)
+    can't capture it — only `ffplay` appears in the XWayland tree. Worth one glance
+    at the card next time someone is at the booth.
 
 Updated: 2026-09-06 (dashboard AI agent bridge wired to Claude)
 

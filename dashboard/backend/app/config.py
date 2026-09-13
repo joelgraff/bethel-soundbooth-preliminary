@@ -46,6 +46,7 @@ class Settings:
     preview_frame_max_age_sec: int
     recordings_dir: Path
     recording_max_duration_sec: float
+    livestream_schedule_script: Path
     anthropic_api_key: str
     agent_model: str
 
@@ -82,6 +83,12 @@ def load_settings() -> Settings:
         ),
         recording_max_duration_sec=float(
             conf.get("RECORDING_MAX_DURATION_SEC", str(6 * 3600))
+        ),
+        livestream_schedule_script=Path(
+            conf.get(
+                "LIVESTREAM_SCHEDULE_SCRIPT",
+                str(Path.home() / "bin" / "livestream-schedule.sh"),
+            )
         ),
         # The agent bridge (dashboard/backend/app/agent.py) reads this. An
         # env ANTHROPIC_API_KEY wins if the conf key is unset/placeholder, so

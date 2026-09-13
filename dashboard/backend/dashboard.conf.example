@@ -39,3 +39,7 @@ ANTHROPIC_API_KEY=changeme
 # CALIBRATE_SCRIPT=/home/soundbooth/bin/av-sync-calibrate.py
 # HDMI_PREVIEW_DIR=/dev/shm/soundbooth-dashboard
 # HDMI_PREVIEW_MAX_AGE_SEC=10
+# Backs the Livestream Schedule panel. Writes go through this script because it
+# already validates calendar specs and handles the OnCalendar-reset rule; the
+# panel reads state straight from systemctl.
+# LIVESTREAM_SCHEDULE_SCRIPT=/home/soundbooth/bin/livestream-schedule.sh

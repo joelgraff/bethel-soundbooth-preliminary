@@ -187,6 +187,11 @@ daemon. **Live schedule: every Sunday 09:23** local (`America/Chicago`).
   → `~/bin/livestream-autostart.sh`. The `.service` has **no `[Install]`** on
   purpose — enabling it directly would start a stream at every boot, which is the
   exact thing this change removed.
+- Dashboard: **"Livestream Schedule"** card (left column) — day toggles, time picker,
+  arm/disarm. Backed by `dashboard/backend/app/livestream_schedule.py`; writes go
+  through the same script below, so there is one implementation of the schedule rules.
+  A schedule too complex for the day/time controls is shown read-only there. See
+  `dashboard/README.md` → "Livestream schedule panel".
 - Operator tool: **`~/bin/livestream-schedule.sh`**
   - no args — show schedule, next run, and whether the stream is up
   - `--set "Sun 09:23"` — any systemd calendar spec (`"Sun,Wed 18:30"`,

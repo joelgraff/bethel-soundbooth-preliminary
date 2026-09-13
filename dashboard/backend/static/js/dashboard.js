@@ -684,11 +684,193 @@ async function initRecording() {
   setInterval(refreshRecList, 15000);
 }
 
+// ---------- livestream schedule ----------
+// ffmpeg-srt-relay.service is deliberately NOT started at boot, so
+// livestream-autostart.timer is the only automatic start path — a disarmed timer
+// means the Sunday stream silently never starts, which is why it's surfaced here
+// and not left CLI-only. See SYSTEM-STATE.md and
+// dashboard/backend/app/livestream_schedule.py.
+
+const SCHED_DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+let schedSelectedDays = new Set();
+let schedArmed = false;
+
+// systemd normalizes a spec to e.g. "Sun *-*-* 09:23:00" / "Wed,Sun *-*-* 18:30:00",
+// or "*-*-* 09:23:00" for daily. Return {days,time} only for that simple weekly
+// shape; null for anything richer (multiple times, date components, non-zero
+// seconds) so the UI shows it read-only instead of silently rewriting it.
+function parseSimpleSpec(spec) {
+  const m = /^(?:([A-Za-z]{3}(?:,[A-Za-z]{3})*)\s+)?\*-\*-\*\s+(\d{2}):(\d{2}):(\d{2})$/.exec(
+    (spec || "").trim()
+  );
+  if (!m) return null;
+  if (m[4] !== "00") return null;
+  const days = m[1] ? m[1].split(",") : SCHED_DAYS.slice();
+  if (!days.every((d) => SCHED_DAYS.includes(d))) return null;
+  return { days, time: `${m[2]}:${m[3]}` };
+}
+
+function buildSpec(days, time) {
+  // A bare time is systemd's "every day", which is tidier than listing all seven.
+  if (days.length === 7) return time;
+  const ordered = SCHED_DAYS.filter((d) => days.includes(d));
+  return `${ordered.join(",")} ${time}`;
+}
+
+function renderSchedDays() {
+  const row = document.getElementById("sched-days");
+  row.innerHTML = "";
+  SCHED_DAYS.forEach((d) => {
+    const btn = document.createElement("div");
+    btn.className = "sched-day-btn";
+    btn.textContent = d;
+    btn.dataset.day = d;
+    btn.classList.toggle("active", schedSelectedDays.has(d));
+    btn.addEventListener("click", () => {
+      if (schedSelectedDays.has(d)) schedSelectedDays.delete(d);
+      else schedSelectedDays.add(d);
+      btn.classList.toggle("active", schedSelectedDays.has(d));
+    });
+    row.appendChild(btn);
+  });
+}
+
+async function refreshSchedule() {
+  let s;
+  try {
+    s = await api.scheduleGet();
+  } catch (_) {
+    return;
+  }
+
+  const pill = document.getElementById("sched-pill");
+  const next = document.getElementById("sched-next");
+  const warn = document.getElementById("sched-warn");
+  const editor = document.getElementById("sched-editor");
+  const advanced = document.getElementById("sched-advanced");
+
+  schedArmed = !!s.armed;
+
+  if (!s.installed) {
+    pill.textContent = "not installed";
+    pill.className = "pill pill-neutral";
+    next.textContent = "livestream-autostart.timer is not installed on this machine.";
+    editor.style.display = "none";
+    advanced.style.display = "none";
+    warn.style.display = "none";
+    return;
+  }
+
+  pill.textContent = s.armed ? "armed" : "disarmed";
+  pill.className = `pill ${s.armed ? "pill-good" : "pill-warn"}`;
+
+  if (s.armed && s.next_run) next.textContent = `Next start: ${s.next_run}`;
+  else if (!s.armed) next.textContent = "Auto-start is off — the stream will only start manually.";
+  else next.textContent = "Armed, but no next run reported.";
+  if (s.stream_active) next.textContent += "  ·  streaming now";
+
+  // The regression this arrangement removed: a boot-enabled relay streams on
+  // every boot, including midweek maintenance.
+  if (s.relay_boot_enabled) {
+    warn.style.display = "";
+    warn.textContent =
+      "ffmpeg-srt-relay.service is set to start at boot, so every boot will go live. " +
+      "Expected state is 'static' — fix with: systemctl --user disable ffmpeg-srt-relay.service";
+  } else {
+    warn.style.display = "none";
+  }
+
+  const simple = s.schedule.length === 1 ? parseSimpleSpec(s.schedule[0]) : null;
+  const armLabel = s.armed ? "Disarm" : "Arm";
+
+  if (simple) {
+    editor.style.display = "";
+    advanced.style.display = "none";
+    // Don't stomp the operator's in-progress edits on a poll tick.
+    if (document.activeElement !== document.getElementById("sched-time")) {
+      document.getElementById("sched-time").value = simple.time;
+      schedSelectedDays = new Set(simple.days);
+      renderSchedDays();
+    }
+    document.getElementById("sched-arm-btn").textContent = armLabel;
+  } else {
+    editor.style.display = "none";
+    advanced.style.display = "";
+    document.getElementById("sched-advanced-spec").textContent =
+      s.schedule_text || "(none set)";
+    document.getElementById("sched-arm-btn-adv").textContent = armLabel;
+  }
+}
+
+async function saveSchedule() {
+  const time = document.getElementById("sched-time").value;
+  if (!time) {
+    showToast("Pick a time first");
+    return;
+  }
+  if (schedSelectedDays.size === 0) {
+    showToast("Pick at least one day");
+    return;
+  }
+  const spec = buildSpec([...schedSelectedDays], time);
+  try {
+    await api.scheduleSet(spec);
+    showToast(`Schedule set: ${spec}`);
+  } catch (err) {
+    showToast(err.message || "Could not set schedule");
+  }
+  await refreshSchedule();
+}
+
+async function toggleSchedArmed() {
+  const wantArmed = !schedArmed;
+  const apply = async () => {
+    try {
+      await api.scheduleArm(wantArmed);
+      showToast(wantArmed ? "Auto-start armed" : "Auto-start disarmed");
+    } catch (err) {
+      showToast(err.message || "Could not change the schedule");
+    }
+    await refreshSchedule();
+  };
+  // Disarming is the quiet failure mode — nothing breaks now, the stream just
+  // doesn't start on Sunday — so confirm that direction only.
+  if (!wantArmed) {
+    showConfirmModal({
+      title: "Turn off scheduled start?",
+      message:
+        "The livestream will no longer start on its own. Someone will have to start it " +
+        "by hand, from here or with start-live-stream.sh.",
+      confirmLabel: "Turn off",
+      onConfirm: apply,
+    });
+    return;
+  }
+  await apply();
+}
+
+async function initSchedule() {
+  renderSchedDays();
+  document.getElementById("sched-save-btn").addEventListener("click", saveSchedule);
+  document.getElementById("sched-arm-btn").addEventListener("click", toggleSchedArmed);
+  document.getElementById("sched-arm-btn-adv").addEventListener("click", toggleSchedArmed);
+  document.getElementById("sched-simplify-btn").addEventListener("click", () => {
+    schedSelectedDays = new Set(["Sun"]);
+    document.getElementById("sched-time").value = "09:23";
+    renderSchedDays();
+    document.getElementById("sched-advanced").style.display = "none";
+    document.getElementById("sched-editor").style.display = "";
+    showToast("Pick a day and time, then Save Schedule");
+  });
+  await refreshSchedule();
+  setInterval(refreshSchedule, 10000);
+}
+
 // ---------- init ----------
 
 (async function init() {
   await bootstrapLocalToken();
-  await Promise.all([loadHealth(), loadServices(), loadHdmiGrid(), initRecording()]);
+  await Promise.all([loadHealth(), loadServices(), loadHdmiGrid(), initRecording(), initSchedule()]);
   connectAgentChat();
   setInterval(() => { loadHealth(); loadServices(); }, 8000);
 })();

@@ -63,6 +63,41 @@
 
       <div class="card svc-card" style="height:auto;">
         <div class="svc-header">
+          <div class="svc-title">Livestream Schedule</div>
+          <div class="pill" id="sched-pill">…</div>
+        </div>
+        <div class="mono" id="sched-next" style="font-size:12px; color:var(--text-muted);"></div>
+        <div id="sched-warn" class="sched-warn" style="display:none;"></div>
+
+        <div id="sched-editor">
+          <div class="lbl" style="padding-bottom:2px;">Repeat on</div>
+          <div class="sched-day-row" id="sched-days"></div>
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-top:4px;">
+            <input type="time" id="sched-time" style="min-width:120px;">
+            <button class="btn btn-primary btn-sm" id="sched-save-btn">Save Schedule</button>
+            <button class="btn btn-ghost btn-sm" id="sched-arm-btn">Disarm</button>
+          </div>
+        </div>
+
+        <!-- Shown instead of the editor when the effective spec is something the
+             day+time controls can't represent, so the UI never silently
+             rewrites a schedule set from the CLI. -->
+        <div id="sched-advanced" style="display:none;">
+          <div class="lbl" style="padding-bottom:2px;">Schedule (set from the command line)</div>
+          <div class="mono" id="sched-advanced-spec" style="font-size:12.5px;"></div>
+          <div style="font-size:12px; color:var(--text-muted); padding-top:6px;">
+            This schedule is more complex than the controls here can edit. Change it with
+            <span class="mono">~/bin/livestream-schedule.sh --set</span>, or
+            <button class="btn btn-ghost btn-sm" id="sched-simplify-btn">switch to a simple weekly time</button>.
+          </div>
+          <div style="padding-top:8px;">
+            <button class="btn btn-ghost btn-sm" id="sched-arm-btn-adv">Disarm</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card svc-card" style="height:auto;">
+        <div class="svc-header">
           <div class="svc-title">Board Recording</div>
           <div class="pill" id="rec-status-pill">…</div>
         </div>

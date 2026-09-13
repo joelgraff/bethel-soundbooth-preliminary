@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import agent_tools
+from . import livestream_schedule as schedule_mod
 from . import recording as recording_mod
 from .agent import AgentBridge
 from .auth import check_local_token, check_pin, require_session
@@ -230,6 +231,40 @@ def api_recording_download(filename: str, _: None = Depends(require_session)):
     except recording_mod.RecordingError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return FileResponse(path, media_type="audio/wav", filename=path.name)
+
+
+class ScheduleSetBody(BaseModel):
+    schedule: str
+
+
+class ScheduleArmBody(BaseModel):
+    armed: bool
+
+
+@app.get("/api/livestream/schedule")
+def api_schedule_get(_: None = Depends(require_session)):
+    return schedule_mod.get_schedule()
+
+
+@app.post("/api/livestream/schedule")
+def api_schedule_set(body: ScheduleSetBody, _: None = Depends(require_session)):
+    try:
+        return schedule_mod.set_schedule(
+            spec=body.schedule, script=settings.livestream_schedule_script
+        )
+    except schedule_mod.ScheduleError as exc:
+        # 400: an invalid calendar spec is bad input, not a conflicting state.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/api/livestream/schedule/arm")
+def api_schedule_arm(body: ScheduleArmBody, _: None = Depends(require_session)):
+    try:
+        return schedule_mod.set_armed(
+            armed=body.armed, script=settings.livestream_schedule_script
+        )
+    except schedule_mod.ScheduleError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
 
 
 @app.websocket("/ws/agent")

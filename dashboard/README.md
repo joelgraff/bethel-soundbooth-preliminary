@@ -107,6 +107,47 @@ built-in kill, ran to completion, and returned a real parsed result
 (`verdict: no_markers` — expected outside a real calibration pattern being
 on program).
 
+## Livestream schedule panel
+
+`ffmpeg-srt-relay.service` is deliberately **not** started at boot (see
+SYSTEM-STATE.md), so `livestream-autostart.timer` is the only *automatic* start
+path. A disarmed timer therefore means the Sunday stream silently never starts —
+nothing else would surface that until someone noticed there was no stream — which
+is why it gets a panel rather than staying CLI-only.
+
+- Backend: `app/livestream_schedule.py`, endpoints `GET /api/livestream/schedule`,
+  `POST /api/livestream/schedule` (set day/time), `POST /api/livestream/schedule/arm`.
+- **Reads** go straight to `systemctl --user show -p` (structured, no parsing of a
+  human-facing script). **Writes** go through `~/bin/livestream-schedule.sh`, which
+  already validates the calendar spec and knows that systemd *accumulates*
+  `OnCalendar=` across a unit and its drop-ins (so a drop-in must emit a bare
+  `OnCalendar=` reset first, or the old time keeps firing alongside the new one).
+  Duplicating that rule in Python would mean two copies of a subtle gotcha.
+- **Not** routed through `units_manifest.json`: that models start/stop/restart on a
+  service, and "set a recurring time" / "arm the schedule" aren't those verbs. As a
+  result `ConfirmStore` (which keys on unit+action) doesn't apply either, so the
+  frontend confirms *disarming* with its own modal — that's the action that can
+  quietly cost a Sunday. Same precedent as `recording.py` and `calibrate.py`.
+- The spec is validated twice before it can reach a unit file: a conservative
+  character allowlist in `livestream_schedule.validate_spec`, then
+  `systemd-analyze calendar`. Always passed as a single argv element, never
+  `shell=True`. (`systemd-analyze` was confirmed to reject newline, `;`, backtick
+  and `$(...)` payloads on its own; the allowlist is belt-and-braces.)
+- The day/time controls only appear when the effective spec is a simple weekly
+  shape. Anything richer (multiple times, date components, non-zero seconds) is
+  shown read-only with a pointer to the CLI, so the UI can never silently rewrite
+  a schedule someone set deliberately.
+- The panel also warns if `ffmpeg-srt-relay.service` ever reads `enabled` — that
+  would mean every boot goes live, the regression this arrangement removed.
+
+Tests: `node dashboard/tests/livestream-schedule-ui-test.js` (exit 0 = pass). It
+slices the schedule block out of the real `static/js/dashboard.js` and runs it against
+a DOM stub, so it can't drift from the shipped code. Covers every `refreshSchedule()`
+branch plus the spec parse/build helpers. It checks **behaviour, not appearance** —
+this machine has no usable headless browser (no Chrome; Vivaldi strips headless;
+Firefox `--screenshot` writes nothing; GNOME 46 denies the Shell screenshot D-Bus API
+to unsandboxed callers), so the rendered card still wants one human glance.
+
 ## Layout
 
 ```
