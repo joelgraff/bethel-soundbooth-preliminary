@@ -1,5 +1,56 @@
 # Soundbooth Project — Cross-Session Status
 
+Updated: 2026-09-13 (livestream boot-autostart removed; recurring schedule added)
+
+## Current State (2026-09-13 — livestream no longer auto-starts at boot; Sunday 09:23 schedule)
+
+- [x] **The livestream no longer starts at boot.** `ffmpeg-srt-relay.service` had
+  `WantedBy=soundbooth.target`, and `stop-live-stream.sh` is a runtime `systemctl
+  stop` that does **not** survive a reboot — so *every* boot, including midweek
+  maintenance, started pushing to Subsplash (then `livestream-camera-watch` killed
+  it ~75s later, so it showed up as ~75s of unattended dead air per boot rather
+  than an obvious fault). Relay is now `static` (no `[Install]`).
+  - **Two changes were required, not one.** Dropping the relay's `[Install]` alone
+    did nothing observable at boot, because `ffmpeg-srt-watch.service` is itself
+    boot-enabled and carried `Wants=ffmpeg-srt-relay.service`, which pulled the
+    relay up anyway. Caught by checking `list-dependencies --reverse` rather than
+    trusting the disable. `Wants=` removed (kept `After=`); safe because
+    `ffmpeg-srt-watch.sh`'s `do_restart()` already no-ops while the relay is
+    inactive. Verified via `show -p Wants/Requires` on `soundbooth.target` — the
+    only remaining reverse edge is `ConsistsOf` (from `PartOf=`), which propagates
+    stop/restart but never starts.
+  - Note `soundbooth.target`'s `Wants=` line still names the retired
+    `ffmpeg-srt.service` and omits `ffmpeg-capture`/`livestream-camera-watch`;
+    harmless today (the `.wants` symlinks do the real work) but stale. Not touched.
+- [x] **Recurring auto-start schedule: every Sunday 09:23** (`livestream-autostart.timer`
+  → `livestream-autostart.service` → `~/bin/livestream-autostart.sh`). Managed with
+  **`~/bin/livestream-schedule.sh`** (show / `--set "<calendar spec>"` / `--clear` /
+  `--enable` / `--disable`), which validates specs and writes a timer drop-in.
+  `Persistent=false` so a missed trigger stays missed instead of starting a stream
+  late on the next boot; `AccuracySec=1s` so 09:23 means 09:23.
+- [x] **The trigger waits for a real camera frame before starting the relay** (up to
+  20 min, reusing the RTSP frame-pull probe — ping alone is untrustworthy on this
+  camera). Without it the scheduled start and `livestream-camera-watch` fight: the
+  stream comes up at 09:23 with the camera still off and gets killed ~75s later.
+  On timeout it does not start and logs a WARNING. Manual start is unaffected.
+- [x] **Health + tests.** New `check_livestream_schedule` (`livestream` section):
+  WARNs if the schedule is disarmed, and WARNs if the relay ever reads `enabled`
+  again (regression guard for exactly the bug above). 7 new cases in
+  `health-check-unit-tests.sh` (23 total, all passing); its fake `systemctl` gained
+  `UnitFileState`/`ActiveState`/`NextElapseUSecRealtime` plus a `refute_result` helper.
+- [x] **Verified:** schedule armed and reporting `next: Sun 2026-09-20 09:23:00 CDT`;
+  `--set`/`--clear` round-trip with no `OnCalendar` accumulation; invalid specs
+  rejected; the trigger's disable and camera-timeout paths both exit 0 **without**
+  starting a stream (relay confirmed still inactive after each).
+  - Found and fixed while testing: the script sourced `camera.conf` *after* reading
+    the environment, and `camera.conf` hard-assigns `CAMERA_NETWORK_IP` — so conf
+    silently beat env, inverting the house `env > conf > default` order and making
+    a dry-run override probe the real camera. Now captures env first and reapplies,
+    matching `soundbooth-health.sh`'s idiom.
+- [ ] Not done: no dashboard UI for the schedule yet (CLI only) — the timer isn't in
+  `units_manifest.json`, so the dashboard can't show or arm it. Worth adding next to
+  the existing livestream start/stop buttons.
+
 Updated: 2026-09-06 (dashboard AI agent bridge wired to Claude)
 
 ## Current State (2026-09-06 — dashboard AI agent chat is live code, not a stub)

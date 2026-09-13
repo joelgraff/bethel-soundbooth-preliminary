@@ -1,0 +1,22 @@
+[Unit]
+Description=Start the Subsplash livestream on a recurring schedule
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+
+[Timer]
+# Local time (America/Chicago). Change with ~/bin/livestream-schedule.sh —
+# it writes a drop-in and validates the spec, rather than hand-editing this file.
+OnCalendar=Sun 09:23
+Unit=livestream-autostart.service
+
+# Fire on the stated minute. systemd's default AccuracySec for user timers is
+# 1 minute, which would let a "09:23" trigger land anywhere inside that minute.
+AccuracySec=1s
+
+# MUST stay false. Persistent=true would run a missed trigger as soon as the
+# machine came up — so booting at 10:15 on a Sunday would immediately start
+# pushing to Subsplash for a 09:23 trigger that had already passed. A missed
+# livestream start should stay missed and be started by hand.
+Persistent=false
+
+[Install]
+WantedBy=timers.target

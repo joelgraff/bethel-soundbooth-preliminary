@@ -24,5 +24,20 @@ ExecStart=%h/bin/start-ffmpeg-srt-relay.sh
 Restart=always
 RestartSec=8
 
-[Install]
-WantedBy=soundbooth.target
+# NO [Install] SECTION ON PURPOSE (changed 2026-09-13).
+# This unit used to carry WantedBy=soundbooth.target, which meant `enable` put it
+# in soundbooth.target.wants and **every boot started a livestream** — including
+# midweek maintenance boots, because stop-live-stream.sh is a runtime `stop` and
+# does not persist across a reboot. (In practice
+# livestream-camera-watch.service then killed it ~75s later, so the machine was
+# pushing ~75s of dead air to Subsplash on every boot.)
+#
+# The stream now starts exactly three ways, all deliberate:
+#   1. ~/bin/start-live-stream.sh        manual
+#   2. livestream-autostart.timer        recurring schedule (~/bin/livestream-schedule.sh)
+#   3. dashboard livestream start        confirm-gated button
+#
+# Do not re-add [Install]/WantedBy here. To change when it auto-starts, set the
+# timer's schedule; to disable scheduling entirely, disable the timer.
+# PartOf=soundbooth.target above is kept deliberately: it propagates stop/restart
+# from the target but never starts this unit.

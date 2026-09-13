@@ -1,0 +1,17 @@
+[Unit]
+Description=Scheduled start of the Subsplash livestream (waits for program camera)
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+After=graphical-session.target network-online.target
+# Deliberately no [Install] section: this unit is triggered by
+# livestream-autostart.timer only and must never be enabled on its own, or it
+# would start a livestream at every boot — exactly what disabling
+# ffmpeg-srt-relay.service's boot autostart was meant to prevent.
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/bin/livestream-autostart.sh
+# The script polls for a live camera frame before starting the relay
+# (default up to 20 min, LIVESTREAM_AUTOSTART_CAMERA_WAIT_SEC). Must exceed
+# that window plus probe overhead or systemd would kill it mid-wait.
+TimeoutStartSec=1800

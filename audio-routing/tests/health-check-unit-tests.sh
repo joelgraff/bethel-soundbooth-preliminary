@@ -75,6 +75,16 @@ case "$sub" in
         case "$prop" in
             ActiveEnterTimestamp) echo "${FAKE_SYSTEMCTL_ACTIVE_ENTER_TS:-n/a}" ;;
             MainPID) echo "${FAKE_SYSTEMCTL_MAIN_PID:-0}" ;;
+            # check_livestream_schedule reads state via `show -p` rather than
+            # is-active/is-enabled. Derived from the same lists so cases only need
+            # the existing knobs: enabled => "enabled", otherwise known => "static".
+            UnitFileState)
+                if [[ "$enabled" == *" $unit "* ]]; then echo "enabled"
+                elif [[ "$known" == *" $unit "* ]]; then echo "static"
+                else echo ""; fi ;;
+            ActiveState)
+                if [[ "$active" == *" $unit "* ]]; then echo "active"; else echo "inactive"; fi ;;
+            NextElapseUSecRealtime) echo "${FAKE_SYSTEMCTL_NEXT_ELAPSE:-}" ;;
             *) echo "" ;;
         esac
         exit 0 ;;
@@ -113,6 +123,7 @@ reset_state() {
     RESULTS=()
     unset FAKE_SYSTEMCTL_KNOWN_UNITS FAKE_SYSTEMCTL_ACTIVE_UNITS FAKE_SYSTEMCTL_ENABLED_UNITS
     unset FAKE_SYSTEMCTL_ACTIVE_ENTER_TS FAKE_SYSTEMCTL_MAIN_PID
+    unset FAKE_SYSTEMCTL_NEXT_ELAPSE
     unset FAKE_LSUSB_OUTPUT FAKE_SS_PORT_BOUND FAKE_SS_PORT
 }
 
@@ -124,6 +135,9 @@ assert_result() {
     done
     return 1
 }
+
+# refute_result — inverse of assert_result, for "this must NOT be reported" cases.
+refute_result() { ! assert_result "$@"; }
 
 no_results() { [[ ${#RESULTS[@]} -eq 0 ]]; }
 no_fail()    { [[ "$FAIL" -eq 0 ]]; }
@@ -220,6 +234,43 @@ export FAKE_SS_PORT_BOUND=1
 export FAKE_SS_PORT=9999
 check_camera_management
 check "active, :9999 bound -> PASS bound" assert_result PASS camera-mgmt "bound"
+
+echo "=== check_livestream_schedule ==="
+TIMER_UNIT="livestream-autostart.timer"
+
+reset_state
+export FAKE_SYSTEMCTL_KNOWN_UNITS=""
+check_livestream_schedule
+check "timer not installed -> silent" no_results
+
+# Armed: timer enabled + active, relay present but NOT boot-enabled (static).
+reset_state
+export FAKE_SYSTEMCTL_KNOWN_UNITS="${TIMER_UNIT} ffmpeg-srt-relay.service"
+export FAKE_SYSTEMCTL_ACTIVE_UNITS="${TIMER_UNIT}"
+export FAKE_SYSTEMCTL_ENABLED_UNITS="${TIMER_UNIT}"
+export FAKE_SYSTEMCTL_NEXT_ELAPSE="Sun 2026-09-20 09:23:00 CDT"
+check_livestream_schedule
+check "armed -> PASS"                    assert_result PASS livestream "schedule armed"
+check "armed -> next run shown"          assert_result PASS livestream "2026-09-20 09:23:00"
+check "armed + relay static -> no FAIL"  no_fail
+check "armed + relay static -> no boot-enabled warn" \
+    refute_result WARN livestream "boot-enabled"
+
+# Disarmed: timer installed but neither enabled nor active.
+reset_state
+export FAKE_SYSTEMCTL_KNOWN_UNITS="${TIMER_UNIT} ffmpeg-srt-relay.service"
+export FAKE_SYSTEMCTL_ACTIVE_UNITS=""
+export FAKE_SYSTEMCTL_ENABLED_UNITS=""
+check_livestream_schedule
+check "disarmed -> WARN not armed" assert_result WARN livestream "NOT armed"
+
+# Regression guard: relay boot-enabled again would stream at every boot.
+reset_state
+export FAKE_SYSTEMCTL_KNOWN_UNITS="${TIMER_UNIT} ffmpeg-srt-relay.service"
+export FAKE_SYSTEMCTL_ACTIVE_UNITS="${TIMER_UNIT}"
+export FAKE_SYSTEMCTL_ENABLED_UNITS="${TIMER_UNIT} ffmpeg-srt-relay.service"
+check_livestream_schedule
+check "relay boot-enabled -> WARN" assert_result WARN livestream "boot-enabled"
 
 echo
 echo "=== ${TESTS} checks, ${FAILURES} failed ==="

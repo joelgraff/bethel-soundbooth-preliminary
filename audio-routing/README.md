@@ -14,6 +14,8 @@ Goal: Every app that produces audio (Spotify, browsers, FreeShow, etc.) is autom
 - `scripts/start-ffmpeg-srt-relay.sh` — reads capture's dedicated tee → SRT livestream (Subsplash). The only process that talks to Subsplash; can be stopped/started independently of capture/display.
 - `scripts/stop-live-stream.sh` / `scripts/start-live-stream.sh` — end/resume the Subsplash livestream now (e.g. at end of service) without touching capture or the sanctuary TV.
 - `scripts/livestream-camera-watch.sh` — auto-ends the livestream if the program camera goes unreachable on the network for 60s (safe proxy for "camera powered off"; never auto-resumes).
+- `scripts/livestream-schedule.sh` — show/set the recurring livestream auto-start schedule (**live: Sundays 09:23**). Validates the calendar spec and writes a `livestream-autostart.timer` drop-in.
+- `scripts/livestream-autostart.sh` — fired by `livestream-autostart.timer`; waits for a real camera frame, then starts the stream. The relay is **not** boot-enabled, so this and the manual scripts are the only automatic/deliberate start paths.
 - `scripts/start-ffmpeg-display.sh` — ffplay fullscreen on DP-4.
 - `scripts/soundbooth-health.sh` — Boot/ops diagnostics.
 - `scripts/av-sync-calibrate.py` — Flash+beep A/V sync calibrator (measure / suggest `FFMPEG_AUDIO_DELAY_SEC`).
@@ -22,6 +24,7 @@ Goal: Every app that produces audio (Spotify, browsers, FreeShow, etc.) is autom
 - `systemd/` — user units (`soundbooth.target`, FFmpeg stack, `ensure-audio-routes.service`, …).
 - `ffmpeg-srt.conf.example` — template for `~/.config/soundbooth/ffmpeg-srt.conf` (shared by capture + relay).
 - `camera.conf.example` — template for `~/.config/soundbooth/camera.conf` (real camera LAN IP; kept out of git).
+- `livestream-schedule.conf.example` — template for `~/.config/soundbooth/livestream-schedule.conf` (tunes what happens when the schedule fires; the day/time itself lives in the timer — set it with `livestream-schedule.sh`).
 - `atem.conf.example` — template for `~/.config/soundbooth/atem.conf` (real ATEM LAN IP; kept out of git).
 - `tests/` — Manual verification steps.
 

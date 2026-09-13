@@ -1,0 +1,39 @@
+# Livestream scheduled-start behavior (optional — every value has a default)
+# Install: cp to ~/.config/soundbooth/livestream-schedule.conf and edit
+#
+# Read by: livestream-autostart.sh (fired by livestream-autostart.timer)
+#
+# NOTE: the schedule itself (the day/time) does NOT live here — it's the
+# timer's OnCalendar=. Change it with:
+#     ~/bin/livestream-schedule.sh --set "Sun 09:23"
+#     ~/bin/livestream-schedule.sh            # show current + next run
+# This file tunes what happens *when the timer fires*.
+#
+# The camera IP comes from ~/.config/soundbooth/camera.conf (CAMERA_NETWORK_IP);
+# don't duplicate it here.
+
+# Optional overrides:
+
+# LIVESTREAM_AUTOSTART_DISABLE=1
+#   Suppress scheduled starts while leaving the timer itself enabled. Useful for
+#   a week with no service, without having to remember to re-arm the timer after.
+
+# LIVESTREAM_AUTOSTART_REQUIRE_CAMERA=1
+#   1 (default) = wait for the program camera to actually deliver a frame before
+#   starting the relay. Set 0 to start the stream the moment the timer fires.
+#   Leaving this at 1 is strongly preferred: livestream-camera-watch.service ends
+#   the stream after ~75s without camera frames, so starting early just produces
+#   a stream that comes up and immediately dies.
+
+# LIVESTREAM_AUTOSTART_CAMERA_WAIT_SEC=1200
+#   How long to keep waiting for that first frame (default 20 min). Covers the
+#   camera being switched on a little after the scheduled time. On timeout the
+#   stream is NOT started and a WARNING is logged to the journal.
+
+# LIVESTREAM_AUTOSTART_POLL_SEC=15
+#   How often to re-probe the camera while waiting. Matches
+#   LIVESTREAM_CAMERA_POLL_SEC in camera.conf.
+
+# LIVESTREAM_AUTOSTART_PROBE_TIMEOUT_SEC=6
+#   Per-probe RTSP frame-pull timeout. Ping alone is not trusted — this camera
+#   answers RTSP with its encoder off (confirmed 2026-08-30).

@@ -3,7 +3,7 @@
 **Living document.** Update this when hardware, routing, displays, or services change.  
 All AI agent sessions should treat this as the source of truth for “how the system works now.”
 
-Last updated: 2026-09-01
+Last updated: 2026-09-13
 
 ---
 
@@ -94,8 +94,8 @@ ATEM video0 + Pulse audio
         ↓
   ffmpeg-capture.service  (owns capture, always-on)
         ├─→ UDP MPEG-TS 127.0.0.1:5000 ──→ ffmpeg-display.service (ffplay) → DP-4 sanctuary TV
-        ├─→ UDP MPEG-TS 127.0.0.1:5001 ──→ multiview tile (retired — tee left in place, currently unconsumed)
-        ├─→ UDP MPEG-TS 127.0.0.1:5002 ──→ av-sync-calibrate probe (free tee)
+        ├─→ UDP MPEG-TS 127.0.0.1:5001 ──→ hdmi-preview-livestream.service → dashboard "Livestream" tile
+        ├─→ UDP MPEG-TS 127.0.0.1:5002 ──→ hdmi-preview-dp4.service → dashboard "DP-4 program" tile
         └─→ UDP MPEG-TS 127.0.0.1:5003 ──→ ffmpeg-srt-relay.service ──→ SRT caller → Subsplash
 ```
 
@@ -115,9 +115,21 @@ keeping a live event open for up to 8 hours if not explicitly ended.
   - Template: `soundbooth-project/audio-routing/ffmpeg-srt.conf.example`
   - Connector target still from `vlc-display.conf` → `VLC_OUTPUT_CONNECTOR=DP-4` (shared name)
 - Encode: **libx264** veryfast/zerolatency; audio delay `FFMPEG_AUDIO_DELAY_SEC` via **`adelay`** (live conf **0.25** — raw ATEM path audio leads ~0.25s; A/B 2026-07-30: delay 0 → lead, delay 0.25 → match). Edit `~/.config/soundbooth/ffmpeg-srt.conf` then `systemctl --user restart ffmpeg-capture ffmpeg-display`
-- Local UDP tees: **:5000** ffplay · **:5001** unconsumed since multiview retired 2026-09-01 · **:5002** free probe (`av-sync-calibrate capture-udp`) · **:5003** livestream relay input
+- Local UDP tees (**all four are consumed — there is no spare tee**, verified live
+  2026-09-13): **:5000** ffplay/DP-4 · **:5001** `hdmi-preview-livestream.service` ·
+  **:5002** `hdmi-preview-dp4.service` · **:5003** livestream relay input. The
+  dashboard preview tiles took over :5001/:5002 when they replaced booth-multiview
+  (2026-09-01); earlier revisions of this doc wrongly described those two as
+  unconsumed/free. A **new** consumer needs a **new** port added to both
+  `start-ffmpeg-capture.sh` and `ffmpeg-srt.conf` — do not attach a second reader to
+  an existing port, these are unicast (one reader each) and the second one silently
+  gets nothing.
 - A/V calibrator (manual only, **not** boot/health): `~/bin/av-sync-calibrate`  
   (script `audio-routing/scripts/av-sync-calibrate.py`)
+  - `capture-udp` mode reads **:5002** and *steals* it — it kills whatever holds the
+    port, i.e. `hdmi-preview-dp4.service`. That unit's `Restart=always` +
+    `SuccessExitStatus=255` exist for exactly this: the DP-4 preview tile drops out
+    during a calibration run and comes back on its own afterwards. Expected, not a fault.
 - **Boot races:** waits for openable `/dev/video0` (udev/ACL). No longer waits on SRT/DNS — that's the relay's problem now, so a slow/down network never delays the TV.
 - All 4 local tee legs are `onfail=ignore` — none of them can take capture down, and (since 2026-08-23) neither can a Subsplash outage, because SRT delivery no longer lives in this process at all.
 - `ExecStartPost` `try-restart` on both `ffmpeg-display.service` and `ffmpeg-srt-relay.service` so both reattach after a capture (re)start — no-ops for either if it wasn't already running (e.g. relay intentionally stopped between services).
@@ -126,6 +138,25 @@ keeping a live event open for up to 8 hours if not explicitly ended.
 #### Livestream relay (`ffmpeg-srt-relay.service`)
 - Start: `~/bin/start-ffmpeg-srt-relay.sh` — reads capture's `:5003` tee, stream-copies to `FFMPEG_SRT_URL` (same conf file as capture)
 - **This is the entire livestream leg.** Stopping it ends the Subsplash event immediately; capture and DP-4 display are untouched.
+- **NOT started at boot (changed 2026-09-13).** It has no `[Install]` section
+  (`UnitFileState=static`), and `ffmpeg-srt-watch.service` no longer `Wants=` it.
+  It starts exactly three ways, all deliberate:
+  1. `~/bin/start-live-stream.sh` — manual
+  2. `livestream-autostart.timer` — recurring schedule (see below)
+  3. the dashboard's confirm-gated livestream start button
+  - **Why:** the relay used to carry `WantedBy=soundbooth.target`, and
+    `stop-live-stream.sh` is a runtime `systemctl stop` that does **not** persist
+    across a reboot. So every boot — including midweek maintenance — started
+    pushing to Subsplash, with `livestream-camera-watch` killing it ~75s later.
+    That meant ~75s of unattended dead air to Subsplash on each boot.
+  - Two things had to change together: dropping the relay's `[Install]` alone was
+    **not** sufficient, because `ffmpeg-srt-watch.service` is itself boot-enabled
+    and its `Wants=ffmpeg-srt-relay.service` pulled the relay up anyway. Safe to
+    remove because `ffmpeg-srt-watch.sh`'s `do_restart()` already no-ops while the
+    relay is inactive ("stream likely ended intentionally").
+  - Health guards both halves — see the **livestream** section of
+    `soundbooth-health.sh` (WARNs if the schedule is disarmed, and if the relay
+    ever reads `enabled` again).
 - **Boot races:** waits for openable capture service + **DNS of SRT host** (default up to 120s, `FFMPEG_SRT_DNS_WAIT_SEC`) — this used to block the whole encode+TV at boot; now it only delays the livestream leg.
 - **SRT mid-stream fail / reconnect (2026-08-02 behavior, now isolated to this unit):** a dead SRT connection makes ffmpeg exit → `Restart=always` (8s) reconnects. A deliberate `systemctl --user stop` (i.e. `stop-live-stream.sh`) does **not** trigger a restart — that's the whole point.
 - **Backup watch:** `ffmpeg-srt-watch.service` → journal SRT connection-drop patterns → restart the relay only (90s debounce, max 8/h) if the process hangs without exiting.
@@ -146,6 +177,42 @@ keeping a live event open for up to 8 hours if not explicitly ended.
   Script: `~/bin/livestream-camera-watch.sh`. Distinct from
   `camera-management-watch.service` (restarts the CMP preview app; unrelated
   purpose despite the similar name).
+
+#### Livestream auto-start schedule (`livestream-autostart.timer`, 2026-09-13)
+
+Simple recurring scheduler for starting the stream — a systemd user timer, no new
+daemon. **Live schedule: every Sunday 09:23** local (`America/Chicago`).
+
+- Units: `livestream-autostart.timer` → `livestream-autostart.service` (oneshot)
+  → `~/bin/livestream-autostart.sh`. The `.service` has **no `[Install]`** on
+  purpose — enabling it directly would start a stream at every boot, which is the
+  exact thing this change removed.
+- Operator tool: **`~/bin/livestream-schedule.sh`**
+  - no args — show schedule, next run, and whether the stream is up
+  - `--set "Sun 09:23"` — any systemd calendar spec (`"Sun,Wed 18:30"`,
+    `"Sun 09:23,17:00"`); validated with `systemd-analyze calendar` before writing
+  - `--clear` — revert to the shipped default · `--enable` / `--disable` — arm/disarm
+  - Writes a drop-in at `~/.config/systemd/user/livestream-autostart.timer.d/schedule.conf`.
+    It emits a bare `OnCalendar=` reset line first — **required**, because systemd
+    *accumulates* `OnCalendar=` across a unit and its drop-ins, so without the reset
+    the old time keeps firing alongside the new one.
+- **`Persistent=false` is deliberate.** A missed trigger must stay missed: with
+  `Persistent=true`, booting at 10:15 would immediately start streaming for a 09:23
+  trigger that had already passed. `AccuracySec=1s` because systemd's 1-minute
+  default would scatter the start time inside the minute.
+- **The trigger waits for the camera before starting the relay.** It polls for a real
+  RTSP frame (same probe as `livestream-camera-watch.sh` — ping alone is not
+  trustworthy on this camera, see 2026-08-30) for up to 20 min, then starts. Without
+  this, a 09:23 trigger with the camera still off would start a stream that
+  `livestream-camera-watch` then killed ~75s later — a stream that "won't stay up"
+  for no visible reason. On timeout it does **not** start, and logs a WARNING.
+- Tuning: `~/.config/soundbooth/livestream-schedule.conf`
+  (template `audio-routing/livestream-schedule.conf.example`) —
+  `LIVESTREAM_AUTOSTART_DISABLE`, `…_REQUIRE_CAMERA`, `…_CAMERA_WAIT_SEC`,
+  `…_POLL_SEC`, `…_PROBE_TIMEOUT_SEC`. Camera IP still comes from `camera.conf`.
+- **No auto-stop is scheduled** and none is needed: `livestream-camera-watch.service`
+  already ends the stream when the camera goes down at end of service, and
+  `stop-live-stream.sh` remains the manual path.
 
 #### Program display (`ffmpeg-display.service`)
 - Start: `~/bin/start-ffmpeg-display.sh` — **ffplay** fullscreen at DP-4 geometry

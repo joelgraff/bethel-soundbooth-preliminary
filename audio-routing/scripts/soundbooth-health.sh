@@ -13,6 +13,8 @@
 #   - Program livestream audio path (ALSA capture + AAC in pipeline + journal xruns)
 #   - FOH graph: Mixer monitor → Presonus AUX0/1 (not only app → Mixer)
 #   - VLC must not run as a systemd service (manual media player only)
+#   - Livestream auto-start schedule armed (livestream-autostart.timer), and the
+#     relay NOT boot-enabled (boot autostart removed 2026-09-13)
 #   - Key user services
 #   - Session autostart desktops (Spotify/FreeShow/browser/dashboard) + browser on DP-1
 #
@@ -47,7 +49,7 @@ for arg in "$@"; do
         --quiet|-q) QUIET=true ;;
         --json) JSON=true ;;
         --help|-h)
-            sed -n '2,16p' "$0" | sed 's/^# \?//'
+            sed -n '2,18p' "$0" | sed 's/^# \?//'
             exit 0
             ;;
     esac
@@ -180,6 +182,41 @@ check_camera_management() {
         log_result PASS "$section" "CMP RTSP-MPEG websocket bound on :${CMP_WS_PORT}"
     else
         log_result WARN "$section" "camera-management.service active but :${CMP_WS_PORT} not listening (CMP preview likely blank — camera-management-watch.service will restart it automatically after its grace period; manual: systemctl --user restart camera-management, then allow a few minutes)"
+    fi
+}
+
+# Livestream auto-start schedule (added 2026-09-13). ffmpeg-srt-relay.service is
+# deliberately NOT boot-enabled, so livestream-autostart.timer is the only
+# automatic start path — a disarmed timer means the scheduled stream silently
+# never starts, which nothing else would surface until someone noticed no stream.
+# Read state via `show -p`, not is-active/is-enabled: those print the state AND
+# exit non-zero for inactive/disabled, which would need extra `|| true` handling.
+check_livestream_schedule() {
+    local section="livestream"
+    local timer="livestream-autostart.timer"
+
+    if ! systemctl --user cat "$timer" &>/dev/null; then
+        return
+    fi
+
+    local enabled active next
+    enabled=$(systemctl --user show -p UnitFileState --value "$timer" 2>/dev/null) || true
+    active=$(systemctl --user show -p ActiveState --value "$timer" 2>/dev/null) || true
+
+    if [[ "$enabled" == "enabled" && "$active" == "active" ]]; then
+        next=$(systemctl --user show -p NextElapseUSecRealtime --value "$timer" 2>/dev/null) || true
+        log_result PASS "$section" "auto-start schedule armed${next:+ (next: ${next})}"
+    else
+        log_result WARN "$section" "auto-start schedule NOT armed (timer ${enabled:-unknown}/${active:-unknown}) — scheduled stream will not start; arm it: ~/bin/livestream-schedule.sh --enable"
+    fi
+
+    # Regression guard: the relay used to carry WantedBy=soundbooth.target, which
+    # made every boot (including midweek maintenance) push to Subsplash. Expected
+    # state is "static" — no [Install] section at all.
+    local relay_state
+    relay_state=$(systemctl --user show -p UnitFileState --value ffmpeg-srt-relay.service 2>/dev/null) || true
+    if [[ "$relay_state" == "enabled" ]]; then
+        log_result WARN "$section" "ffmpeg-srt-relay.service is boot-enabled — every boot will start a livestream (expected 'static'); fix: systemctl --user disable ffmpeg-srt-relay.service"
     fi
 }
 
@@ -813,6 +850,7 @@ check_usb
 check_atem_network
 check_camera_network
 check_camera_management
+check_livestream_schedule
 check_video
 check_displays
 check_services

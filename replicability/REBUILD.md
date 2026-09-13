@@ -38,10 +38,14 @@ This installs packages, snaps, and notes the unused ollama/webui cleanup.
 ```
 # From project units (also under audio-routing/systemd/):
 cp audio-routing/systemd/*.service audio-routing/systemd/*.target \
-  ~/.config/systemd/user/
+  audio-routing/systemd/*.timer ~/.config/systemd/user/
 systemctl --user daemon-reload
 systemctl --user enable --now soundbooth.target
-# soundbooth.target pulls: qpwgraph, ensure-audio-routes, ffmpeg-capture, ffmpeg-srt-relay, ffmpeg-display, guard, livestream-camera-watch
+# soundbooth.target pulls: qpwgraph, ensure-audio-routes, ffmpeg-capture, ffmpeg-display, guard, livestream-camera-watch
+# NOT ffmpeg-srt-relay — the livestream is deliberately never started at boot
+# (it is `static`). Arm the recurring schedule explicitly instead:
+systemctl --user enable --now livestream-autostart.timer
+~/bin/livestream-schedule.sh          # confirm: expect "Sundays 09:23" + next run
 # Optional multitrack only when needed: systemctl --user start ardour.service
 # Do NOT install or enable vlc.service — ATEM UVC is exclusive; program path is FFmpeg
 ```

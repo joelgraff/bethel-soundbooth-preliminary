@@ -2,7 +2,13 @@
 Description=Watch FFmpeg SRT relay for mid-stream failure/hang; restart relay only
 Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
 After=ffmpeg-srt-relay.service
-Wants=ffmpeg-srt-relay.service
+# Deliberately NOT Wants=ffmpeg-srt-relay.service (removed 2026-09-13). This unit
+# is boot-enabled via soundbooth.target, so a Wants= here *pulled the livestream
+# up at every boot* — silently defeating the point of disabling the relay's own
+# boot autostart. After= alone gives the ordering without ever starting it.
+# Safe because do_restart() in ffmpeg-srt-watch.sh already no-ops when the relay
+# is inactive ("stream likely ended intentionally"), so this watcher is happy to
+# idle from boot until the stream is actually started.
 PartOf=soundbooth.target
 
 [Service]
