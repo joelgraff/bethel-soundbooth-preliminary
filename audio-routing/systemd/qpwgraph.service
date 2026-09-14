@@ -2,6 +2,9 @@
 Description=qpwgraph with saved patchbay
 After=graphical-session.target virtual-sinks-loaded.target
 Requires=graphical-session.target
+# Ceiling so this can't crash-loop forever — same convention as ffmpeg-capture.service.
+StartLimitIntervalSec=600
+StartLimitBurst=30
 
 [Service]
 Type=simple

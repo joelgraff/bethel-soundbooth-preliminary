@@ -3,6 +3,21 @@ Description=Watch ffmpeg-capture (encode source) for a stall; restart if wedged
 Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
 After=ffmpeg-capture.service
 Wants=ffmpeg-capture.service
+PartOf=soundbooth.target
+# Same 3-way ordering cycle already documented and fixed in
+# ffmpeg-srt-watch.service and camera-management-watch.service, but never
+# applied here: this unit's own After=ffmpeg-capture.service, combined with
+# ffmpeg-capture.service's own After=graphical-session.target and this unit's
+# WantedBy=graphical-session.target (implicit Before=), formed a cycle that
+# systemd broke by silently deleting THIS unit's start job — confirmed live
+# via `journalctl --user -b | grep "ordering cycle"`: the watchdog for the
+# core ATEM capture pipeline was not running at all this boot, and nothing
+# in soundbooth-health.sh catches a watchdog that never started. Fixed the
+# same way as the sibling watchers: pulled in via soundbooth.target's Wants=
+# instead, which has no ordering edge back to graphical-session.target.
+# Ceiling so this can't crash-loop forever — same convention as ffmpeg-capture.service.
+StartLimitIntervalSec=600
+StartLimitBurst=30
 
 [Service]
 Type=simple
@@ -11,4 +26,4 @@ Restart=always
 RestartSec=5
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=soundbooth.target

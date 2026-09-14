@@ -5,6 +5,9 @@ Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
 # and dumped once at boot (Missing X server / $DISPLAY).
 After=graphical-session.target
 Wants=graphical-session.target
+# Ceiling so this can't crash-loop forever — same convention as ffmpeg-capture.service.
+StartLimitIntervalSec=600
+StartLimitBurst=30
 
 [Service]
 Type=simple

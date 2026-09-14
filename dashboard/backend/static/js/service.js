@@ -10,7 +10,7 @@ function stateOf(svc) {
   if (svc.active_state === "active") return { cls: "good", label: "Running" };
   if (svc.active_state === "activating") return { cls: "warn", label: "Starting" };
   if (svc.active_state === "failed" || svc.result === "exit-code") return { cls: "fail", label: "Failed" };
-  return { cls: "neutral", label: "Stopped" };
+  return { cls: "neutral", label: "Stopped" }; // keep in sync with dashboard.js's stateOf()
 }
 
 let manifestEntry = null;

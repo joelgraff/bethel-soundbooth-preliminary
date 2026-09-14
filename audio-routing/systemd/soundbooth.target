@@ -10,7 +10,7 @@ Description=Church Presentation Rig - All Services
 # ffmpeg-srt.service (the pre-2026-08-23 combined capture+SRT unit) was listed here
 # until 2026-09-13 and has not existed since the split — it resolved to "not-found"
 # on every start. Its always-on half is ffmpeg-capture.service, now listed instead.
-Wants=virtual-sinks-loaded.target qpwgraph.service ensure-audio-routes.service presonus-foh-bridge.service ffmpeg-capture.service ffmpeg-display.service ffmpeg-display-guard.service ffmpeg-srt-watch.service livestream-camera-watch.service camera-management-watch.service
+Wants=virtual-sinks-loaded.target qpwgraph.service ensure-audio-routes.service presonus-foh-bridge.service ffmpeg-capture.service ffmpeg-capture-watch.service ffmpeg-display.service ffmpeg-display-guard.service ffmpeg-srt-watch.service livestream-camera-watch.service camera-management-watch.service
 After=virtual-sinks-loaded.target qpwgraph.service ensure-audio-routes.service
 
 [Install]

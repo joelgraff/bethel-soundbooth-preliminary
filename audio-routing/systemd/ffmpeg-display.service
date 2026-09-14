@@ -4,6 +4,9 @@ Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
 After=ffmpeg-capture.service graphical-session.target
 Wants=ffmpeg-capture.service
 # Do not BindsTo ffmpeg-capture — restarting encode would kill display and leave it failed
+# Ceiling so this can't crash-loop forever — same convention as ffmpeg-capture.service.
+StartLimitIntervalSec=600
+StartLimitBurst=30
 
 [Service]
 Type=simple

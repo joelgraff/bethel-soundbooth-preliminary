@@ -3,10 +3,11 @@
 Run with: uvicorn app.main:app --host <host> --port <port>
 (the soundbooth-dashboard.service unit in dashboard/systemd/ does this).
 
-Scope of this pass: PIN auth, health/services/logs (read), restart/start/stop
-(write, allowlisted + confirm-gated). The chat panel's actual model call is
-NOT wired up yet — /ws/agent exists as a stub so the frontend has something
-to connect to; see dashboard/docs/agent-tools.md for what's left.
+Scope: PIN auth, health/services/logs (read), restart/start/stop (write,
+allowlisted + confirm-gated), board recording, livestream schedule, and the
+/ws/agent chat bridge (agent.py) — a real AsyncAnthropic streaming session,
+not a stub. See dashboard/docs/agent-tools.md for the agent's tool surface
+and security model.
 """
 from __future__ import annotations
 

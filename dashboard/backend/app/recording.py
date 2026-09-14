@@ -136,6 +136,24 @@ def start_recording(
         # on a clean SIGINT, not just SIGKILL.
         proc = subprocess.Popen(cmd, shell=True, executable="/bin/bash", preexec_fn=os.setsid)
 
+        # Popen() returning only means the shell was forked, not that arecord
+        # actually opened the capture device. When the board is off/disconnected,
+        # arecord's ALSA open fails near-instantly and the whole pipeline exits —
+        # without this check, start_recording() reported success regardless, the
+        # UI showed "Recording…", and it silently flipped back to Idle on the
+        # next status poll with no error ever surfaced to the operator. This is
+        # a route handler (sync def), so FastAPI already runs it in a
+        # threadpool — this sleep doesn't block the event loop.
+        time.sleep(0.4)
+        if proc.poll() is not None:
+            for fname in filenames:
+                fpath = out_dir / fname
+                if fpath.exists() and fpath.stat().st_size == 0:
+                    fpath.unlink(missing_ok=True)
+            raise RecordingError(
+                "recording failed to start — check that the PreSonus 32SX is powered on and connected"
+            )
+
         timer = None
         if max_duration_sec and max_duration_sec > 0:
             timer = threading.Timer(max_duration_sec, _auto_stop)

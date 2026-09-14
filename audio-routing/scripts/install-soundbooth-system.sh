@@ -43,6 +43,50 @@ DRIFT=0
 note()  { echo "  $*"; }
 drift() { echo "  DRIFT: $*"; DRIFT=1; }
 
+# The [Install] WantedBy= target(s) an installed unit file currently
+# declares, space-separated (comment lines are not matched — field 1 after
+# splitting on "=" is "# WantedBy", not "WantedBy").
+installed_wanted_by() {
+    local unit_path="$1"
+    [[ -f "$unit_path" ]] || return 0
+    awk -F= '/^\[Install\]/{f=1; next} /^\[/{f=0} f && $1=="WantedBy"{ $1=""; print substr($0,2) }' "$unit_path"
+}
+
+# True if a unit's actual enable symlink(s) under ~/.config/systemd/user/*.wants/
+# match exactly what its installed file's WantedBy= currently declares — no
+# missing symlink, and no stale one left over from a WantedBy= that used to be
+# different. `systemctl show -p UnitFileState` alone can't tell these apart: it
+# reports "enabled" as long as ANY [Install] symlink exists for the unit,
+# regardless of which target it's under. That gap let
+# ffmpeg-capture-watch.service ship a fixed ordering-cycle bug (its WantedBy=
+# changed from graphical-session.target to soundbooth.target) while the live
+# machine kept running on the old graphical-session.target.wants/ symlink —
+# `systemctl enable` was skipped because UnitFileState already read "enabled",
+# so the new symlink was never created and the cycle stayed live (2026-09-13).
+# (Deliberately not using `systemctl show -p WantedBy`: that property also
+# includes any OTHER unit's own Wants= line naming this unit — e.g.
+# soundbooth.target's static Wants= — which is a separate, legitimate
+# mechanism this repo uses alongside [Install] and must not be flagged as
+# drift. Comparing actual .wants/ symlinks against the file's own [Install]
+# section avoids conflating the two.)
+enablement_in_sync() {  # unit installed_unit_path
+    local u="$1" path="$2" wanted target
+    wanted="$(installed_wanted_by "$path")"
+    [[ -z "$wanted" ]] && return 0   # no [Install] section — nothing to check
+    for target in $wanted; do
+        [[ -L "${UNITS}/${target}.wants/${u}" ]] || return 1
+    done
+    local d name found
+    for d in "${UNITS}"/*.wants; do
+        [[ -L "${d}/${u}" ]] || continue
+        name="$(basename "$d")"; name="${name%.wants}"
+        found=0
+        for target in $wanted; do [[ "$name" == "$target" ]] && found=1; done
+        (( found )) || return 1   # symlink under a target no longer in WantedBy=
+    done
+    return 0
+}
+
 # Scripts that live outside audio-routing/scripts, or install under a different
 # name than their source file. "source::installed-name".
 EXTRA_SCRIPTS=(
@@ -132,10 +176,21 @@ if (( ENABLE )); then
     (( CHECK )) || systemctl --user daemon-reload
     for u in "${ENABLE_UNITS[@]}"; do
         state="$(systemctl --user show -p UnitFileState --value "$u" 2>/dev/null)"
-        if [[ "$state" == "enabled" ]]; then continue; fi
-        if (( CHECK )); then drift "not enabled: $u (${state:-missing})"; else
+        if [[ "$state" == "enabled" ]] && enablement_in_sync "$u" "${UNITS}/${u}"; then continue; fi
+        if (( CHECK )); then
+            if [[ "$state" != "enabled" ]]; then
+                drift "not enabled: $u (${state:-missing})"
+            else
+                drift "enabled via a stale symlink, not this unit's current WantedBy=: $u"
+            fi
+        else
+            # disable first so a stale symlink from a prior WantedBy= is removed,
+            # then enable fresh against the just-installed unit file — plain
+            # `enable` alone is a no-op once UnitFileState already says "enabled".
+            systemctl --user disable "$u" >/dev/null 2>&1
             systemctl --user enable "$u" >/dev/null 2>&1 \
-                && note "enabled $u" || drift "could not enable $u"; fi
+                && note "enabled $u" || drift "could not enable $u"
+        fi
     done
     # Assertion, not a courtesy: a boot-enabled relay means every boot goes live.
     for u in "${MUST_NOT_ENABLE[@]}"; do

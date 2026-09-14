@@ -4,6 +4,9 @@ Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
 # Do NOT BindsTo=ffmpeg-capture — first capture crash at boot permanently kills the guard.
 After=ffmpeg-display.service graphical-session.target
 Wants=ffmpeg-display.service
+# Ceiling so this can't crash-loop forever — same convention as ffmpeg-capture.service.
+StartLimitIntervalSec=600
+StartLimitBurst=30
 
 [Service]
 Type=simple

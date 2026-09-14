@@ -3,6 +3,9 @@ Description=Dashboard HDMI preview capture (Livestream feed, via ffmpeg-capture'
 Documentation=file:///home/soundbooth/soundbooth-project/dashboard/README.md
 After=ffmpeg-capture.service graphical-session.target
 Wants=ffmpeg-capture.service
+# Ceiling so this can't crash-loop forever — same convention as ffmpeg-capture.service.
+StartLimitIntervalSec=600
+StartLimitBurst=30
 
 [Service]
 Type=simple

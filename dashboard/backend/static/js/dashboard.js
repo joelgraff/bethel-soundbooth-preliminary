@@ -15,7 +15,7 @@ const HDMI_OUTPUTS = [
 // restarting a service won't fix an unplugged cable or a powered-off camera.
 const SECTION_QUICK_FIX = {
   "audio": { unit: "ensure-audio-routes.service", action: "restart" },
-  "foh-links": { unit: "ensure-audio-routes.service", action: "restart" },
+  "foh-graph": { unit: "ensure-audio-routes.service", action: "restart" },
   "camera-management": { unit: "camera-management.service", action: "restart" },
   "video": { unit: "ffmpeg-display.service", action: "restart" },
   "displays": { unit: "ffmpeg-display.service", action: "restart" },
@@ -71,6 +71,8 @@ function renderHealth(data) {
     : ICONS.checkCircle(32, color);
   sub.textContent = `${data.pass} checks passed · ${data.warn} warning${data.warn === 1 ? "" : "s"} · ${data.fail} failure${data.fail === 1 ? "" : "s"} · updated ${timeAgo(healthLoadedAt)}`;
 
+  issuesEl.classList.remove("stale");
+
   const issues = (data.checks || []).filter((c) => c.level === "WARN" || c.level === "FAIL");
   issuesEl.innerHTML = issues.map((issue) => {
     const iconColor = issue.level === "FAIL" ? "var(--fail)" : "var(--warn)";
@@ -115,10 +117,25 @@ function renderHealthError(err) {
   document.getElementById("health-headline").textContent = "Health check unavailable";
   document.getElementById("health-icon").innerHTML = ICONS.warningTriangle(32, "var(--fail)");
   document.getElementById("health-sub").textContent = err.message || "Could not reach the health check.";
+
+  // The banner above is the only thing this function used to touch — the
+  // detailed issue lists below kept showing whatever they last loaded with no
+  // indication it might no longer be current, which is actively misleading
+  // during exactly the moment (a backend hiccup) an operator needs to trust
+  // this page. Mark them stale instead of leaving them looking live.
+  [document.getElementById("health-issues"), document.getElementById("trbl-issues")].forEach((el) => {
+    if (!el || !el.children.length || el.classList.contains("stale")) return;
+    el.classList.add("stale");
+    const notice = document.createElement("div");
+    notice.className = "stale-notice";
+    notice.textContent = "Health check unavailable — showing last known status.";
+    el.prepend(notice);
+  });
 }
 
 function renderTroubleshooting(issues) {
   const el = document.getElementById("trbl-issues");
+  el.classList.remove("stale");
   if (issues.length === 0) {
     el.innerHTML = `<div style="font-size:12.5px; color:var(--text-muted);">Nothing needs attention.</div>`;
     return;
@@ -139,7 +156,7 @@ function stateOf(svc) {
   if (svc.active_state === "active") return { cls: "good", label: "Running" };
   if (svc.active_state === "activating") return { cls: "warn", label: "Starting" };
   if (svc.active_state === "failed" || svc.result === "exit-code") return { cls: "fail", label: "Failed" };
-  return { cls: "off", label: "Off" };
+  return { cls: "off", label: "Stopped" };
 }
 
 async function loadServices() {
@@ -160,6 +177,10 @@ async function loadServices() {
 function renderServices(data) {
   const listEl = document.getElementById("svc-list");
   const byUnit = latestUnitIndex;
+  // Rebuilding via innerHTML resets scrollTop to 0 — this runs on an 8s poll,
+  // so without saving/restoring it an operator scrolled down to check on a
+  // service below the fold gets snapped back to the top before they can read it.
+  const savedScrollTop = listEl.scrollTop;
 
   let html = "";
   let running = 0, total = 0, anyFail = false, anyOther = false;
@@ -198,6 +219,7 @@ function renderServices(data) {
     });
   });
   listEl.innerHTML = html;
+  listEl.scrollTop = savedScrollTop;
 
   const summaryEl = document.getElementById("svc-summary");
   summaryEl.textContent = `${running} of ${total} running`;

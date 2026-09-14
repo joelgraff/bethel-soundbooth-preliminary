@@ -1,10 +1,9 @@
 """The agent bridge's tool functions — see dashboard/docs/agent-tools.md.
 
-These are plain functions, deliberately not yet wired to a model. When the
-Claude Agent SDK integration is built, each of these gets registered as a
-tool; until then this module exists so the *authority boundary* (what the
-agent may touch) is decided and testable independently of picking an SDK,
-an API key, and a streaming transport.
+Registered as Anthropic tool specs and dispatched by agent.py's AgentBridge
+(a real AsyncAnthropic streaming session behind /ws/agent, not a stub). This
+module exists so the *authority boundary* (what the agent may touch) is
+decided and testable independently of the SDK/streaming plumbing in agent.py.
 
 Every action tool routes through units.check_action_allowed() and, for
 anything the manifest marks "confirm", through confirm.ConfirmStore — the

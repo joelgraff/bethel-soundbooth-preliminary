@@ -3,6 +3,9 @@ Description=Auto-end Subsplash livestream when program camera loses power/networ
 Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
 After=graphical-session.target
 PartOf=soundbooth.target
+# Ceiling so this can't crash-loop forever — same convention as ffmpeg-capture.service.
+StartLimitIntervalSec=600
+StartLimitBurst=30
 
 [Service]
 Type=simple

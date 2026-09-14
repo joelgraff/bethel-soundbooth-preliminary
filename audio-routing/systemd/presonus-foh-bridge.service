@@ -4,6 +4,15 @@ Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
 After=pipewire.service pipewire-pulse.service wireplumber.service virtual-audio.service
 Wants=pipewire.service pipewire-pulse.service virtual-audio.service
 PartOf=soundbooth.target
+# Ceiling so this can't crash-loop forever against an absent/flaky 32SX —
+# same convention as ffmpeg-capture.service/ffmpeg-srt-relay.service. Without
+# it, RestartSec=5 vs systemd's default 10s/5-try limiter never trips, so a
+# board that's off for hours means hours of restart-every-5s log spam. After
+# 30 tries in 10 minutes systemd marks it failed instead of retrying forever;
+# `systemctl --user reset-failed presonus-foh-bridge.service` (or a restart)
+# clears that once the board is back.
+StartLimitIntervalSec=600
+StartLimitBurst=30
 
 [Service]
 Type=simple
