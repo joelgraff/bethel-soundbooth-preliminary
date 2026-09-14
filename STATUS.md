@@ -1,5 +1,63 @@
 # Soundbooth Project — Cross-Session Status
 
+Updated: 2026-09-14 (MacBook workstation formalized; ATEM/switcher replacement research; mixer channel map in progress)
+
+## Current State (2026-09-14 — MacBook formally added to architecture; ATEM switcher research)
+
+- [x] **Decision: MacBook is now part of the documented architecture, as a
+  maintenance-only workstation.** Formalizes what was already true in practice —
+  ATEM Software Control, PreSonus Universal Control, and (optionally) H2R Layouts
+  have no Linux build and run from an old MacBook kept around for exactly this.
+  **Explicitly non-operational**: nothing in `soundbooth.target`, the livestream
+  path, or `livestream-autostart.timer` depends on it. If the Mac is dead or
+  missing on a Sunday, that is expected and does not block a service.
+- [ ] **Not yet merged:** full write-up ready for `SYSTEM-STATE.md` — new section
+  covering role/boundary, the `/dev/video0` USB-contention risk (Mac-side ATEM work
+  must use the network address in `atem.conf`, never USB, while
+  `ffmpeg-capture.service` is running), archived-installer policy, tiered backup
+  strategy, and rebuild steps. Drafted in a planning conversation; needs a human
+  read-through and merge, not a direct paste — verify section numbers/anchors
+  don't collide with existing SYSTEM-STATE.md content before merging.
+- [ ] **First real action item from that doc:** test whether `openswitcher`
+  (`apt install openswitcher`) can read the ATEM's macro pool and SuperSource
+  config over the network (address in `atem.conf`). If yes, ATEM backup can become
+  a scheduled job on the booth PC with **no Mac involved at all** — extend
+  `soundbooth-backup-configs.sh` rather than building something parallel, and
+  deploy any change through `install-soundbooth-system.sh` (not a hand copy, per
+  the existing REBUILD.md caution about stale hardcoded IPs). If OpenSwitcher can't
+  do it, fall back to a `launchd`-pushed folder on the Mac (`~/SoundboothBackups/`)
+  syncing to the booth PC over SSH — push, not pull, since the Mac is the
+  intermittent party.
+- [ ] **Mixer channel map in progress**, from board photos — channels 1–16 and
+  25–32 plus FX returns/aux/tape/talkback captured. **Still needed:** a third
+  photo for channels 17–24. **Needs verification at the board:** channel 26 reads
+  as unlabeled/blank — confirm that's intentional; channels 2 and 4 both read
+  "Ac Gtar" — confirm two acoustic guitar channels is correct and not a misread.
+  Save as `docs/mixer-channel-map.md` once complete.
+- [x] **ATEM switcher replacement explored, no decision made.** Operator dislikes
+  the Extreme's overlay/scene-layout workflow (text-based macro authoring vs.
+  a visual editor) and its livestreaming/networking performance — both already
+  solved on this system by routing livestream through ffmpeg/SRT rather than the
+  ATEM's own encoder, so the networking complaint is largely moot for this booth
+  specifically. Options surfaced: **H2R Layouts** (free graphical SuperSource
+  layout builder, exports ATEM XML macros, native Mac app available given the
+  maintenance workstation decision above) as a way to keep the current ATEM but
+  fix the authoring workflow; **Roland V-80HD/V-160HD** as a hardware alternative
+  with front-panel scene-memory recall (no computer needed to change looks) and a
+  documented ASCII remote-control protocol, at the cost of losing SuperSource-style
+  versionable config; **ATEM Television Studio HD8** as an in-family upgrade that
+  doesn't fix the authoring complaint. No purchase decision — next step if pursued
+  is trying H2R Layouts against the current hardware before spending on new
+  switcher hardware.
+- **Process note for `repo-pointer.md`:** the instruction to "fetch [the repo]
+  before offering architecture opinions" assumes web-fetched GitHub content is
+  current. In this session it repeatedly returned a stale cached copy (same
+  `meta-request-id` across multiple fetches, several days behind actual repo
+  state) with no visible indication it was stale. `project_knowledge_search`
+  against the project's GitHub connector returned correct, current content
+  instead. Worth updating the pointer to check project knowledge first and treat
+  web-fetched repo state as possibly several days stale.
+
 Updated: 2026-09-13 (rebuild reproducibility closed; livestream schedule added)
 
 ## Current State (2026-09-13 — a fresh rebuild now actually reproduces this machine)
