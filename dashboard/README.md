@@ -210,6 +210,55 @@ editing the repo.
   and more reliable for a doc that's mostly tables and code fences, which a
   WYSIWYG table editor tends to mangle.
 
+### Signal-chain diagrams
+
+The third doc on that page (`docs/signal-chain.yaml`) is YAML, not prose: view
+mode renders it as **diagrams**, edit mode is the same raw-text textarea.
+`app/signal_chain.py` turns it into Graphviz DOT and shells out to `dot -Tsvg`.
+
+- **Why Graphviz, not a JS diagramming library.** The hard requirement is
+  *named ports* — a link connects Booth PC's `DP-4` to a specific extender
+  input, not just "the PC to the extender". Graphviz has that natively
+  (`record` / HTML-label ports); Mermaid has no real port primitive. `dot` was
+  already installed here, so this added no dependency — same reasoning as the
+  rest of the dashboard shelling out to `systemctl`/`ffmpeg` rather than
+  pulling in a library.
+- **Node labels are HTML-like, not `record` shapes.** Records give ports but
+  zero styling control, so the device name and its port labels render
+  identically and a node reads as an undifferentiated row of cells.
+- **Port placement follows `rankdir`** — inputs left / outputs right in LR,
+  inputs top / outputs bottom in TB. Get this wrong and every edge arrives on
+  the wrong face of the box and loops around it. Sides are *inferred* from how
+  each port is used across links (only a target → in, only a source → out);
+  `side: in|out|both` on a port overrides that. The override is occasionally
+  needed for a two-way link between two adjacent nodes, where which face
+  should point at the other node depends on final layout position and
+  therefore can't be derived from the data.
+- **One dataset, several sheets.** `diagrams:` maps groups onto sheets (today:
+  Stage, Sound Booth). A link crossing a sheet boundary renders as an
+  off-sheet connector on *both* sides, naming the far device, its far port and
+  which sheet to look at — so neither sheet has a dead-end edge. Deliberately
+  not separate files per sheet: two files drift the moment someone rewires
+  something and updates one of them. Note that port in/out inference runs
+  against the **full** link list, not the per-sheet filtered one — a port
+  whose only connection leaves the sheet would otherwise have nothing to infer
+  from and would land on the wrong face.
+- **`status: needs-verification` renders dashed and faded**, mirroring the
+  NEEDS VERIFICATION markers in `equipment-and-connections.md`, so the diagram
+  never presents an unchecked assumption as fact. Edge color is by `kind`
+  (video/audio/control/network/power); there's a rendered legend.
+- **Validation before render** (`signal_chain.validate`), because Graphviz
+  fails *silently* on the likely mistakes: a typo'd link ref like
+  `presonus.man_out` doesn't error, it invents a blank node and draws an edge
+  to it, so the diagram looks plausible and is wrong. Unknown-key checks also
+  catch the YAML flow-mapping trap — an unquoted comma in
+  `{id: in, label: In (2 ch, mono each)}` silently splits the value and leaves
+  a junk key. Problems surface as a 422 with the offending link/port named,
+  shown in the page as a warning rather than a broken image.
+- Endpoints: `GET /api/signal-chain/sheets`,
+  `GET /api/signal-chain/{sheet_id}/svg?rankdir=TB|LR`. Rendering is
+  on-demand (fast enough at this size that caching would just add staleness).
+
 ## Layout
 
 ```
@@ -236,6 +285,8 @@ dashboard/
       auth.py               — PIN check + session dependency
       docs_editor.py        — read/write for the Reference Docs page's
                                allowlisted physical-reference docs
+      signal_chain.py       — docs/signal-chain.yaml -> Graphviz -> SVG sheets
+                               (named ports, per-sheet off-sheet connectors)
     static/                 — the real frontend (FastAPI serves this directly)
       login.html / index.html / service.html / docs.html
       css/dashboard.css     — shared tokens + components, ported from the mockup

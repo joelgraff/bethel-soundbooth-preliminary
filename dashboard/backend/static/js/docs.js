@@ -89,11 +89,45 @@ function renderView() {
         <div class="doc-empty-title">Not created yet</div>
         <div>${escapeHtml(activeDoc.path)} doesn't exist in the repo yet. Click Edit to start writing it — saving will create it.</div>
       </div>`;
+  } else if (activeDoc.kind === "signal-chain") {
+    renderSignalChain(view);
   } else {
     view.innerHTML = renderMarkdown(activeDoc.content);
   }
   view.style.display = "";
   document.getElementById("doc-edit").style.display = "none";
+}
+
+// The signal-chain doc is YAML, not prose — view mode shows the rendered
+// diagram sheets (Graphviz -> SVG, server side) rather than the source, which
+// is what Edit is for. Each sheet is fetched as its own <img> so a failure in
+// one doesn't blank the others.
+async function renderSignalChain(view) {
+  view.innerHTML = `<div class="doc-empty">Rendering diagram…</div>`;
+  let sheets;
+  try {
+    sheets = (await api.signalChainSheets()).sheets;
+  } catch (err) {
+    view.innerHTML = `
+      <div class="sched-warn" style="white-space:pre-wrap;">${escapeHtml(err.message)}</div>
+      <div style="margin-top:10px; font-size:12.5px; color:var(--text-muted);">
+        Click Edit to fix the YAML.
+      </div>`;
+    return;
+  }
+  const bust = activeDoc.mtime || Date.now();
+  view.innerHTML = sheets.map((s) => `
+    <div class="sigchain-sheet">
+      <div class="sigchain-sheet-head">
+        <span class="section-title">${escapeHtml(s.title)}</span>
+        <a class="btn btn-ghost btn-sm" href="/api/signal-chain/${encodeURIComponent(s.id)}/svg"
+           target="_blank" rel="noopener">Open full size</a>
+      </div>
+      <div class="sigchain-frame">
+        <img class="sigchain-img" alt="${escapeHtml(s.title)} signal chain"
+             src="/api/signal-chain/${encodeURIComponent(s.id)}/svg?v=${bust}">
+      </div>
+    </div>`).join("");
 }
 
 function renderActions() {

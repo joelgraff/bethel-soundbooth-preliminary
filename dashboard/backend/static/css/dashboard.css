@@ -351,6 +351,21 @@ button { font-family: inherit; cursor: pointer; }
 .doc-path { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
 .doc-footnote { font-size: 12px; color: var(--text-faint); line-height: 1.6; padding: 0 4px; }
 
+/* Signal-chain diagram sheets. The SVG is wider than the panel at readable
+   text size, so each sheet scrolls in its own frame rather than being scaled
+   down until the port labels are unreadable; "Open full size" is the escape
+   hatch for tracing a whole path. */
+.sigchain-sheet { margin-bottom: 26px; }
+.sigchain-sheet-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 10px;
+}
+.sigchain-frame {
+  overflow: auto; max-height: 70vh; border: 1px solid var(--border-soft);
+  border-radius: 10px; background: oklch(0.11 0.01 255);
+}
+.sigchain-img { display: block; max-width: none; }
+
 .doc-empty { padding: 30px 4px; color: var(--text-muted); }
 .doc-empty-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
 

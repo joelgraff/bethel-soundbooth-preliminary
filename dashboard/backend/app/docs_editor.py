@@ -31,6 +31,14 @@ _EDITABLE_DOCS: dict[str, dict[str, str]] = {
         "title": "Mixer Channel Map",
         "path": "docs/mixer-channel-map.md",
     },
+    # YAML rather than markdown: the Docs page renders this one as diagrams
+    # (see signal_chain.py) instead of prose, but editing is the same raw-text
+    # flow as any other doc here.
+    "signal-chain": {
+        "title": "Signal Chain (diagram)",
+        "path": "docs/signal-chain.yaml",
+        "kind": "signal-chain",
+    },
 }
 
 
@@ -60,6 +68,7 @@ def list_docs(*, project_dir: Path) -> list[dict]:
             "id": doc_id,
             "title": meta["title"],
             "path": meta["path"],
+            "kind": meta.get("kind", "markdown"),
             "exists": exists,
             "mtime": path.stat().st_mtime if exists else None,
         })
@@ -69,13 +78,14 @@ def list_docs(*, project_dir: Path) -> list[dict]:
 def read_doc(*, project_dir: Path, doc_id: str) -> dict:
     meta = _meta(doc_id)
     path = project_dir / meta["path"]
+    kind = meta.get("kind", "markdown")
     if not path.is_file():
         return {
-            "id": doc_id, "title": meta["title"], "path": meta["path"],
+            "id": doc_id, "title": meta["title"], "path": meta["path"], "kind": kind,
             "exists": False, "content": "", "mtime": None,
         }
     return {
-        "id": doc_id, "title": meta["title"], "path": meta["path"],
+        "id": doc_id, "title": meta["title"], "path": meta["path"], "kind": kind,
         "exists": True, "content": path.read_text(), "mtime": path.stat().st_mtime,
     }
 

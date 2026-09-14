@@ -15,13 +15,14 @@ from pathlib import Path
 from typing import Optional
 
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import agent_tools
 from . import docs_editor
+from . import signal_chain as signal_chain_mod
 from . import livestream_schedule as schedule_mod
 from . import recording as recording_mod
 from .agent import AgentBridge
@@ -300,6 +301,31 @@ def api_docs_save(doc_id: str, body: DocSaveBody, _: None = Depends(require_sess
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except docs_editor.DocsError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.get("/api/signal-chain/sheets")
+def api_signal_chain_sheets(_: None = Depends(require_session)):
+    try:
+        return {"sheets": signal_chain_mod.list_sheets(project_dir=settings.project_dir)}
+    except signal_chain_mod.SignalChainError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+
+@app.get("/api/signal-chain/{sheet_id}/svg")
+def api_signal_chain_svg(sheet_id: str, rankdir: str = "TB",
+                         _: None = Depends(require_session)):
+    if rankdir not in ("TB", "LR"):
+        raise HTTPException(status_code=400, detail="rankdir must be TB or LR")
+    try:
+        svg = signal_chain_mod.render_svg(
+            project_dir=settings.project_dir, sheet_id=sheet_id, rankdir=rankdir
+        )
+    except signal_chain_mod.SignalChainError as exc:
+        # 422, not 500: a YAML typo or a bad link reference is the operator's
+        # own edit, and the message says exactly which line/reference is wrong.
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return Response(content=svg, media_type="image/svg+xml",
+                    headers={"Cache-Control": "no-store"})
 
 
 @app.websocket("/ws/agent")

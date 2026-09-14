@@ -76,6 +76,13 @@ flagged in STATUS.md).
 
 ## 2. Physical signal chain
 
+> **Rendered diagrams:** `docs/signal-chain.yaml` holds this same topology as
+> structured data, rendered as Stage / Sound Booth diagrams on the dashboard's
+> Reference Docs page. That file is the topology source of truth — if it and
+> the prose below ever disagree, one of them is wrong; fix both rather than
+> letting them fork. Links marked `needs-verification` there are the same gaps
+> flagged below.
+
 ### Video path
 
 ```

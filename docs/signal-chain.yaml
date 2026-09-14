@@ -1,0 +1,254 @@
+# Signal chain — structured source for the rendered diagrams on the dashboard's
+# Reference Docs page (Graphviz -> SVG via dashboard/backend/app/signal_chain.py).
+#
+# THIS IS THE TOPOLOGY SOURCE OF TRUTH. docs/equipment-and-connections.md
+# describes the same reality in prose; if the two disagree, one of them is
+# wrong — fix both, don't fork them.
+#
+# status: confirmed        -> documented in SYSTEM-STATE.md / verified live
+# status: needs-verification -> inferred or assumed; NOBODY HAS CHECKED THIS AT
+#                            THE BOOTH. Renders dashed + faded so the diagram
+#                            never presents a guess as fact. Same gaps listed
+#                            in equipment-and-connections.md.
+#
+# Editing notes:
+#   - link refs are "node.port" (or bare "node" for a node with no ports)
+#   - direction: one-way (default arrow) | two-way (arrows both ends)
+#   - kind: video | audio | control | network | power  -> sets edge color
+#   - a port's side (left/right in LR, top/bottom in TB) is inferred from how
+#     it's used; add `side: in|out|both` to a port only to override that, which
+#     is occasionally needed for a two-way link between two adjacent nodes.
+
+diagrams:
+  - id: stage
+    title: Stage
+    groups: [stage]
+  - id: booth
+    title: Sound Booth
+    groups: [booth, foh, sanctuary, maintenance]
+
+groups:
+  - id: stage
+    label: Stage
+  - id: booth
+    label: Booth (rack + PC)
+  - id: foh
+    label: FOH / House Audio
+  - id: sanctuary
+    label: Sanctuary
+  - id: maintenance
+    label: Maintenance (non-operational)
+
+nodes:
+  # ---------------- Stage ----------------
+  - id: stage_sources
+    label: Stage mics / vocals
+    group: stage
+    ports:
+      - {id: out, label: XLR}
+
+  - id: di_box
+    label: Behringer DI (8ch)
+    group: stage
+    ports:
+      - {id: inst_in, label: Instrument in}
+      - {id: out, label: XLR out}
+
+  - id: td27
+    label: Roland TD-27 (V-Drums)
+    group: stage
+    ports:
+      - {id: out, label: Out}
+
+  - id: nsb_a
+    label: NSB 16.8 Stagebox A
+    group: stage
+    ports:
+      - {id: in, label: Mic/line in}
+      - {id: trunk, label: Trunk}
+
+  - id: nsb_b
+    label: NSB 16.8 Stagebox B
+    group: stage
+    ports:
+      - {id: in, label: Mic/line in}
+      - {id: trunk, label: Trunk}
+
+  - id: earmix
+    label: Earmix 16M (x7)
+    group: stage
+    ports:
+      - {id: net_in, label: Network in}
+
+  - id: camera
+    label: PTZOptics PT12X-SDI
+    group: stage
+    ports:
+      - {id: sdi_out, label: SDI Out}
+      - {id: net, label: "LAN (VISCA/RTSP)"}
+
+  - id: stage_monitor
+    label: Stage confidence monitor
+    group: stage
+    ports:
+      - {id: hdmi_in, label: HDMI in}
+
+  # ---------------- Booth ----------------
+  - id: presonus
+    label: PreSonus StudioLive 32SX
+    group: booth
+    ports:
+      - {id: stage_in, label: Stage inputs}
+      - {id: usb, label: "USB (64ch)", side: out}
+      - {id: aux_out, label: Aux / monitor sends}
+      - {id: main_out, label: Main Out L/R}
+      - {id: sub_out, label: Sub Out}
+      - {id: lineout, label: "Analog line-out (ch 32)"}
+
+  - id: atem
+    label: ATEM Mini Extreme
+    group: booth
+    ports:
+      - {id: sdi_in, label: SDI In (program)}
+      - {id: uvc_out, label: UVC / USB}
+      - {id: eth, label: Ethernet (control), side: out}
+
+  - id: pc
+    label: Booth PC
+    group: booth
+    ports:
+      - {id: video0, label: /dev/video0}
+      - {id: usb_presonus, label: "USB → PreSonus"}
+      - {id: lan, label: LAN}
+      - {id: dp1, label: DP-1}
+      - {id: dp2, label: DP-2}
+      - {id: dp3, label: DP-3}
+      - {id: dp4, label: DP-4}
+
+  - id: booth_monitor
+    label: SAM S34CG50 (booth)
+    group: booth
+    ports:
+      - {id: dp_in, label: DP in}
+
+  - id: gofanco_hub
+    label: GoFanco HDMI-over-Cat (hub)
+    group: booth
+    ports:
+      - {id: hdmi_in, label: HDMI in}
+      - {id: cat_out, label: Cat out}
+
+  - id: gofanco_stage_tx
+    label: GoFanco stage TX
+    group: booth
+    ports:
+      - {id: hdmi_in, label: HDMI in}
+      - {id: cat_out, label: Cat out}
+
+  # ---------------- FOH / house audio ----------------
+  - id: crown
+    label: Crown XLS202
+    group: foh
+    ports:
+      - {id: in, label: In}
+      - {id: out, label: Speaker out}
+
+  - id: peavey
+    label: Peavey GPS 2600
+    group: foh
+    ports:
+      - {id: in, label: In}
+      - {id: out, label: Speaker out}
+
+  - id: bose
+    label: Bose 251 (x8)
+    group: foh
+    ports:
+      - {id: in, label: "In (2 ch, mono each)"}   # quote anything containing a comma
+
+  - id: sub
+    label: Subwoofer
+    group: foh
+    ports:
+      - {id: in, label: In}
+
+  # ---------------- Sanctuary ----------------
+  - id: main_screen
+    label: Sanctuary main screen
+    group: sanctuary
+    ports:
+      - {id: hdmi_in, label: HDMI in}
+
+  - id: back_tvs
+    label: Back-of-house TVs (Sony Bravia x2)
+    group: sanctuary
+    ports:
+      - {id: hdmi_in, label: HDMI in}
+
+  # ---------------- Maintenance ----------------
+  - id: macbook
+    label: MacBook
+    group: maintenance
+    ports:
+      - {id: net, label: Wi-Fi / LAN}
+
+links:
+  # ---- Stage audio in ----
+  - {from: stage_sources.out, to: nsb_a.in, direction: one-way, kind: audio,
+     label: "mic lines", status: needs-verification}
+  - {from: di_box.out, to: nsb_a.in, direction: one-way, kind: audio,
+     label: "DI'd instruments", status: needs-verification}
+  - {from: td27.out, to: nsb_b.in, direction: one-way, kind: audio,
+     label: "drum module out", status: needs-verification}
+  - {from: nsb_a.trunk, to: presonus.stage_in, direction: one-way, kind: audio,
+     label: "snake — which channel range?", status: needs-verification}
+  - {from: nsb_b.trunk, to: presonus.stage_in, direction: one-way, kind: audio,
+     label: "snake — which channel range?", status: needs-verification}
+  - {from: presonus.aux_out, to: earmix.net_in, direction: one-way, kind: audio,
+     label: "monitor sends — analog or AVB?", status: needs-verification}
+
+  # ---- House audio out ----
+  - {from: presonus.main_out, to: crown.in, direction: one-way, kind: audio,
+     label: "house L/R", status: needs-verification}
+  - {from: presonus.sub_out, to: peavey.in, direction: one-way, kind: audio,
+     label: "sub feed", status: needs-verification}
+  - {from: crown.out, to: bose.in, direction: one-way, kind: audio,
+     label: "8 speakers / 2 ch", status: needs-verification}
+  - {from: peavey.out, to: sub.in, direction: one-way, kind: audio,
+     status: needs-verification}
+
+  # ---- Software audio return (SYSTEM-STATE: the live FOH path) ----
+  - {from: presonus.usb, to: pc.usb_presonus, direction: two-way, kind: audio,
+     label: "USB return 1-2 via presonus-foh-bridge", status: confirmed}
+
+  # ---- Video / program ----
+  - {from: camera.sdi_out, to: atem.sdi_in, direction: one-way, kind: video,
+     label: "SDI — program feed", status: confirmed}
+  - {from: atem.uvc_out, to: pc.video0, direction: one-way, kind: video,
+     label: "UVC — single opener", status: confirmed}
+  - {from: atem.eth, to: pc.lan, direction: two-way, kind: control,
+     label: "control (atem.conf)", status: confirmed}
+  - {from: camera.net, to: pc.lan, direction: two-way, kind: control,
+     label: "VISCA / RTSP (camera.conf, separate subnet)", status: confirmed}
+
+  # ---- Displays ----
+  - {from: pc.dp1, to: booth_monitor.dp_in, direction: one-way, kind: video,
+     label: "direct", status: confirmed}
+  - {from: pc.dp2, to: gofanco_hub.hdmi_in, direction: one-way, kind: video,
+     label: "FreeShow Primary", status: confirmed}
+  - {from: pc.dp4, to: gofanco_hub.hdmi_in, direction: one-way, kind: video,
+     label: "program (ffplay)", status: confirmed}
+  - {from: pc.dp3, to: gofanco_stage_tx.hdmi_in, direction: one-way, kind: video,
+     label: "FreeShow Stage", status: confirmed}
+  - {from: gofanco_hub.cat_out, to: main_screen.hdmi_in, direction: one-way, kind: video,
+     label: "Cat — which TX/RX pair?", status: needs-verification}
+  - {from: gofanco_hub.cat_out, to: back_tvs.hdmi_in, direction: one-way, kind: video,
+     label: "Cat, up to ~200 ft", status: needs-verification}
+  - {from: gofanco_stage_tx.cat_out, to: stage_monitor.hdmi_in, direction: one-way, kind: video,
+     label: "Cat to stage", status: needs-verification}
+
+  # ---- Maintenance workstation (never in the operational path) ----
+  - {from: macbook.net, to: atem.eth, direction: two-way, kind: control,
+     label: "ATEM Software Control — network only, never USB", status: needs-verification}
+  - {from: macbook.net, to: presonus.usb, direction: two-way, kind: control,
+     label: "Universal Control", status: needs-verification}

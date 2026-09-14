@@ -68,6 +68,7 @@ const api = {
   docsSave: (id, content, expectedMtime) => apiFetch(`/api/docs/${encodeURIComponent(id)}`, {
     method: "POST", body: JSON.stringify({ content, expected_mtime: expectedMtime ?? null }),
   }),
+  signalChainSheets: () => apiFetch("/api/signal-chain/sheets"),
 };
 
 // Booth-PC-only bootstrap: start-booth-dashboard-view.sh launches the local
