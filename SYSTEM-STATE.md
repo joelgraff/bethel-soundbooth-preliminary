@@ -15,6 +15,11 @@ Ubuntu Linux PC in the church soundbooth: presentation, capture, recording, and 
 
 ## Hardware (summary)
 
+**Full equipment inventory + physical signal chain (what plugs into what):**
+`docs/equipment-and-connections.md` — this table is just the pieces the
+software directly touches. Mixer channel assignments: `docs/mixer-channel-map.md`
+(in progress).
+
 | Item | Detail |
 |------|--------|
 | PC | ASRock B450M Pro4, Ryzen 5 3600X, ~40 GB RAM |
@@ -22,7 +27,7 @@ Ubuntu Linux PC in the church soundbooth: presentation, capture, recording, and 
 | Mixer | PreSonus StudioLive 32SX (USB) — power on before/with boot |
 | Capture | Blackmagic **ATEM Mini Extreme** (UVC → `/dev/video0`, Pulse audio slave; Ethernet control IP in `~/.config/soundbooth/atem.conf`, not tracked in git) |
 | Network camera (health) | PTZOptics **PT12X-SDI-xx-G2** — IP in `~/.config/soundbooth/camera.conf`, not tracked in git (separate subnet from the ATEM's control network) |
-| Stagebox / monitors | NSB 16.8 (2), Earmix 16M (7), etc. (see `~/booth_ai/booth-context.md`) |
+| Stagebox / monitors | NSB 16.8 (2), Earmix 16M (7), etc. (full detail: `docs/equipment-and-connections.md`) |
 | Sanctuary displays | 85" Sony Bravia (2) + stage TV + outside monitors |
 | HDMI extension | **GoFanco 1080p HDMI-over-Cat** multi-port + single stage TX (2020). Longest run ~**200 ft**. Plan: HDBaseT (e.g. Monoprice Blackbird) on locked Cat; fiber where new cable can be pulled. |
 
@@ -287,7 +292,8 @@ case they're ever wanted again — reinstate via
 ~/bin/                    # live scripts used by services — INSTALLED FROM THE REPO,
                           # not hand-edited: audio-routing/scripts/install-soundbooth-system.sh
                           # (`--check` reports drift read-only; safe on a running booth)
-~/booth_ai/booth-context.md  # older hardware notes (supplement)
+~/booth_ai/booth-context.md  # SUPERSEDED by docs/equipment-and-connections.md (not in git,
+                          # stale since May 2026 — kept only until the new doc is verified)
 ```
 
 Config backup: `~/bin/soundbooth-backup-configs.sh`
