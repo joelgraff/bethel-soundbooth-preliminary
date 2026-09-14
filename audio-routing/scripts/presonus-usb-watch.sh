@@ -49,6 +49,8 @@ LOOPBACK_CHECK="${PRESONUS_WATCH_LOOPBACK_CHECK:-$HOME/bin/presonus-loopback-che
 STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/soundbooth-presonus-usb-watch"
 mkdir -p "$STATE_DIR"
 RESTART_LOG="${STATE_DIR}/restarts.log"
+# shellcheck disable=SC1091
+source "$(dirname "${BASH_SOURCE[0]}")/soundbooth-watch-lib.sh"
 
 log() { echo "[presonus-usb-watch $(date +%H:%M:%S)] $*"; }
 
@@ -62,21 +64,6 @@ card_num() {
     aplay -l 2>/dev/null | grep -oP 'card \K[0-9]+(?=.*S32SX)' | head -1
 }
 
-count_restarts_last_hour() {
-    local cutoff now
-    now=$(date +%s)
-    cutoff=$((now - 3600))
-    [[ -f "$RESTART_LOG" ]] || { echo 0; return; }
-    awk -v c="$cutoff" '$1 >= c { n++ } END { print n+0 }' "$RESTART_LOG"
-}
-
-record_restart() {
-    date +%s >> "$RESTART_LOG"
-    if [[ -f "$RESTART_LOG" ]] && [[ "$(wc -l < "$RESTART_LOG")" -gt 200 ]]; then
-        tail -n 100 "$RESTART_LOG" > "${RESTART_LOG}.tmp" && mv "${RESTART_LOG}.tmp" "$RESTART_LOG"
-    fi
-}
-
 do_restart() {
     local reason="$1" now n
     if [[ "${PRESONUS_WATCH_DISABLE:-0}" == "1" ]]; then
@@ -88,7 +75,7 @@ do_restart() {
         log "debounced (${MIN_GAP}s) — $reason"
         return
     fi
-    n=$(count_restarts_last_hour)
+    n=$(count_restarts_last_hour "$RESTART_LOG")
     if (( n >= MAX_HOUR )); then
         log "MAX restarts/hour (${MAX_HOUR}) reached — NOT restarting ($reason)." \
             "This almost certainly needs a physical power-cycle of the board, not another software restart."
@@ -97,7 +84,7 @@ do_restart() {
     log "restarting presonus-foh-bridge (${reason}) [hour count $((n + 1))/${MAX_HOUR}]"
     if systemctl --user restart presonus-foh-bridge.service; then
         LAST_RESTART=$now
-        record_restart
+        record_restart "$RESTART_LOG"
     else
         log "ERROR: systemctl restart presonus-foh-bridge failed"
     fi
@@ -119,14 +106,6 @@ RESET_MIN_GAP="${PRESONUS_WATCH_RESET_MIN_GAP_SEC:-300}"
 RESET_MAX_HOUR="${PRESONUS_WATCH_MAX_RESETS_PER_HOUR:-3}"
 RESET_LOG="${STATE_DIR}/resets.log"
 RESET_UNAVAILABLE_LOGGED=false
-
-count_resets_last_hour() {
-    local cutoff now
-    now=$(date +%s)
-    cutoff=$((now - 3600))
-    [[ -f "$RESET_LOG" ]] || { echo 0; return; }
-    awk -v c="$cutoff" '$1 >= c { n++ } END { print n+0 }' "$RESET_LOG"
-}
 
 # Both halves must be present: the unprivileged orchestrator AND the sudo
 # grant for the privileged helper. Checking only the former would report the
@@ -162,7 +141,7 @@ do_usb_reset() {
     if [[ -n "${LAST_RESET:-}" ]] && (( now - LAST_RESET < RESET_MIN_GAP )); then
         return   # silent: this is checked every poll, don't spam the journal
     fi
-    n=$(count_resets_last_hour)
+    n=$(count_restarts_last_hour "$RESET_LOG")
     if (( n >= RESET_MAX_HOUR )); then
         log "MAX USB resets/hour (${RESET_MAX_HOUR}) reached — NOT resetting ($reason)." \
             "The board needs a physical power-cycle."

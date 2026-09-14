@@ -24,25 +24,10 @@ MAX_HOUR="${FFMPEG_SRT_WATCH_MAX_PER_HOUR:-8}"
 STATE_DIR="${XDG_RUNTIME_DIR:-/tmp}/soundbooth-ffmpeg-srt-watch"
 mkdir -p "$STATE_DIR"
 RESTART_LOG="${STATE_DIR}/restarts.log"
+# shellcheck disable=SC1091
+source "$(dirname "${BASH_SOURCE[0]}")/soundbooth-watch-lib.sh"
 
 log() { echo "[ffmpeg-srt-watch $(date +%H:%M:%S)] $*"; }
-
-count_restarts_last_hour() {
-    local cutoff now
-    now=$(date +%s)
-    cutoff=$((now - 3600))
-    [[ -f "$RESTART_LOG" ]] || { echo 0; return; }
-    # one unix timestamp per line
-    awk -v c="$cutoff" '$1 >= c { n++ } END { print n+0 }' "$RESTART_LOG"
-}
-
-record_restart() {
-    date +%s >> "$RESTART_LOG"
-    # keep log small
-    if [[ -f "$RESTART_LOG" ]] && [[ "$(wc -l < "$RESTART_LOG")" -gt 200 ]]; then
-        tail -n 100 "$RESTART_LOG" > "${RESTART_LOG}.tmp" && mv "${RESTART_LOG}.tmp" "$RESTART_LOG"
-    fi
-}
 
 do_restart() {
     local reason="$1"
@@ -64,7 +49,7 @@ do_restart() {
         return
     fi
 
-    n=$(count_restarts_last_hour)
+    n=$(count_restarts_last_hour "$RESTART_LOG")
     if (( n >= MAX_HOUR )); then
         log "MAX restarts/hour (${MAX_HOUR}) reached — NOT restarting ($reason). Fix network/Subsplash or: systemctl --user restart ffmpeg-srt-relay"
         return
@@ -73,7 +58,7 @@ do_restart() {
     log "SRT hang/failure detected — restarting ffmpeg-srt-relay ($reason) [hour count $((n + 1))/${MAX_HOUR}]"
     if systemctl --user restart ffmpeg-srt-relay.service; then
         LAST_RESTART=$now
-        record_restart
+        record_restart "$RESTART_LOG"
         log "restart issued OK"
     else
         log "ERROR: systemctl restart ffmpeg-srt-relay failed"

@@ -201,13 +201,22 @@ class AgentBridge:
             note = (f"[Dashboard] The operator confirmed {action} {unit} but it "
                     f"failed: {detail or 'unknown error'}.")
 
-        if self._turn_lock.locked():
-            # A turn is already running (unusual — the operator clicked while
-            # the agent was mid-thought). Just record it; the agent will see
-            # it on the next turn.
-            self._messages.append({"role": "user", "content": note})
-            await self._broadcast({"type": "system", "text": note})
-            return
+        # Always go through the lock, even if a turn is already running
+        # (the operator can click Confirm on a different connection than the
+        # one that's mid-turn — this is a multi-viewer shared session, see
+        # the module docstring). The previous code special-cased that as
+        # "just append and let the agent see it next turn" without taking
+        # the lock — but self._messages is also being mutated concurrently
+        # inside _run_turn()'s tool-call loop (assistant tool_use appended,
+        # then each tool executed with awaits in between, then the matching
+        # tool_result appended). An unlocked append landing in that window
+        # inserts a plain user turn between an assistant's tool_use and its
+        # required tool_result, which the Anthropic API rejects on the next
+        # call — and even when it didn't race, no new turn was ever
+        # triggered for the note, so it could sit unseen until some other
+        # message happened to prompt the model again. Waiting for the lock
+        # here just means the note is appended (and a fresh turn started for
+        # it) right after the in-flight turn finishes, instead of racing it.
         async with self._turn_lock:
             self._messages.append({"role": "user", "content": note})
             await self._broadcast({"type": "system", "text": note})

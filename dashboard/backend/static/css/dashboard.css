@@ -216,13 +216,22 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ---- troubleshooting ---- */
 .trbl-card { padding: 20px; display: flex; flex-direction: column; gap: 16px; height: 460px; }
-.issue-row { display: flex; align-items: flex-start; gap: 10px; border-radius: 10px; padding: 12px; }
+/* Compact index into the Attention Needed banner, not a second full copy of
+   it — align: center + a single-line issue-sub (below) keep each row short;
+   clicking one scrolls to and flashes the matching full-detail row above. */
+.issue-row { display: flex; align-items: center; gap: 10px; border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+.issue-row:hover { filter: brightness(1.15); }
 .issue-row.warn { background: var(--warn-bg); border: 1px solid var(--warn-border); }
 .issue-row.fail { background: var(--fail-bg); border: 1px solid var(--fail-border); }
-.issue-row svg { flex-shrink: 0; margin-top: 1px; }
-.issue-body { flex: 1; }
+.issue-row svg { flex-shrink: 0; }
+.issue-body { flex: 1; min-width: 0; }
 .issue-title { font-size: 12.5px; font-weight: 600; }
-.issue-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+.issue-sub {
+  font-size: 11px; color: var(--text-muted); margin-top: 1px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+@keyframes flash-highlight-kf { 0%, 100% { background: var(--surface); } 30% { background: var(--surface-3); } }
+.flash-highlight { animation: flash-highlight-kf 1.5s ease-out; }
 .log-picker { display: flex; gap: 8px; align-items: center; }
 .log-picker select {
   /* min-width:0 overrides the flex item's default content-based minimum —

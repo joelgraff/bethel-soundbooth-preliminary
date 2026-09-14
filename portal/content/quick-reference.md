@@ -1,5 +1,19 @@
 # Soundbooth Quick Reference
 
+## Start here: the Control Dashboard
+
+Day-to-day operation — health at a glance, restart a stuck service, start/stop the livestream,
+HDMI previews, the Sunday auto-start schedule, board recording — is a **web dashboard**, not a
+terminal:
+
+- **At the booth:** already open on its own workspace — switch with **Super+Page_Down**
+  (or Super+Alt+2).
+- **From another device on the soundbooth Wi-Fi:** `http://<booth PC's address>:8420/`, then
+  the PIN.
+
+Everything below this point is the command-line fallback — for when the dashboard itself is
+down, or for something it doesn't cover yet (see `dashboard/README.md` for what it does cover).
+
 ## Golden Rule (Audio)
 **Every app that makes sound goes to the Presonus 32SX board by default** (via the **Mixer** virtual sink).
 

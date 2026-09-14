@@ -15,16 +15,35 @@
 <p><strong>Local only</strong> — for church sound &amp; presentation volunteers.</p>
 
 <div class="card">
+<h2>Start here: the Control Dashboard</h2>
+<p>For day-to-day operation (health at a glance, restart a stuck service, start/stop the
+livestream, check HDMI previews, set the Sunday auto-start time, record the board), use the
+<strong>web dashboard</strong> — it's built for this and needs no terminal.</p>
+<ul>
+  <li><strong>At the booth:</strong> already open — switch to it with <strong>Super+Page_Down</strong>
+  (or Super+Alt+2).</li>
+  <li><strong>From another device on the soundbooth Wi-Fi:</strong> open
+  <code>http://&lt;booth PC's address&gt;:8420/</code> and enter the PIN.</li>
+</ul>
+<p>The rest of this page and <code>content/quick-reference.md</code> are the terminal/command
+fallback — for when the dashboard itself is down, or for anything it doesn't cover yet.</p>
+</div>
+
+<div class="card">
 <h2>Golden Rule</h2>
 <p><strong>Any app that produces audio goes to the Presonus 32SX board.</strong></p>
-<p><strong>Exception:</strong> VLC is sent to the HDMI TVs (deliberate).</p>
+<p><strong>Exception:</strong> the program feed (sanctuary TV + livestream) goes to the HDMI TV
+instead of the board (deliberate). Manual VLC playback is fine but is not part of that path.</p>
 </div>
 
 <div class="card">
 <h2>Quick Checks</h2>
 <ul>
+  <li>Health banner red or yellow on the dashboard? Read the message there first — most issues
+  say exactly what to do.</li>
   <li>Spotify or browser playing? It should be audible on FOH / visible on the board.</li>
-  <li>Use <code>~/bin/ensure-audio-routes.sh</code> if something is missing.</li>
+  <li>Use <code>~/bin/ensure-audio-routes.sh</code> if something is missing (or the dashboard's
+  "Restart Audio Routing" quick action).</li>
   <li>Open qpwgraph to see the graph.</li>
 </ul>
 </div>
@@ -32,6 +51,7 @@
 <div class="card">
 <h2>Key Files (in soundbooth-project/)</h2>
 <ul>
+  <li><code>dashboard/</code> — the web control dashboard (start here — see above)</li>
   <li><code>audio-routing/</code> — rules and scripts for automatic routing</li>
   <li><code>replicability/</code> — how to rebuild everything from a fresh Ubuntu install</li>
   <li><code>portal/content/</code> — source for this portal and more docs</li>

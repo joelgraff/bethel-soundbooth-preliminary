@@ -10,15 +10,23 @@ const HDMI_OUTPUTS = [
   { display: "DP-3", name: "DP-3 · FreeShow Stage", role: "Stage confidence monitor" },
 ];
 
-// Best-effort mapping from a health-check "section" to a real quick-fix
-// action. Left out entirely (no button) for anything hardware/network —
-// restarting a service won't fix an unplugged cable or a powered-off camera.
+// Best-effort mapping from a health-check "section" (the exact strings
+// soundbooth-health.sh's log_result calls use — verified against
+// audio-routing/scripts/soundbooth-health.sh, not guessed) to a real
+// quick-fix action. Left out entirely (no button) for anything hardware/
+// network — restarting a service won't fix an unplugged cable or a
+// powered-off camera. Two of these keys were silently dead until this
+// review (never matched a real section name, so their buttons never
+// rendered): "camera-management" should have been "camera-mgmt", and
+// "displays" — meant for xrandr/monitor-connectivity checks, which are
+// hardware-only (no monitor detected, connector down, XAUTHORITY unset) —
+// was removed rather than renamed, since restarting ffmpeg-display.service
+// genuinely can't fix any of those, matching the principle above.
 const SECTION_QUICK_FIX = {
   "audio": { unit: "ensure-audio-routes.service", action: "restart" },
   "foh-graph": { unit: "ensure-audio-routes.service", action: "restart" },
-  "camera-management": { unit: "camera-management.service", action: "restart" },
+  "camera-mgmt": { unit: "camera-management.service", action: "restart" },
   "video": { unit: "ffmpeg-display.service", action: "restart" },
-  "displays": { unit: "ffmpeg-display.service", action: "restart" },
 };
 
 let latestServicesResponse = null;
@@ -78,7 +86,7 @@ function renderHealth(data) {
     const iconColor = issue.level === "FAIL" ? "var(--fail)" : "var(--warn)";
     const fix = SECTION_QUICK_FIX[issue.section];
     return `
-      <div class="health-issue">
+      <div class="health-issue" id="health-issue-${escapeHtml(issue.section)}">
         <div style="display:flex; align-items:center; gap:12px;">
           ${ICONS.warningTriangle(18, iconColor)}
           <div style="font-size:13.5px;"><span class="mono" style="color:var(--text-faint); font-size:11px;">${escapeHtml(issue.section)}</span> &nbsp;${escapeHtml(issue.message)}</div>
@@ -140,14 +148,29 @@ function renderTroubleshooting(issues) {
     el.innerHTML = `<div style="font-size:12.5px; color:var(--text-muted);">Nothing needs attention.</div>`;
     return;
   }
+  // A compact index, not a second full copy of "Attention Needed" above (same
+  // full message + Quick Fix button already live there — repeating both here
+  // was pure duplication). issue-sub is single-line/truncated by CSS; the full
+  // message is still in the title tooltip, and a click jumps to and briefly
+  // highlights the matching row up top rather than repeating it.
   el.innerHTML = issues.map((issue) => `
-    <div class="issue-row ${issue.level === "FAIL" ? "fail" : "warn"}">
-      ${ICONS.warningTriangle(16, issue.level === "FAIL" ? "var(--fail)" : "var(--warn)")}
+    <div class="issue-row ${issue.level === "FAIL" ? "fail" : "warn"}" data-jump-section="${escapeHtml(issue.section)}" title="${escapeHtml(issue.message)}">
+      ${ICONS.warningTriangle(14, issue.level === "FAIL" ? "var(--fail)" : "var(--warn)")}
       <div class="issue-body">
         <div class="issue-title">${escapeHtml(issue.section)}</div>
         <div class="issue-sub">${escapeHtml(issue.message)}</div>
       </div>
     </div>`).join("");
+
+  el.querySelectorAll("[data-jump-section]").forEach((row) => {
+    row.addEventListener("click", () => {
+      const target = document.getElementById(`health-issue-${row.dataset.jumpSection}`);
+      if (!target) return;
+      target.scrollIntoView({ behavior: "smooth", block: "center" });
+      target.classList.add("flash-highlight");
+      setTimeout(() => target.classList.remove("flash-highlight"), 1500);
+    });
+  });
 }
 
 // ---------- Services ----------
