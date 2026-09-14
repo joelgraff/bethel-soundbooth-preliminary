@@ -150,6 +150,15 @@ do_usb_reset() {
     fi
     log "ESCALATING to USB reset (${reason}) [hour count $((n + 1))/${RESET_MAX_HOUR}]"
     LAST_RESET=$now
+    # Record the attempt itself (not gated on the helper's exit code, same as
+    # LAST_RESET above) — the reset attempt is the disruptive action being
+    # capped at RESET_MAX_HOUR/hour, not just successful ones. This was
+    # previously missing entirely: RESET_LOG was read by the hourly-cap check
+    # above but never written anywhere in this script, so `n` was always 0
+    # and the "MAX USB resets/hour" branch could never trigger — only
+    # RESET_MIN_GAP's 300s debounce actually bounded reset frequency (up to
+    # ~12/h, not the documented 3/h).
+    record_restart "$RESET_LOG"
     local out rc
     out="$("$RESET_HELPER_CALLER" --quiet 2>&1)"; rc=$?
     while IFS= read -r line; do [[ -n "$line" ]] && log "  $line"; done <<< "$out"
