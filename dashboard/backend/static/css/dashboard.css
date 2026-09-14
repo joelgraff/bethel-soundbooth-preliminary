@@ -330,3 +330,78 @@ button { font-family: inherit; cursor: pointer; }
   border: 1px solid var(--warn-border, rgba(220, 160, 40, 0.4));
   color: var(--warn, #d8a53a);
 }
+
+/* ---- reference docs (docs.html) ---- */
+.doc-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+.doc-tab {
+  background: var(--surface); border: 1px solid var(--border-soft); color: var(--text-muted);
+  border-radius: 10px; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; gap: 8px;
+}
+.doc-tab:hover { border-color: var(--accent-border); color: var(--text); }
+.doc-tab.active { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
+.doc-tab-badge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  background: var(--neutral-bg); border: 1px solid var(--neutral-border); color: var(--neutral);
+  padding: 2px 7px; border-radius: 20px;
+}
+.doc-card { padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+.doc-toolbar { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.doc-toolbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.doc-path { font-size: 12px; color: var(--text-faint); margin-top: 2px; }
+.doc-footnote { font-size: 12px; color: var(--text-faint); line-height: 1.6; padding: 0 4px; }
+
+.doc-empty { padding: 30px 4px; color: var(--text-muted); }
+.doc-empty-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+
+.doc-textarea {
+  width: 100%; min-height: 60vh; resize: vertical; background: oklch(0.11 0.01 255);
+  border: 1px solid var(--border-soft); border-radius: 10px; color: var(--text);
+  padding: 16px; font-size: 12.5px; line-height: 1.7; outline: none;
+}
+.doc-textarea:focus { border-color: var(--accent-border); }
+
+/* Rendered markdown — this project's docs are dense (headers, tables, fenced
+   ASCII diagrams, wrapped lists), so these rules cover exactly that shape
+   rather than being a general prose stylesheet. */
+.doc-rendered { font-size: 13.5px; line-height: 1.7; color: var(--text); }
+.doc-rendered h1, .doc-rendered h2, .doc-rendered h3, .doc-rendered h4 {
+  font-weight: 800; margin: 26px 0 10px; line-height: 1.3;
+}
+.doc-rendered h1:first-child, .doc-rendered h2:first-child, .doc-rendered h3:first-child { margin-top: 0; }
+.doc-rendered h1 { font-size: 22px; }
+.doc-rendered h2 { font-size: 18px; padding-top: 14px; border-top: 1px solid var(--border-soft); }
+.doc-rendered h2:first-child { border-top: none; padding-top: 0; }
+.doc-rendered h3 { font-size: 15px; color: var(--text-muted); }
+.doc-rendered h4 { font-size: 13.5px; color: var(--text-muted); }
+.doc-rendered p { margin: 0 0 12px; color: var(--text-muted); }
+.doc-rendered strong { color: var(--text); font-weight: 700; }
+.doc-rendered code {
+  font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: .92em;
+  background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 4px;
+  padding: 1px 5px;
+}
+.doc-rendered pre {
+  background: oklch(0.11 0.01 255); border: 1px solid var(--border-soft); border-radius: 10px;
+  padding: 14px 16px; overflow-x: auto; margin: 0 0 14px;
+}
+.doc-rendered pre code {
+  background: none; border: none; padding: 0; font-size: 12px; line-height: 1.6; color: var(--text-muted);
+}
+.doc-rendered ul, .doc-rendered ol { margin: 0 0 14px; padding-left: 22px; color: var(--text-muted); }
+.doc-rendered li { margin-bottom: 6px; }
+.doc-rendered blockquote {
+  margin: 0 0 14px; padding: 10px 16px; border-left: 3px solid var(--accent-border);
+  background: var(--surface-2); border-radius: 0 8px 8px 0; color: var(--text-muted);
+}
+.doc-rendered hr { border: none; border-top: 1px solid var(--border-soft); margin: 22px 0; }
+.doc-rendered a { color: var(--accent); }
+.doc-rendered table {
+  width: 100%; border-collapse: collapse; margin: 0 0 16px; font-size: 12.5px;
+  overflow-x: auto; display: block;
+}
+.doc-rendered th, .doc-rendered td {
+  border: 1px solid var(--border-soft); padding: 8px 12px; text-align: left; vertical-align: top;
+}
+.doc-rendered th { background: var(--surface-2); color: var(--text); font-weight: 700; white-space: nowrap; }
+.doc-rendered td { color: var(--text-muted); }

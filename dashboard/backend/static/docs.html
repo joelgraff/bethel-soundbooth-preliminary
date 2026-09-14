@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reference Docs · Soundbooth Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+<div class="page" style="max-width:1100px;">
+
+  <div class="breadcrumb">
+    <a href="/index.html" style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-weight:600;" id="back-link"></a>
+  </div>
+
+  <div class="header">
+    <div class="brand">
+      <div class="brand-mark" id="docs-icon"></div>
+      <div>
+        <div class="brand-title">Reference Docs</div>
+        <div class="brand-sub">Equipment, physical connections, and mixer configuration</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="doc-tabs" id="doc-tabs"></div>
+
+  <div class="card doc-card">
+    <div class="doc-toolbar">
+      <div>
+        <div class="section-title" id="doc-title">Loading…</div>
+        <div class="mono doc-path" id="doc-path">&nbsp;</div>
+      </div>
+      <div class="doc-toolbar-actions" id="doc-actions"></div>
+    </div>
+    <div id="doc-conflict-warn" class="sched-warn" style="display:none;"></div>
+    <div id="doc-view" class="doc-rendered"></div>
+    <textarea id="doc-edit" class="doc-textarea mono" style="display:none;" spellcheck="false"></textarea>
+  </div>
+
+  <div class="doc-footnote">
+    Saving writes directly to the file in the project's git working tree — same as any other
+    uncommitted change in this repo. It is <strong>not</strong> committed automatically; that stays
+    a deliberate step (ask a Claude Code session, or <span class="mono">git commit</span> directly).
+  </div>
+
+</div>
+
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script src="/js/api.js"></script>
+<script src="/js/icons.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/markdown.js"></script>
+<script src="/js/docs.js"></script>
+</body>
+</html>

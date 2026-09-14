@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import agent_tools
+from . import docs_editor
 from . import livestream_schedule as schedule_mod
 from . import recording as recording_mod
 from .agent import AgentBridge
@@ -266,6 +267,39 @@ def api_schedule_arm(body: ScheduleArmBody, _: None = Depends(require_session)):
         )
     except schedule_mod.ScheduleError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+class DocSaveBody(BaseModel):
+    content: str
+    expected_mtime: Optional[float] = None
+
+
+@app.get("/api/docs")
+def api_docs_list(_: None = Depends(require_session)):
+    return {"docs": docs_editor.list_docs(project_dir=settings.project_dir)}
+
+
+@app.get("/api/docs/{doc_id}")
+def api_docs_get(doc_id: str, _: None = Depends(require_session)):
+    try:
+        return docs_editor.read_doc(project_dir=settings.project_dir, doc_id=doc_id)
+    except docs_editor.DocsError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@app.post("/api/docs/{doc_id}")
+def api_docs_save(doc_id: str, body: DocSaveBody, _: None = Depends(require_session)):
+    try:
+        return docs_editor.write_doc(
+            project_dir=settings.project_dir,
+            doc_id=doc_id,
+            content=body.content,
+            expected_mtime=body.expected_mtime,
+        )
+    except docs_editor.DocsConflictError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except docs_editor.DocsError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
 @app.websocket("/ws/agent")

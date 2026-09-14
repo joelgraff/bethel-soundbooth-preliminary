@@ -161,6 +161,55 @@ import -window "$WID" /tmp/dash.png       # ImageMagick
 where X11 capture tools can't see it at all. Size the window taller than the page and
 crop afterwards — synthetic scroll and key events do not reach these windows reliably.
 
+## Reference Docs page (`docs.html`)
+
+View/edit surface for the project's physical reference docs — currently
+`docs/equipment-and-connections.md` and `docs/mixer-channel-map.md` — reached
+via the "Reference Docs" link in the main dashboard header. Built because
+neither of those is software/service state; they're physical-world catalogs
+(equipment, cabling, mixer channel assignments) that need updating by whoever
+is standing at the booth with a cable in hand, not just by an AI session
+editing the repo.
+
+- Backend: `app/docs_editor.py`, endpoints `GET /api/docs` (list), `GET
+  /api/docs/{id}` (read), `POST /api/docs/{id}` (write). Fixed allowlist
+  (`_EDITABLE_DOCS`) mapping a short id to a path under `settings.project_dir`
+  — same "not arbitrary filesystem access" principle as `units_manifest.json`
+  for services and `resolve_recording_path` for recordings. Add a doc by
+  adding an entry there, not by accepting a client-supplied path.
+- **Writes go straight to the file in the repo's git working tree** — the
+  same place a Claude Code session editing this repo would write, since the
+  dashboard already runs from a checkout of it (see `WorkingDirectory=` in
+  `dashboard/systemd/soundbooth-dashboard.service`). **Not auto-committed**:
+  saving is a normal uncommitted working-tree change until someone runs
+  `git commit` on it deliberately, same as any other edit to this repo.
+  The page says this in its own footnote so it isn't a surprise.
+- **Conflict guard, not locking:** every read returns the file's `mtime`; a
+  save round-trips it as `expected_mtime` and the backend rejects (409) if
+  the file changed on disk since — e.g. a Claude Code session edited the same
+  doc while this page had it open for editing. The frontend shows the 409 as
+  a warning banner and leaves the edit open (nothing is lost) rather than
+  silently overwriting the newer version. Verified live: edited a doc on disk
+  out from under an open browser edit and confirmed the save was refused and
+  the file wasn't clobbered.
+- A doc that doesn't exist yet (e.g. `mixer-channel-map.md`, not created as
+  of 2026-09-14) shows an explicit "not created yet" state instead of an
+  error — clicking Edit starts it from empty, and saving creates the file
+  (including any missing parent directory).
+- Rendering: `js/markdown.js`, a small hand-rolled markdown→HTML converter
+  (headers, tables, bold/inline code, fenced code blocks, ordered/unordered
+  lists with wrapped continuation lines, blockquotes, hr, links) — covers
+  what this project's docs actually use rather than being a full CommonMark
+  implementation. Deliberately **not** a CDN-loaded library: this is a
+  LAN/offline-first booth tool, so it doesn't gain an external dependency for
+  something a few hundred lines of vanilla JS covers. The ASCII box-diagrams
+  already in `equipment-and-connections.md` render as monospace `<pre>`
+  blocks — a real graphical (SVG) signal-chain diagram is a natural next
+  step if wanted, but text/ASCII was agreed as a reasonable first cut.
+- Edit is a raw-markdown `<textarea>`, not a rich/WYSIWYG editor — simpler
+  and more reliable for a doc that's mostly tables and code fences, which a
+  WYSIWYG table editor tends to mangle.
+
 ## Layout
 
 ```
@@ -185,13 +234,16 @@ dashboard/
       agent.py             — AgentBridge: the one shared Claude session behind
                               /ws/agent (streaming loop, tool dispatch, staging)
       auth.py               — PIN check + session dependency
+      docs_editor.py        — read/write for the Reference Docs page's
+                               allowlisted physical-reference docs
     static/                 — the real frontend (FastAPI serves this directly)
-      login.html / index.html / service.html
+      login.html / index.html / service.html / docs.html
       css/dashboard.css     — shared tokens + components, ported from the mockup
       js/api.js             — fetch wrapper (same-origin, redirects to login on 401)
       js/icons.js            — inline SVG icon set (no icon font)
       js/ui.js                — shared confirm-modal / toast helpers
-      js/dashboard.js, service.js, login.js — per-page logic
+      js/markdown.js          — small dependency-free markdown → HTML renderer
+      js/dashboard.js, service.js, login.js, docs.js — per-page logic
     requirements.txt
     dashboard.conf.example
     run.py                 — systemd entrypoint (binds host/port from config)

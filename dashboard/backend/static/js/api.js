@@ -63,6 +63,11 @@ const api = {
   scheduleArm: (armed) => apiFetch("/api/livestream/schedule/arm", {
     method: "POST", body: JSON.stringify({ armed: !!armed }),
   }),
+  docsList: () => apiFetch("/api/docs"),
+  docsGet: (id) => apiFetch(`/api/docs/${encodeURIComponent(id)}`),
+  docsSave: (id, content, expectedMtime) => apiFetch(`/api/docs/${encodeURIComponent(id)}`, {
+    method: "POST", body: JSON.stringify({ content, expected_mtime: expectedMtime ?? null }),
+  }),
 };
 
 // Booth-PC-only bootstrap: start-booth-dashboard-view.sh launches the local
