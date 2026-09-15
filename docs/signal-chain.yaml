@@ -68,7 +68,7 @@ nodes:
   # own switch port. Seven EarMixes total, which matches the count in
   # booth-context.md.
   - id: avb_switch_sr
-    label: AVB switch — stage right
+    label: PreSonus SW5E — stage right
     group: stage
     ports:
       - {id: console, label: From console}
@@ -77,7 +77,7 @@ nodes:
       - {id: sl, label: To stage-left switch}
 
   - id: avb_switch_sl
-    label: AVB switch — stage left
+    label: PreSonus SW5E — stage left
     group: stage
     ports:
       - {id: uplink, label: From stage-right}
@@ -215,15 +215,37 @@ nodes:
     ports:
       - {id: dp_in, label: DP in}
 
-  - id: gofanco_hub
-    label: GoFanco HDMI-over-Cat (hub)
+  # Three separate HDMI-over-Cat extenders plus the stage one (operator,
+  # 2026-09-14) — not the single "multi-port hub" SYSTEM-STATE describes.
+  # Each display group has its own unit, so an extender failure takes out one
+  # group and leaves the others up.
+  - id: ext_foh
+    label: HDMI extender — 4-port (FOH)
     group: booth
     ports:
       - {id: hdmi_in, label: HDMI in}
       - {id: cat_out, label: Cat out}
 
-  - id: gofanco_stage_tx
-    label: GoFanco stage TX
+  - id: ext_back
+    label: HDMI extender — 4-port (back/outside)
+    group: booth
+    ports:
+      - {id: hdmi_in, label: HDMI in}
+      - {id: cat_out, label: Cat out}
+
+  - id: ext_pulpit
+    label: HDMI extender — single (pulpit)
+    group: booth
+    ports:
+      - {id: hdmi_in, label: HDMI in}
+      - {id: cat_out, label: Cat out}
+
+  # NEEDS VERIFICATION: whether this is a fourth physical unit or one of the
+  # above. SYSTEM-STATE calls it the "single stage TX"; the operator's
+  # 2026-09-14 walkthrough described the single extender as serving the
+  # pulpit TV, so these may or may not be the same box.
+  - id: ext_stage
+    label: HDMI extender — stage
     group: booth
     ports:
       - {id: hdmi_in, label: HDMI in}
@@ -313,16 +335,15 @@ links:
      label: "AVB", status: confirmed}
 
   # EarMixes on the stage-right switch, each daisy-chaining to a second unit.
-  # NEEDS VERIFICATION: the pairing — whether Jordan feeds Keyboard and
-  # Bassist feeds Drums, or the other way round.
+  # Pairing confirmed by the operator 2026-09-14.
   - {from: avb_switch_sr.monitors, to: em_jordan.avb_in, direction: two-way, kind: network,
      label: "AVB + PoE", status: confirmed}
   - {from: avb_switch_sr.monitors, to: em_bassist.avb_in, direction: two-way, kind: network,
      label: "AVB + PoE", status: confirmed}
   - {from: em_jordan.thru, to: em_keyboard.avb_in, direction: two-way, kind: network,
-     label: "thru — pairing unconfirmed", status: needs-verification}
+     label: "AVB thru", status: confirmed}
   - {from: em_bassist.thru, to: em_drums.avb_in, direction: two-way, kind: network,
-     label: "thru — pairing unconfirmed", status: needs-verification}
+     label: "AVB thru", status: confirmed}
 
   # Three direct EarMix drops off the stage-left switch.
   - {from: avb_switch_sl.monitors, to: em_tom.avb_in, direction: two-way, kind: network,
@@ -366,19 +387,24 @@ links:
   # ---- Displays ----
   - {from: pc.dp1, to: booth_monitor.dp_in, direction: one-way, kind: video,
      label: "direct", status: confirmed}
-  - {from: pc.dp2, to: gofanco_hub.hdmi_in, direction: one-way, kind: video,
+  - {from: pc.dp2, to: ext_foh.hdmi_in, direction: one-way, kind: video,
      label: "FreeShow Primary", status: confirmed}
-  - {from: pc.dp4, to: gofanco_hub.hdmi_in, direction: one-way, kind: video,
+  - {from: ext_foh.cat_out, to: foh_tvs.hdmi_in, direction: one-way, kind: video,
+     label: "Cat — 2 of 4 ports used", status: confirmed}
+  - {from: pc.dp4, to: ext_pulpit.hdmi_in, direction: one-way, kind: video,
      label: "program (ffplay)", status: confirmed}
-  - {from: pc.dp3, to: gofanco_stage_tx.hdmi_in, direction: one-way, kind: video,
+  - {from: ext_pulpit.cat_out, to: boh_tv.hdmi_in, direction: one-way, kind: video,
+     label: "Cat, up to ~200 ft", status: confirmed}
+  # NEEDS VERIFICATION: what feeds the back/outside extender. It carries the
+  # livestream content, so DP-4 split two ways is the obvious guess, but the
+  # pulpit TV already has DP-4 on its own single extender — so either DP-4 is
+  # split ahead of both, or these TVs are fed some other way entirely.
+  - {from: pc.dp4, to: ext_back.hdmi_in, direction: one-way, kind: video,
+     label: "split from DP-4? — source unconfirmed", status: needs-verification}
+  - {from: ext_back.cat_out, to: outside_tvs.feed_in, direction: one-way, kind: video,
+     label: "Cat — 2 of 4 ports used", status: confirmed}
+  - {from: pc.dp3, to: ext_stage.hdmi_in, direction: one-way, kind: video,
      label: "FreeShow Stage", status: confirmed}
-  - {from: gofanco_hub.cat_out, to: foh_tvs.hdmi_in, direction: one-way, kind: video,
-     label: "Cat — which TX/RX pair?", status: needs-verification}
-  - {from: gofanco_hub.cat_out, to: boh_tv.hdmi_in, direction: one-way, kind: video,
-     label: "Cat, up to ~200 ft — program feed", status: needs-verification}
-  - {from: gofanco_hub.cat_out, to: outside_tvs.feed_in, direction: one-way, kind: video,
-     label: "livestream content — same HDMI split, or a stream receiver?",
-     status: needs-verification}
   # The DP-2 feed doesn't only go out to the front TVs — it also comes back
   # into the ATEM on Camera 3, so FreeShow Primary can be switched into the
   # program feed (slides/lower-thirds to the stream and the back TVs).
@@ -386,8 +412,8 @@ links:
   # GoFanco hub, or a spare output on the hub itself.
   - {from: pc.dp2, to: atem.cam3, direction: one-way, kind: video,
      label: "same feed as the front TVs → Camera 3", status: confirmed}
-  - {from: gofanco_stage_tx.cat_out, to: stage_monitor.hdmi_in, direction: one-way, kind: video,
-     label: "Cat to stage", status: needs-verification}
+  - {from: ext_stage.cat_out, to: stage_monitor.hdmi_in, direction: one-way, kind: video,
+     label: "Cat to stage", status: confirmed}
 
   # ---- Maintenance workstation (never in the operational path) ----
   # Wi-Fi only — the MacBook has no USB connection to anything, which also

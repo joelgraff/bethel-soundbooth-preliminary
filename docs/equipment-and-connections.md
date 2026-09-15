@@ -37,8 +37,8 @@ directly, or dictate them in a session and have it written up here.
 |------|-----|------|--------|
 | PreSonus StudioLive 32SX | 1 | Main mixer, USB to booth PC | ✅ |
 | NSB 16.8 stagebox | 2 | Stage inputs onto the AVB network — one stage right, one stage left | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: which carries which mixer channel range) |
-| PreSonus AVB switch | 2 | Stage right + stage left, in series. Console feeds stage-right; stage-right feeds stage-left. Also PoE-powers the EarMixes | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: exact model — SW5E?) |
-| EarMix 16M | 7 | Personal monitor mixers on the AVB network — **not** fed from console aux outs. **Stage right:** Jordan → *thru* → Keyboard; Bassist → *thru* → Drums. **Stage left:** Tom, Vocal 1, Vocal 2 (direct drops) | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: which of Keyboard/Drums chains behind which) |
+| PreSonus **SW5E** AVB switch | 2 | Stage right + stage left, in series. Console feeds stage-right; stage-right feeds stage-left. Also PoE-powers the EarMixes | ✅ operator, 2026-09-14 |
+| EarMix 16M | 7 | Personal monitor mixers on the AVB network — **not** fed from console aux outs. **Stage right:** Jordan → *thru* → Keyboard; Bassist → *thru* → Drums. **Stage left:** Tom, Vocal 1, Vocal 2 (direct drops) | ✅ operator, 2026-09-14 |
 | Behringer DI, 8-channel | 1 | Direct injection boxes for stage instruments | ✅ (booth-context.md; **NEEDS VERIFICATION**: which stage inputs run through it vs. direct to a stagebox) |
 | Roland TD-27 (V-Drums module) | 1 | Electronic drum kit sound module | ✅ (booth-context.md; **NEEDS VERIFICATION**: output routing — stereo pair? which stagebox/channel?) |
 | Crown XLS202 | 1 | House amplifier | ✅ (booth-context.md; **NEEDS VERIFICATION**: which mixer output(s) feed it, and which speaker zone it drives) |
@@ -54,8 +54,16 @@ directly, or dictate them in a session and have it written up here.
 | PTZOptics PT12X-SDI-xx-G2 | 1 | Program camera; SDI out → converter → ATEM Camera 2; also has a separate IP control/preview path (`~/.config/soundbooth/camera.conf`) | ✅ |
 | 85" Sony Bravia TV | 2 | **FOH displays, facing the congregation** — fed by DP-2 (FreeShow Primary) | ✅ operator, 2026-09-14 |
 | BOH TV | 1 | **Faces the pulpit** — confidence feed for whoever is speaking; fed by DP-4 (program). Distinct from the DP-3 FreeShow Stage monitor | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: make/model/size) |
-| Outside TVs | 2 | **Outside the sanctuary** (lobby/overflow), carrying the livestream content. These are the "outside monitors" SYSTEM-STATE mentions | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: same DP-4/GoFanco HDMI split as the pulpit TV, or a separate stream receiver? Plus make/model) |
-| GoFanco 1080p HDMI-over-Cat transceivers | multi-port hub + 1 stage unit | HDMI extension over Cat cable; longest run ~200 ft; known reliability weak point (planned upgrade: HDBaseT/Blackbird) | ✅ |
+| Outside TVs | 2 | **Outside the sanctuary** (lobby/overflow), carrying the livestream content, on their own 4-port extender. These are the "outside monitors" SYSTEM-STATE mentions | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: what feeds that extender — see below; plus make/model) |
+| HDMI-over-Cat extender — 4-port | 1 | Feeds the **two FOH Bravias** from DP-2 (2 of 4 ports used) | ✅ operator, 2026-09-14 |
+| HDMI-over-Cat extender — 4-port | 1 | Feeds the **two outside/back TVs** (2 of 4 ports used) — a *different* unit from the FOH one | ✅ operator, 2026-09-14 |
+| HDMI-over-Cat extender — single | 1 | Feeds the **pulpit BOH TV** from DP-4 | ✅ operator, 2026-09-14 |
+| HDMI-over-Cat extender — stage | 1 | Feeds the **stage confidence monitor** from DP-3 | ✅ (**NEEDS VERIFICATION**: whether this is a fourth physical unit or one of the three above — SYSTEM-STATE calls it the "single stage TX", but the single extender is now accounted for by the pulpit TV) |
+
+GoFanco 1080p, longest run ~200 ft; a known reliability weak point (planned
+upgrade: HDBaseT/Blackbird). Note these are **separate units per display
+group**, not one shared hub as SYSTEM-STATE's "multi-port + single stage TX"
+implies — so an extender failure takes out one group and leaves the rest up.
 
 **Five displays outside the booth**, easy to conflate: 2 FOH Bravias (DP-2,
 congregation), 1 BOH TV (DP-4, pulpit), 2 outside the sanctuary (livestream),
@@ -128,9 +136,9 @@ the tail end of the same physical chain):
 | Connector | Monitor/target | Path | Run type |
 |-----------|-----------------|------|----------|
 | DP-1 | SAM S34CG50 ultrawide (booth) | direct | short, in-booth |
-| DP-2 | FreeShow Primary → **the two FOH Bravias (facing the congregation)**, *and* back into the ATEM on **Camera 3** | via GoFanco extender + a tap to the ATEM | **NEEDS VERIFICATION**: run length |
-| DP-3 | LKV/HDbitT-style (FreeShow Stage) | via GoFanco extender | **NEEDS VERIFICATION**: run length |
-| DP-4 | SII HDMI TV (program → the BOH TV facing the pulpit) | via GoFanco extender | up to ~200 ft (longest run) |
+| DP-2 | FreeShow Primary → **the two FOH Bravias (facing the congregation)**, *and* back into the ATEM on **Camera 3** | via the 4-port FOH extender + a tap to the ATEM | **NEEDS VERIFICATION**: run length |
+| DP-3 | LKV/HDbitT-style (FreeShow Stage) → stage confidence monitor | via the stage extender | **NEEDS VERIFICATION**: run length |
+| DP-4 | SII HDMI TV (program → the BOH TV facing the pulpit) | via the **single** extender | up to ~200 ft (longest run) |
 
 **DP-2 feeds two destinations.** As well as driving the two FOH Bravias, the
 same output returns to the ATEM as **Camera 3** — so FreeShow Primary
@@ -145,14 +153,18 @@ feed for whoever is speaking — fed by DP-4, the program output. Note this is
 a *different* display from the FreeShow Stage confidence monitor on DP-3,
 which serves the stage/musicians.
 
-**NEEDS VERIFICATION:** where the Camera 3 feed is tapped — a splitter off
-DP-2 ahead of the GoFanco hub, or a spare output on the hub itself. Which
-physical GoFanco transmitter/receiver pair serves which connector (the
-multi-port hub vs. the single stage unit), and where each Cat run physically
-terminates. Also whether DP-4's split feeds anything besides the single BOH
-TV — the dashboard's own tile calls it "Split that feeds the back-of-house
-TVs" (plural), and SYSTEM-STATE separately mentions "outside monitors", so
-there may be more on that leg than the one pulpit-facing display.
+**NEEDS VERIFICATION — what feeds the back/outside extender.** The two
+outside TVs have their own 4-port extender, but nothing yet says what drives
+its input. They carry livestream content, so a split off DP-4 is the obvious
+guess — except the pulpit TV already takes DP-4 on its own single extender,
+so either DP-4 is split ahead of both, or those TVs are fed some other way.
+The dashboard's DP-4 tile calling it "Split that feeds the back-of-house TVs"
+(plural) supports the split theory but isn't proof.
+
+**Also unverified:** where the Camera 3 feed is tapped (a splitter off DP-2
+ahead of the FOH extender, or a spare port on that extender — it has 2 free),
+where each Cat run physically terminates, and whether the stage extender is a
+fourth physical unit or one of the other three.
 
 ### Audio path — stage to FOH
 
@@ -220,9 +232,6 @@ network alongside the stageboxes (operator, 2026-09-14).
   channel map, drums via the TD-27, DI'd instruments via the Behringer 8-ch
   DI). Deliberately deferred 2026-09-14; this is the largest remaining gap.
 - Which NSB carries which mixer channel range over AVB
-- The EarMix pass-through pairing: does Jordan feed Keyboard and Bassist feed
-  Drums, or the other way round?
-- Exact model of the two AVB switches (PreSonus SW5E or similar)
 - Which 32SX output bus(es) feed the Crown XLS202 and Peavey GPS 2600
 - Any patch bay or wall-panel connectors between the stage and the booth
 
