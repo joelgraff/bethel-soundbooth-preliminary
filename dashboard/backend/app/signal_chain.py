@@ -70,6 +70,7 @@ GROUP_TINT = {
     "pc": "#2f3a4d",
     "atem": "#2f3a4d",
     "mixer": "#2f3a4d",
+    "router": "#2f3a4d",
 }
 DEFAULT_TINT = "#2f3a4d"
 

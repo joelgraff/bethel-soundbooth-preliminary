@@ -64,10 +64,14 @@ diagrams:
   - id: atem
     title: ATEM Mini Extreme
     groups: [atem]
-    rankdir: TB
+    rankdir: LR
   - id: mixer
     title: PreSonus StudioLive 32SX
     groups: [mixer]
+    rankdir: TB
+  - id: router
+    title: Network / Router
+    groups: [router]
     rankdir: TB
   - id: stage
     title: Stage
@@ -81,11 +85,15 @@ groups:
   # physical zone. Subgroups carry the role distinction inside it.
   - id: pc
     label: Booth PC
+    # No box round the extenders any more: the DP-2 splitter puts that branch
+    # one rank deeper than DP-3/DP-4, so a cluster containing all of them
+    # spans two ranks and stretches into the displays. Measured both ways.
     subgroups:
-      - {id: dist, label: "HDMI distribution (pass-through)"}
       - {id: screens, label: "Displays (endpoints)"}
   - id: atem
     label: ATEM Mini Extreme
+  - id: router
+    label: Network / Router
   - id: mixer
     label: PreSonus StudioLive 32SX
     subgroups:
@@ -245,6 +253,7 @@ nodes:
     group: mixer
     ports:
       - {id: avb, label: AVB network}
+      - {id: eth, label: Ethernet}
       - {id: usb, label: "USB (64ch)", side: out}
       # No aux/monitor-send port modelled on purpose: the EarMixes are fed
       # over the AVB network via the switch, NOT from console aux outs. A
@@ -283,7 +292,12 @@ nodes:
     ports:
       - {id: video0, label: /dev/video0}
       - {id: usb_presonus, label: "USB → PreSonus"}
-      - {id: lineout, label: Analog line-out}
+      # side: in puts this on the INPUTS face, which in LR is the left. It
+      # is an output electrically — the arrow still leaves it — but the PC's
+      # faces are organised by signal type, not by direction: video out on
+      # the right, audio on the left. Mixing the analog send in among the DP
+      # outs made the right-hand face mean two different things.
+      - {id: lineout, label: Analog line-out, side: in}
       - {id: lan, label: LAN}
       - {id: dp1, label: DP-1}
       - {id: dp2, label: DP-2}
@@ -300,10 +314,22 @@ nodes:
   # 2026-09-14) — not the single "multi-port hub" SYSTEM-STATE describes.
   # Each display group has its own unit, so an extender failure takes out one
   # group and leaves the others up.
+  # DP-2 does not reach the FOH extender directly: it hits a splitter first,
+  # and the second leg of that splitter is what feeds ATEM Camera 3
+  # (operator, 2026-09-15). This resolves the open question that used to sit
+  # on the pc.dp2 -> atem.cam3 link: a splitter before the hub, not a spare
+  # output on the hub.
+  - id: hdmi_splitter
+    label: HDMI splitter (DP-2)
+    group: pc
+    ports:
+      - {id: in, label: HDMI in}
+      - {id: to_ext, label: To FOH extender}
+      - {id: to_atem, label: To ATEM Camera 3}
+
   - id: ext_foh
     label: HDMI extender — 4-port (DP-2, FOH)
     group: pc
-    subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
       - {id: cat_out, label: Cat out}
@@ -311,7 +337,6 @@ nodes:
   - id: ext_back
     label: HDMI extender — 4-port (DP-4, back)
     group: pc
-    subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
       - {id: cat_out, label: Cat out}
@@ -319,7 +344,6 @@ nodes:
   - id: ext_pulpit
     label: HDMI extender — single (DP-3, pulpit)
     group: pc
-    subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
       - {id: cat_out, label: Cat out}
@@ -388,9 +412,19 @@ nodes:
       - {id: feed_in, label: Feed in}
 
   # ---------------- Maintenance ----------------
+  # House network. Components do not cable to each other — each has one run
+  # to this router (operator, 2026-09-15), so peer-to-peer network links are
+  # not drawn any more; they were never cables, only logical paths.
+  - id: router
+    label: Router
+    group: router
+    ports:
+      - {id: lan, label: LAN (Ethernet)}
+      - {id: wifi, label: Wi-Fi}
+
   - id: macbook
     label: MacBook
-    group: atem
+    group: router
     ports:
       - {id: net, label: Wi-Fi}
 
@@ -455,8 +489,12 @@ links:
   # Second, independent PC->mixer path: the analog contingency feed
   # (lineout-fallback.service), deliberately sharing nothing with the USB link
   # so it can't fail the same way. Stays muted at the board until needed.
+  # constraint=false so this connector lands on the PC's audio face (left in
+  # LR) beside the USB one, instead of being pushed a rank downstream to the
+  # right — which put the two PreSonus connectors on opposite sides of the
+  # same sheet and made the line-out edge wrap around the PC to get there.
   - {from: pc.lineout, to: presonus.ch21, direction: one-way, kind: audio,
-     label: "ch 21 (backup)", status: confirmed}
+     label: "ch 21 (backup)", status: confirmed, constraint: false}
 
   # ---- Video / program ----
   - {from: camera.sdi_out, to: sdi_hdmi_conv.sdi_in, direction: one-way, kind: video,
@@ -471,14 +509,34 @@ links:
   # UVC: a single-opener device — one process at a time holds /dev/video0.
   - {from: atem.uvc_out, to: pc.video0, direction: one-way, kind: video,
      label: "UVC", status: confirmed}
-  # ATEM control lives in atem.conf.
-  - {from: atem.eth, to: pc.lan, direction: two-way, kind: control,
-     label: "control", status: confirmed}
+  # ---- House network ----
+  # One run per component to the router; nothing cables to anything else.
+  # The ATEM/dashboard/control relationships still exist, they just travel
+  # over this network rather than over a cable worth drawing.
+  - {from: pc.lan, to: router.lan, direction: two-way, kind: control,
+     label: "Ethernet", status: confirmed}
+  - {from: atem.eth, to: router.lan, direction: two-way, kind: control,
+     label: "Ethernet (atem.conf)", status: confirmed}
+  - {from: presonus.eth, to: router.lan, direction: two-way, kind: control,
+     label: "Ethernet", status: needs-verification}
+  # Maintenance workstation, never in the operational path. Wi-Fi only — the
+  # MacBook has no USB connection to anything, which also means it can't
+  # contend for /dev/video0 with ffmpeg-capture (the risk flagged in
+  # STATUS.md 2026-09-14). It reaches the ATEM (ATEM Software Control) and
+  # the dashboard over this network, not over any cable of its own.
+  - {from: macbook.net, to: router.wifi, direction: two-way, kind: control,
+     label: "Wi-Fi", status: confirmed}
   # VISCA (pan/tilt/zoom) and RTSP (preview stream), both in camera.conf. The
   # camera sits on its OWN subnet, not the booth LAN — that separation is not
   # recorded anywhere else, so do not drop it from here.
+  #
+  # NEEDS VERIFICATION 2026-09-15: every other component was confirmed as one
+  # run to the router, which leaves this the only peer-to-peer network cable
+  # on the drawings. Either the camera really is direct to the PC (plausible,
+  # given the separate subnet — a second NIC), or it reaches the router too
+  # and this should become camera -> router like the rest. Nobody has looked.
   - {from: camera.net, to: pc.lan, direction: two-way, kind: control,
-     label: "VISCA / RTSP", status: confirmed}
+     label: "VISCA / RTSP", status: needs-verification}
 
   # ---- Displays ----
   - {from: pc.dp1, to: booth_monitor.dp_in, direction: one-way, kind: video,
@@ -486,7 +544,9 @@ links:
   # Confirmed 2026-09-14, and it accounts for all four GPU outputs exactly:
   # DP-1 is the booth ultrawide (direct, no extender) and DP-2/3/4 each drive
   # one extender. Each display panel is one output of its extender.
-  - {from: pc.dp2, to: ext_foh.hdmi_in, direction: one-way, kind: video,
+  - {from: pc.dp2, to: hdmi_splitter.in, direction: one-way, kind: video,
+     label: "FreeShow Primary", status: confirmed}
+  - {from: hdmi_splitter.to_ext, to: ext_foh.hdmi_in, direction: one-way, kind: video,
      label: "FreeShow Primary", status: confirmed}
   # 4-port extender, 2 ports in use — one per Bravia, 2 spare.
   - {from: ext_foh.cat_out, to: foh_tvs.hdmi_in, direction: one-way, kind: video,
@@ -499,19 +559,11 @@ links:
      label: "program", status: confirmed}
   - {from: ext_back.cat_out, to: outside_tvs.feed_in, direction: one-way, kind: video,
      label: "Cat ~200 ft", status: confirmed}
-  # The DP-2 feed doesn't only go out to the front TVs — it also comes back
-  # into the ATEM on Camera 3, so FreeShow Primary can be switched into the
-  # program feed (slides/lower-thirds to the stream and the back TVs).
-  # NEEDS VERIFICATION: where it's tapped — a splitter off DP-2 before the
-  # GoFanco hub, or a spare output on the hub itself.
-  - {from: pc.dp2, to: atem.cam3, direction: one-way, kind: video,
-     label: "FreeShow Primary", status: confirmed, constraint: false}
+  # Second leg of the DP-2 splitter — the same picture the front TVs get,
+  # into the ATEM as Camera 3. Deliberately NOT constraint=false: on the PC
+  # sheet the ATEM end is an off-sheet connector, so there is no cycle to
+  # break, and unconstraining it let dot strand that connector on the far
+  # left of the sheet with a long edge back across the drawing.
+  - {from: hdmi_splitter.to_atem, to: atem.cam3, direction: one-way, kind: video,
+     label: "FreeShow Primary", status: confirmed}
 
-  # ---- Maintenance workstation (never in the operational path) ----
-  # Wi-Fi only — the MacBook has no USB connection to anything, which also
-  # means it can't contend for /dev/video0 with ffmpeg-capture (the risk
-  # flagged in STATUS.md 2026-09-14). It reaches exactly two things:
-  - {from: macbook.net, to: atem.eth, direction: two-way, kind: control,
-     label: "ATEM Control", status: confirmed}
-  - {from: macbook.net, to: pc.lan, direction: two-way, kind: control,
-     label: "dashboard", status: confirmed}
