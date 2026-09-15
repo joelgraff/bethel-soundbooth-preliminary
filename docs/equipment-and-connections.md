@@ -36,8 +36,9 @@ directly, or dictate them in a session and have it written up here.
 | Item | Qty | Role | Source |
 |------|-----|------|--------|
 | PreSonus StudioLive 32SX | 1 | Main mixer, USB to booth PC | ✅ |
-| NSB 16.8 stagebox | 2 | Stage input snake → mixer | ✅ (booth-context.md; **NEEDS VERIFICATION**: which NSB feeds which mixer input range, and how the two are networked/daisy-chained to the 32SX) |
-| Earmix 16M | 7 | Personal monitor mixers | ✅ (booth-context.md; **NEEDS VERIFICATION**: how many are actually in active use, and their network/AVB or analog patch back to the board) |
+| NSB 16.8 stagebox | 2 | Stage inputs onto the AVB network | ✅ (**NEEDS VERIFICATION**: which NSB carries which mixer channel range) |
+| PreSonus AVB switch | ? | Hub for the whole PreSonus audio network — stageboxes, EarMixes and the console all connect through it | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: how many, exact model, and whether any live in the booth rack rather than on stage) |
+| Earmix 16M | 7 | Personal monitor mixers, fed over AVB via the switch — **not** from console aux outs | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: how many in active use; daisy-chained or one switch port each) |
 | Behringer DI, 8-channel | 1 | Direct injection boxes for stage instruments | ✅ (booth-context.md; **NEEDS VERIFICATION**: which stage inputs run through it vs. direct to a stagebox) |
 | Roland TD-27 (V-Drums module) | 1 | Electronic drum kit sound module | ✅ (booth-context.md; **NEEDS VERIFICATION**: output routing — stereo pair? which stagebox/channel?) |
 | Crown XLS202 | 1 | House amplifier | ✅ (booth-context.md; **NEEDS VERIFICATION**: which mixer output(s) feed it, and which speaker zone it drives) |
@@ -48,7 +49,8 @@ directly, or dictate them in a session and have it written up here.
 
 | Item | Qty | Role | Source |
 |------|-----|------|--------|
-| Blackmagic ATEM Mini Extreme | 1 | Video switcher/capture; UVC → `/dev/video0`, Pulse audio slave; Ethernet control (IP in `~/.config/soundbooth/atem.conf`, not in git) | ✅ SYSTEM-STATE.md |
+| Blackmagic ATEM Mini Extreme | 1 | Video switcher/capture; UVC → `/dev/video0`, Pulse audio slave; Ethernet control (IP in `~/.config/soundbooth/atem.conf`, not in git). **All inputs are HDMI — it has no SDI input**, hence the converter below | ✅ SYSTEM-STATE.md |
+| SDI → HDMI converter | 1 | Converts the camera's SDI run to HDMI for the ATEM's **Camera 2** input | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: make/model, and whether it sits in the booth rack or out at the camera) |
 | PTZOptics PT12X-SDI-xx-G2 | 1 | Program camera; SDI out → ATEM program input; also has a separate IP control/preview path (`~/.config/soundbooth/camera.conf`) | ✅ |
 | 85" Sony Bravia TV | 2 | Sanctuary displays | ✅ |
 | GoFanco 1080p HDMI-over-Cat transceivers | multi-port hub + 1 stage unit | HDMI extension over Cat cable; longest run ~200 ft; known reliability weak point (planned upgrade: HDBaseT/Blackbird) | ✅ |
@@ -65,12 +67,14 @@ elsewhere as "outside monitors" in `SYSTEM-STATE.md`'s hardware table.
 |------|------|--------|
 | MacBook (model/year not yet recorded) | Runs ATEM Software Control, PreSonus Universal Control, (optionally) H2R Layouts — none have a Linux build. **Explicitly non-operational**: nothing in `soundbooth.target` or the livestream path depends on it. | ✅ STATUS.md 2026-09-14 |
 
-**NEEDS VERIFICATION:** exact MacBook model/year (for the eventual
-`SYSTEM-STATE.md` write-up mentioned in STATUS.md), and how it currently
-reaches the ATEM/PreSonus — same Wi-Fi as the booth PC? Wired? Confirm it
-only ever talks to the ATEM over the network (`atem.conf`'s address), never
-USB, while `ffmpeg-capture.service` is running (USB contention risk already
-flagged in STATUS.md).
+**Connectivity (confirmed, operator 2026-09-14): Wi-Fi only.** The MacBook has
+**no USB connection to anything** — it reaches exactly two things over
+Wi-Fi: the ATEM (ATEM Software Control) and the booth PC's web dashboard.
+That also settles the `/dev/video0` USB-contention concern raised in
+STATUS.md: with no USB path at all, it can't contend with `ffmpeg-capture`.
+
+**NEEDS VERIFICATION:** exact MacBook model/year, for the eventual
+`SYSTEM-STATE.md` write-up mentioned in STATUS.md.
 
 ---
 
@@ -87,8 +91,11 @@ flagged in STATUS.md).
 
 ```
 PTZOptics camera (SDI out)
-        │
+        │  SDI coax
         ▼
+SDI → HDMI converter          (the ATEM Mini Extreme has NO SDI input —
+        │                      every input on it is HDMI)
+        ▼  HDMI, into "Camera 2"
 ATEM Mini Extreme (program bus)
         │
         ├─ UVC/USB ──► booth PC (/dev/video0) ──► ffmpeg-capture.service
@@ -100,8 +107,8 @@ ATEM Mini Extreme (program bus)
         │
         └─ Ethernet (control only, not video) ──► atem.conf IP
                                                    (ATEM Software Control,
-                                                    from the MacBook or the
-                                                    booth PC's network)
+                                                    from the MacBook over
+                                                    Wi-Fi, or the booth PC)
 ```
 
 GPU → display outputs (already in `SYSTEM-STATE.md`, repeated here since it's
@@ -121,10 +128,16 @@ where each Cat run physically terminates (which TV, which wall plate).
 ### Audio path — stage to FOH
 
 ```
-Stage instruments/mics/DI
-        │
+Stage instruments / mics / DI / TD-27
+        │  (analog XLR)
         ▼
-NSB 16.8 stagebox(es) ──► [NEEDS VERIFICATION: snake/network path] ──► PreSonus 32SX
+NSB 16.8 stagebox A + B
+        │
+        │  ┌──────────── PreSonus AVB network ────────────┐
+        └──┤  NSB A ─┐                                    │
+           │  NSB B ─┼─► PreSonus AVB switch ─► 32SX      │
+           │  EarMix ┘        (hub for all of it)         │
+           └──────────────────────────────────────────────┘
         │
         ▼
 32SX mixer (channel assignments: see docs/mixer-channel-map.md, in progress)
@@ -132,19 +145,37 @@ NSB 16.8 stagebox(es) ──► [NEEDS VERIFICATION: snake/network path] ──�
         ├─ USB ──► booth PC (software audio return path — see SYSTEM-STATE.md
         │           "Audio policy" for the presonus-foh-bridge chain)
         │
+        ├─ ch 21 ◄── booth PC analog line-out (contingency feed — see the
+        │             channel-number conflict below)
+        │
         └─ house output(s) ──► [NEEDS VERIFICATION which physical output]
                  │
                  ├─► Crown XLS202 ──► Bose 251 speakers (4? — NEEDS VERIFICATION)
                  └─► Peavey GPS 2600 ──► subwoofer(s)
 ```
 
+The EarMix units are **not** fed from console aux outs — they sit on the AVB
+network alongside the stageboxes, and the switch is the hub for all of it
+(operator, 2026-09-14).
+
+> **⚠ Unresolved conflict — booth PC analog line-out channel.** The operator
+> says the PC's line-out lands on **channel 21**. The repo says **channel 32**
+> in six places: `lineout-fallback.service`'s `Description=`, and five comments
+> in `start-lineout-fallback.sh` — including operational guidance ("if channel
+> 32 is up while USB audio is also running…", "ch 32 was muted", "Board
+> channel 32 is a BALANCED input, so it computes (tip − ring)"). This is the
+> FOH contingency path, so whichever is wrong sends someone to the wrong fader
+> in exactly the situation it exists for. Check the back of the board, then
+> correct whichever source is wrong.
+
 **NEEDS VERIFICATION (the real gap this doc exists to close):**
 - Which physical inputs on which NSB stagebox carry which stage sources
   (vocals, acoustic guitar ×2 per the in-progress channel map, drums via the
   TD-27 module, DI'd instruments via the Behringer 8-ch DI, etc.)
+- Which NSB carries which mixer channel range over AVB
+- How many AVB switches there are, their model, and where each physically sits
+- Whether the EarMixes daisy-chain or take one switch port each
 - Which 32SX output bus(es) feed the Crown XLS202 and Peavey GPS 2600
-- Earmix 16M monitor mixer patch — analog sends off the board, or a digital
-  network (AVB/Dante-style) between the 16Ms and the 32SX
 - Any patch bay or wall-panel connectors between the stage and the booth
 
 ### Audio path — software to FOH
