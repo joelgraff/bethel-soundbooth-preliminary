@@ -59,7 +59,9 @@ KIND_LABEL = {
 SUBGROUP_TINT = {
     "house": "#2b4a3c",      # amps and speakers
     "screens": "#36304a",    # displays
-    "monitors": "#2b4a3c",   # stage personal monitors
+    "monitors": "#3a3550",   # stage personal monitors (NOT the
+                             # house-amp green: an EarMix and a
+                             # Bose are not the same kind of thing)
     "dist": "#2f3a4d",       # HDMI distribution
     "sources": "#2b3a55",    # mics, DI, drums
     "avb": "#2f3a4d",        # switches and stageboxes
@@ -455,7 +457,12 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
         # forced off too: a rank-advancing edge and a same-rank constraint
         # are contradictory, and dot resolves the contradiction by ignoring
         # the rank group.
-        if link.get("align") == "same-rank":
+        # Only on the SOURCE's sheet. `align` is written to place a connector
+        # beside one particular device, but a link appears on both ends'
+        # sheets, and applying it at the far end too is never what was meant:
+        # pinning the Booth PC connector to the router's rank pulled it out
+        # of the row of connectors it belongs in on the router sheet.
+        if link.get("align") == "same-rank" and src_in:
             same_rank_pairs.append((near_node_id, stub_id))
 
     def node_decl(n, indent):
@@ -575,6 +582,15 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
     lines.append('    label=""; color="#2c3440"; style="rounded"; margin=10;')
     lines.append(f"    __legend [label={legend_label(kinds_used, has_unverified)}];")
     lines.append("  }")
+    # NOT rank-pinned, and it cannot be. The legend connects to nothing, so it
+    # is its own connected component; dot lays each component out separately
+    # and packs them afterwards, and rank groups do not span components. Both
+    # `{rank=min; __legend;}` and removing the cluster wrapper were tried and
+    # moved it by under 1% on every sheet. It lands in the leading corner of
+    # whichever axis the sheet runs along: top-left on the LR sheets,
+    # top-right on the TB ones. Fixing it properly means an invisible edge to
+    # an arbitrary real node (which distorts the layout) or post-processing
+    # the SVG — neither worth it for a decoration that is always in a corner.
 
     lines.append("}")
     return "\n".join(lines)

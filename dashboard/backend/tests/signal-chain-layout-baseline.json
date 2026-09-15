@@ -60,20 +60,20 @@
     "through_nodes": 0
   },
   "router/LR": {
-    "area": 67.4,
+    "area": 78.9,
     "crossings": 0,
-    "edge_len": 11.6,
-    "edges": 5,
+    "edge_len": 13.4,
+    "edges": 4,
     "nodes": 7,
     "self_overlap": 0,
     "served": false,
     "through_nodes": 0
   },
   "router/TB": {
-    "area": 68.8,
+    "area": 77.0,
     "crossings": 0,
-    "edge_len": 8.3,
-    "edges": 5,
+    "edge_len": 10.3,
+    "edges": 4,
     "nodes": 7,
     "self_overlap": 0,
     "served": true,
