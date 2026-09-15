@@ -1,28 +1,68 @@
 {
-  "booth/LR": {
-    "area": 404.8,
-    "crossings": 3,
-    "edge_len": 96.8,
-    "edges": 22,
-    "nodes": 20,
+  "booth-audio/LR": {
+    "area": 141.1,
+    "crossings": 1,
+    "edge_len": 26.8,
+    "edges": 7,
+    "nodes": 8,
+    "self_overlap": 1,
+    "served": false,
+    "through_nodes": 0
+  },
+  "booth-audio/TB": {
+    "area": 75.9,
+    "crossings": 1,
+    "edge_len": 18.2,
+    "edges": 7,
+    "nodes": 8,
+    "self_overlap": 2,
+    "served": true,
+    "through_nodes": 0
+  },
+  "booth-control/LR": {
+    "area": 43.9,
+    "crossings": 0,
+    "edge_len": 18.8,
+    "edges": 4,
+    "nodes": 5,
+    "self_overlap": 0,
+    "served": false,
+    "through_nodes": 0
+  },
+  "booth-control/TB": {
+    "area": 65.8,
+    "crossings": 0,
+    "edge_len": 9.5,
+    "edges": 4,
+    "nodes": 5,
+    "self_overlap": 1,
+    "served": true,
+    "through_nodes": 0
+  },
+  "booth-video/LR": {
+    "area": 229.4,
+    "crossings": 1,
+    "edge_len": 34.2,
+    "edges": 11,
+    "nodes": 12,
     "self_overlap": 2,
     "served": false,
     "through_nodes": 0
   },
-  "booth/TB": {
-    "area": 382.2,
-    "crossings": 5,
-    "edge_len": 81.9,
-    "edges": 22,
-    "nodes": 20,
-    "self_overlap": 0,
+  "booth-video/TB": {
+    "area": 285.6,
+    "crossings": 1,
+    "edge_len": 27.6,
+    "edges": 11,
+    "nodes": 12,
+    "self_overlap": 1,
     "served": true,
     "through_nodes": 0
   },
   "stage/LR": {
-    "area": 382.7,
+    "area": 376.0,
     "crossings": 0,
-    "edge_len": 55.7,
+    "edge_len": 55.2,
     "edges": 16,
     "nodes": 19,
     "self_overlap": 0,
@@ -32,10 +72,10 @@
   "stage/TB": {
     "area": 239.5,
     "crossings": 0,
-    "edge_len": 48.0,
+    "edge_len": 48.3,
     "edges": 16,
     "nodes": 19,
-    "self_overlap": 3,
+    "self_overlap": 4,
     "served": false,
     "through_nodes": 0
   }

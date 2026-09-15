@@ -122,17 +122,25 @@ def port_cell(port, align, rowspan=1, colspan=1):
     )
 
 
-def node_html_label(node, links, horizontal=True):
+def node_html_label(node, links, horizontal=True, visible_ports=None):
     """Port placement follows rankdir. In LR the graph flows left-to-right, so
     inputs belong in a left column and outputs in a right one. In TB it flows
     top-to-bottom, so the same split has to become a top row and a bottom row
     — otherwise every edge arrives on the wrong face of the box and loops
-    around it, which is exactly the arcing this layout is meant to avoid."""
+    around it, which is exactly the arcing this layout is meant to avoid.
+
+    visible_ports limits which ports are DRAWN (not how they are classified —
+    a port's face is a property of the equipment, so it stays stable across
+    sheets). On a single-domain sheet the rest are noise: the Booth PC's
+    analog line-out means nothing on the video sheet, and drawing it invites
+    the reader to hunt for a cable that was deliberately left out."""
     tint = GROUP_TINT.get(node.get("group"), DEFAULT_TINT)
     name_cell_inner = (
         f'<FONT POINT-SIZE="12.5" COLOR="{NAME_FG}"><B>{esc(node["label"])}</B></FONT>'
     )
     ports = node.get("ports") or []
+    if visible_ports is not None:
+        ports = [p for p in ports if p["id"] in visible_ports]
     table_open = (
         f'<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="6" '
         f'COLOR="{CELL_BORDER}">'
@@ -250,24 +258,60 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
     sheets = {d["id"]: d for d in data.get("diagrams", [])}
 
     # Which sheet does each node live on? (None = every node, single-sheet mode)
-    node_sheet = {}
-    for sheet in sheets.values():
-        for gid in sheet.get("groups", []):
-            for n in data["nodes"]:
-                if n.get("group") == gid:
-                    node_sheet[n["id"]] = sheet["id"]
-
-    if diagram_id:
-        included_groups = set(sheets[diagram_id].get("groups", []))
-        groups = {gid: g for gid, g in groups.items() if gid in included_groups}
-        data = dict(data, nodes=[n for n in data["nodes"]
-                                 if n.get("group") in included_groups])
-
-    def on_sheet(node_id):
-        return diagram_id is None or node_sheet.get(node_id) == diagram_id
-
     def split_ref(ref):
         return (ref.split(".", 1) + [None])[:2]
+
+    all_links = links
+
+    # Which nodes does a sheet show? Its groups, narrowed to the nodes some
+    # link of an allowed KIND actually touches.
+    #
+    # The kind filter is what lets the three booth sheets share one set of
+    # groups without becoming three copies of the same drawing. It exists
+    # because the Booth PC carries 11 links (6 video, 2 audio, 3 control) and
+    # dot has exactly one flow direction to spend on them — rankdir inside a
+    # cluster is silently ignored, so 11 links onto two faces of one box is
+    # not something layout tuning can fix. Split by domain the same hub is 6,
+    # 2 and 3, and each sheet straightens into a line.
+    def sheet_members(sheet):
+        gids = set(sheet.get("groups") or [])
+        ids = {n["id"] for n in data["nodes"] if n.get("group") in gids}
+        kinds = sheet.get("kinds")
+        if kinds:
+            touched = set()
+            for link in all_links:
+                if link.get("kind") in kinds:
+                    touched.add(split_ref(link["from"])[0])
+                    touched.add(split_ref(link["to"])[0])
+            ids &= touched
+        return ids
+
+    members_by_sheet = {sid: sheet_members(s) for sid, s in sheets.items()}
+    this_sheet = sheets.get(diagram_id) or {}
+    this_kinds = this_sheet.get("kinds")
+    on_ids = members_by_sheet.get(diagram_id, set())
+
+    if diagram_id:
+        included_groups = set(this_sheet.get("groups", []))
+        groups = {gid: g for gid, g in groups.items() if gid in included_groups}
+        data = dict(data, nodes=[n for n in data["nodes"] if n["id"] in on_ids])
+
+    def on_sheet(node_id):
+        return diagram_id is None or node_id in on_ids
+
+    def other_sheet_for(node_id, kind):
+        """The sheet a stub should point at: one that shows this node AND
+        this kind of link. With several booth sheets over the same groups,
+        'whichever sheet holds the node' is no longer a unique answer, and
+        naming a sheet that filters this kind out would send the reader to a
+        drawing where the link simply is not."""
+        for sid, sheet in sheets.items():
+            if sid == diagram_id or node_id not in members_by_sheet[sid]:
+                continue
+            kinds = sheet.get("kinds")
+            if kinds is None or kind in kinds:
+                return sheet
+        return {}
 
     def port_label(node_id, port_id):
         node = nodes_by_id.get(node_id) or {}
@@ -277,12 +321,16 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
         return None
 
     # Partition links: kept whole, crossing the boundary, or off-sheet entirely.
+    # Out-of-kind links are DROPPED, not stubbed — a stub means "this carries
+    # on elsewhere", and hanging one off every video port of the PC on the
+    # audio sheet reintroduced exactly the hub this split exists to break up.
     # Port in/out classification deliberately still uses ALL links — a port
     # whose only connection leaves the sheet must still be classified from
     # that connection, or it lands on the wrong face of its node.
-    all_links = links
     kept, crossing = [], []
     for link in links:
+        if this_kinds and link.get("kind") not in this_kinds:
+            continue
         src_node, _ = split_ref(link["from"])
         dst_node, _ = split_ref(link["to"])
         src_in, dst_in = on_sheet(src_node), on_sheet(dst_node)
@@ -291,6 +339,14 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
         elif src_in or dst_in:
             crossing.append(link)
     links = kept
+
+    # Ports to draw: only those this sheet's own links land on.
+    visible_ports = {}
+    for link in kept + crossing:
+        for ref in (link["from"], link["to"]):
+            nid, pid = split_ref(ref)
+            if pid:
+                visible_ports.setdefault(nid, set()).add(pid)
 
     lines = [
         "digraph signal_chain {",
@@ -335,7 +391,7 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
         far_node_id, far_port_id = (
             (dst_node, dst_port) if src_in else (src_node, src_port)
         )
-        far_sheet = sheets.get(node_sheet.get(far_node_id), {})
+        far_sheet = other_sheet_for(far_node_id, link.get("kind"))
         stub_id = f"__stub_{far_node_id}_{far_port_id or 'node'}"
 
         if stub_id not in seen_stubs:
@@ -352,10 +408,13 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
         )
 
     def node_decl(n, indent):
-        return (
-            f'{indent}{n["id"]} '
-            f"[label={node_html_label(n, all_links, horizontal=rankdir in ('LR', 'RL'))}];"
+        label = node_html_label(
+            n,
+            all_links,
+            horizontal=rankdir in ("LR", "RL"),
+            visible_ports=visible_ports.get(n["id"]),
         )
+        return f'{indent}{n["id"]} [label={label}];'
 
     sheet_title = (sheets.get(diagram_id) or {}).get("title")
 
@@ -478,7 +537,7 @@ PORT_KEYS = {"id", "label", "side"}
 LINK_KEYS = {"from", "to", "direction", "kind", "label", "status", "constraint"}
 GROUP_KEYS = {"id", "label", "subgroups"}
 SUBGROUP_KEYS = {"id", "label"}
-DIAGRAM_KEYS = {"id", "title", "groups", "rankdir"}
+DIAGRAM_KEYS = {"id", "title", "groups", "rankdir", "kinds"}
 
 
 def validate(data: dict) -> list[str]:
@@ -549,6 +608,12 @@ def validate(data: dict) -> list[str]:
             problems.append(
                 f"diagram {sheet.get('id')!r}: rankdir must be TB or LR"
             )
+        for kind in sheet.get("kinds") or []:
+            if kind not in KIND_COLOR:
+                problems.append(
+                    f"diagram {sheet.get('id')!r}: unknown kind {kind!r} "
+                    f"(have: {sorted(KIND_COLOR)})"
+                )
         for gid in sheet.get("groups") or []:
             if gid not in group_ids:
                 problems.append(f"diagram {sheet.get('id')!r}: unknown group {gid!r}")

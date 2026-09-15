@@ -25,6 +25,10 @@
 #     equipment together — dot otherwise orders purely by signal-flow depth,
 #     which interleaves monitors with infrastructure.
 #   - a diagram may set `rankdir: TB|LR` to pick its own orientation.
+#   - a diagram may set `kinds: [...]` to show only those link kinds. Nodes
+#     with no matching link, and ports nothing on the sheet lands on, drop out
+#     by themselves. This is how the booth is three sheets over one set of
+#     groups. Out-of-kind links are dropped, NOT drawn as off-sheet stubs.
 #
 # AFTER EDITING, run:
 #     dashboard/backend/tests/signal-chain-layout-check.py
@@ -42,9 +46,32 @@ diagrams:
     # far better as columns than as rows; TB forces the monitor fan-out into
     # a tall ragged staircase. The UI's rankdir toggle still overrides.
     rankdir: LR
-  - id: booth
-    title: Sound Booth
+  # The booth is THREE sheets, one per signal domain, over the same groups —
+  # `kinds` does the separating. One combined booth sheet put 11 links on the
+  # Booth PC (6 video, 2 audio, 3 control), and dot has a single flow
+  # direction to spend on them, so they piled onto two faces of the box and
+  # crossed. Per domain the same hub is 6, 2 and 3 links and each sheet is a
+  # line. Nodes with no link of the sheet's kinds drop out automatically, as
+  # do ports nothing on the sheet lands on.
+  #
+  # AVB is kind `network` but it is how audio reaches the stage, so it sits
+  # on the audio sheet, not the control one. Sheet membership follows what an
+  # operator is tracing, not what the wire technically is.
+  - id: booth-video
+    title: Booth — Video / Program
     groups: [booth, foh, sanctuary, maintenance]
+    kinds: [video]
+    rankdir: TB
+  - id: booth-audio
+    title: Booth — Audio
+    groups: [booth, foh, sanctuary, maintenance]
+    kinds: [audio, network]
+    rankdir: TB
+  - id: booth-control
+    title: Booth — Control / Network
+    groups: [booth, foh, sanctuary, maintenance]
+    kinds: [control]
+    rankdir: TB
 
 groups:
   - id: stage
