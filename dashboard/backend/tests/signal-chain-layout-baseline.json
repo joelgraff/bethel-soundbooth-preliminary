@@ -1,21 +1,21 @@
 {
   "atem/LR": {
-    "area": 101.7,
+    "area": 118.2,
     "crossings": 0,
-    "edge_len": 13.1,
-    "edges": 5,
+    "edge_len": 29.1,
+    "edges": 6,
     "nodes": 7,
     "self_overlap": 0,
     "served": true,
     "through_nodes": 0
   },
   "atem/TB": {
-    "area": 83.7,
+    "area": 91.1,
     "crossings": 0,
-    "edge_len": 6.6,
-    "edges": 5,
+    "edge_len": 14.2,
+    "edges": 6,
     "nodes": 7,
-    "self_overlap": 0,
+    "self_overlap": 1,
     "served": false,
     "through_nodes": 0
   },
@@ -80,21 +80,21 @@
     "through_nodes": 0
   },
   "stage/LR": {
-    "area": 404.0,
+    "area": 277.2,
     "crossings": 0,
-    "edge_len": 63.3,
-    "edges": 16,
-    "nodes": 19,
+    "edge_len": 54.7,
+    "edges": 14,
+    "nodes": 16,
     "self_overlap": 0,
     "served": true,
     "through_nodes": 0
   },
   "stage/TB": {
-    "area": 270.6,
+    "area": 255.5,
     "crossings": 0,
-    "edge_len": 53.4,
-    "edges": 16,
-    "nodes": 19,
+    "edge_len": 49.0,
+    "edges": 14,
+    "nodes": 16,
     "self_overlap": 3,
     "served": false,
     "through_nodes": 0

@@ -124,10 +124,6 @@ groups:
       - {id: sources, label: "Sources (inputs)", same_rank: true}
       - {id: avb, label: "AVB infrastructure (pass-through)"}
       - {id: monitors, label: "Personal monitors (endpoints)"}
-      # The camera is on stage physically but is video, not part of the audio
-      # chain at all. Boxing it says so, and stops it being placed in the
-      # middle of the AVB fan-out.
-      - {id: cam, label: "Camera"}
 
 nodes:
   # ---------------- Stage ----------------
@@ -254,10 +250,14 @@ nodes:
     ports:
       - {id: avb_in, label: AVB in}
 
+  # On the ATEM sheet, not the stage one. It is on stage physically, but the
+  # stage sheet is the audio plant and the camera has nothing to do with it —
+  # it was only ever there because that is where it stands. Its SDI run is the
+  # head of the capture chain (camera -> converter -> ATEM), so it belongs
+  # with the switcher those two boxes feed.
   - id: camera
     label: PTZOptics PT12X-SDI
-    group: stage
-    subgroup: cam
+    group: atem
     ports:
       - {id: sdi_out, label: SDI Out}
       - {id: net, label: "LAN (VISCA/RTSP)"}
@@ -296,11 +296,12 @@ nodes:
       # Explicit for the same reason as presonus.usb — see the note there.
       - {id: eth, label: Ethernet (control), side: out}
 
-  # NEEDS VERIFICATION: make/model, and whether it lives in the booth rack or
-  # out at the camera. Placed in the booth here on the assumption the SDI coax
-  # does the long run and conversion happens at the switcher end.
+  # Blackmagic, sitting in the booth right next to the ATEM (operator,
+  # 2026-09-15) — so the SDI coax does the long run from the camera and
+  # conversion happens at the switcher end, which is what had been assumed
+  # here. Exact model still unrecorded; "Blackmagic" is as far as this goes.
   - id: sdi_hdmi_conv
-    label: SDI → HDMI converter
+    label: Blackmagic SDI → HDMI
     group: atem
     ports:
       - {id: sdi_in, label: SDI in}
