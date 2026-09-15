@@ -312,9 +312,10 @@ def api_signal_chain_sheets(_: None = Depends(require_session)):
 
 
 @app.get("/api/signal-chain/{sheet_id}/svg")
-def api_signal_chain_svg(sheet_id: str, rankdir: str = "TB",
+def api_signal_chain_svg(sheet_id: str, rankdir: str | None = None,
                          _: None = Depends(require_session)):
-    if rankdir not in ("TB", "LR"):
+    # Omitted means "use the sheet's own preferred rankdir" (see render_svg).
+    if rankdir is not None and rankdir not in ("TB", "LR"):
         raise HTTPException(status_code=400, detail="rankdir must be TB or LR")
     try:
         svg = signal_chain_mod.render_svg(

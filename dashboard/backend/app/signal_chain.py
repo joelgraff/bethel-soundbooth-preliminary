@@ -351,22 +351,69 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
             (link, f"{near} -> {stub_id}" if src_in else f"{stub_id} -> {near}")
         )
 
+    def node_decl(n, indent):
+        return (
+            f'{indent}{n["id"]} '
+            f"[label={node_html_label(n, all_links, horizontal=rankdir in ('LR', 'RL'))}];"
+        )
+
+    sheet_title = (sheets.get(diagram_id) or {}).get("title")
+
     for gid, group in groups.items():
         muted = gid == "maintenance"
-        lines.append(f"  subgraph cluster_{gid} {{")
-        lines.append(
-            f'    label="  {esc(group["label"])}  "; fontsize=11.5; labeljust="c"; '
-            f'fontcolor="{"#6e7787" if muted else "#93a1b5"}"; '
-            f'color="{"#3a414d" if muted else "#2c3440"}"; '
-            f'style="{"rounded,dashed" if muted else "rounded"}"; margin=24;'
+        members = by_group.get(gid, [])
+
+        # A group box whose label just repeats the sheet title, on a sheet
+        # that is only that group, is pure packaging — the page already says
+        # "Stage" above the drawing. Dropping it matters because the wasted
+        # frame is not just ink: nesting the real subgroup boxes one level
+        # deeper measurably loosens dot's packing (stage went from 436 to 383
+        # sq in on this alone). Only skipped when the subgroups can carry the
+        # labelling themselves.
+        redundant = (
+            len(groups) == 1
+            and group.get("subgroups")
+            and group.get("label") == sheet_title
         )
-        for n in by_group.get(gid, []):
+        indent = "  " if redundant else "    "
+        if not redundant:
+            lines.append(f"  subgraph cluster_{gid} {{")
             lines.append(
-                f'    {n["id"]} '
-                f"[label={node_html_label(n, all_links, horizontal=rankdir in ('LR', 'RL'))}];"
+                f'    label="  {esc(group["label"])}  "; fontsize=11.5; labeljust="c"; '
+                f'fontcolor="{"#6e7787" if muted else "#93a1b5"}"; '
+                f'color="{"#3a414d" if muted else "#2c3440"}"; '
+                f'style="{"rounded,dashed" if muted else "rounded"}"; margin=24;'
             )
-        lines.extend(stub_decls.get(gid, []))
-        lines.append("  }")
+
+        # Subgroups become nested clusters, which is the only thing dot
+        # honours as "keep these together": rank alone will not do it, because
+        # rank follows signal-flow depth and that interleaves kinds — the
+        # EarMixes ended up sitting between the stageboxes and the switches
+        # purely because they are the same number of hops from the console.
+        # Grouping by role separates the monitors (endpoints) from the AVB
+        # infrastructure (pass-through) regardless of depth.
+        for sub in group.get("subgroups") or []:
+            in_sub = [n for n in members if n.get("subgroup") == sub["id"]]
+            if not in_sub:
+                continue
+            lines.append(f"{indent}subgraph cluster_{gid}_{sub['id']} {{")
+            lines.append(
+                f'{indent}  label="  {esc(sub["label"])}  "; fontsize=10; '
+                f'labeljust="l"; fontcolor="#7f8a9b"; color="#242c38"; '
+                f'style="rounded"; margin=14;'
+            )
+            for n in in_sub:
+                lines.append(node_decl(n, indent + "  "))
+            lines.append(f"{indent}}}")
+
+        for n in members:
+            if not n.get("subgroup"):
+                lines.append(node_decl(n, indent))
+        lines.extend(
+            d.replace("    ", indent, 1) for d in stub_decls.get(gid, [])
+        )
+        if not redundant:
+            lines.append("  }")
 
     def edge_attrs(link):
         color = KIND_COLOR.get(link.get("kind"), "#8b949e")
@@ -426,9 +473,12 @@ def _load(project_dir: Path) -> dict:
     return data
 
 
-NODE_KEYS = {"id", "label", "group", "ports"}
+NODE_KEYS = {"id", "label", "group", "subgroup", "ports"}
 PORT_KEYS = {"id", "label", "side"}
 LINK_KEYS = {"from", "to", "direction", "kind", "label", "status", "constraint"}
+GROUP_KEYS = {"id", "label", "subgroups"}
+SUBGROUP_KEYS = {"id", "label"}
+DIAGRAM_KEYS = {"id", "title", "groups", "rankdir"}
 
 
 def validate(data: dict) -> list[str]:
@@ -442,7 +492,26 @@ def validate(data: dict) -> list[str]:
     problems = []
     nodes = data.get("nodes") or []
     node_ids = {n.get("id") for n in nodes}
-    group_ids = {g.get("id") for g in (data.get("groups") or [])}
+    groups = data.get("groups") or []
+    group_ids = {g.get("id") for g in groups}
+
+    # Subgroups are scoped to their parent group, so the same short name
+    # ("monitors", "sources") can be reused across sheets without colliding.
+    subgroups_by_group = {}
+    for g in groups:
+        for key in set(g) - GROUP_KEYS:
+            problems.append(
+                f"group {g.get('id')!r}: unexpected key {key!r} "
+                f"(quote values containing a comma)"
+            )
+        subgroups_by_group[g.get("id")] = set()
+        for sg in g.get("subgroups") or []:
+            for key in set(sg) - SUBGROUP_KEYS:
+                problems.append(
+                    f"group {g.get('id')!r} subgroup {sg.get('id')!r}: "
+                    f"unexpected key {key!r} (quote values containing a comma)"
+                )
+            subgroups_by_group[g.get("id")].add(sg.get("id"))
 
     ports_by_node = {}
     for n in nodes:
@@ -454,6 +523,13 @@ def validate(data: dict) -> list[str]:
             problems.append(f"node {nid!r}: unexpected key {key!r} (quote values containing a comma)")
         if n.get("group") and n["group"] not in group_ids:
             problems.append(f"node {nid!r}: unknown group {n['group']!r}")
+        if n.get("subgroup"):
+            known = subgroups_by_group.get(n.get("group"), set())
+            if n["subgroup"] not in known:
+                problems.append(
+                    f"node {nid!r}: unknown subgroup {n['subgroup']!r} "
+                    f"for group {n.get('group')!r}"
+                )
         ports_by_node[nid] = set()
         for p in n.get("ports") or []:
             for key in set(p) - PORT_KEYS:
@@ -464,6 +540,15 @@ def validate(data: dict) -> list[str]:
             ports_by_node[nid].add(p.get("id"))
 
     for sheet in data.get("diagrams") or []:
+        for key in set(sheet) - DIAGRAM_KEYS:
+            problems.append(
+                f"diagram {sheet.get('id')!r}: unexpected key {key!r} "
+                f"(quote values containing a comma)"
+            )
+        if sheet.get("rankdir") not in (None, "TB", "LR"):
+            problems.append(
+                f"diagram {sheet.get('id')!r}: rankdir must be TB or LR"
+            )
         for gid in sheet.get("groups") or []:
             if gid not in group_ids:
                 problems.append(f"diagram {sheet.get('id')!r}: unknown group {gid!r}")
@@ -500,13 +585,23 @@ def list_sheets(*, project_dir: Path) -> list[dict]:
 
 
 def render_svg(*, project_dir: Path, sheet_id: str | None = None,
-               rankdir: str = "TB") -> str:
+               rankdir: str | None = None) -> str:
+    """rankdir=None means "whatever this sheet asks for". Sheets differ:
+    the stage sheet lays out its source -> infrastructure -> monitors chain
+    far better left-to-right, while the booth sheet's video spine wants
+    top-to-bottom. An explicit rankdir argument still overrides, so the UI
+    toggle keeps working."""
     data = _load(project_dir)
-    known = {s["id"] for s in (data.get("diagrams") or [])}
+    sheets = {s["id"]: s for s in (data.get("diagrams") or [])}
     if sheet_id in ("all", "", None):
         sheet_id = None
-    elif sheet_id not in known:
-        raise SignalChainError(f"no such sheet {sheet_id!r} (have: {sorted(known)})")
+    elif sheet_id not in sheets:
+        raise SignalChainError(
+            f"no such sheet {sheet_id!r} (have: {sorted(sheets)})"
+        )
+
+    if rankdir is None:
+        rankdir = (sheets.get(sheet_id) or {}).get("rankdir") or "TB"
 
     dot_src = build_dot(data, rankdir=rankdir, diagram_id=sheet_id)
     try:

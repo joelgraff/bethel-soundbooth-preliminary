@@ -18,11 +18,30 @@
 #   - a port's side (left/right in LR, top/bottom in TB) is inferred from how
 #     it's used; add `side: in|out|both` to a port only to override that, which
 #     is occasionally needed for a two-way link between two adjacent nodes.
+#   - port ORDER within a node is presentation: it decides which link leaves
+#     above which, so list ports in the order their far ends appear.
+#   - a group may declare `subgroups`, and a node may name one in `subgroup`.
+#     These render as nested boxes and are the ONLY reliable way to keep like
+#     equipment together — dot otherwise orders purely by signal-flow depth,
+#     which interleaves monitors with infrastructure.
+#   - a diagram may set `rankdir: TB|LR` to pick its own orientation.
+#
+# AFTER EDITING, run:
+#     dashboard/backend/tests/signal-chain-layout-check.py
+# It re-renders every sheet and fails if edge crossings, lines through node
+# boxes, or lines cutting through their own node got worse. Grouping changes
+# in particular can improve one sheet and wreck another; the numbers say
+# which. Use --update-baseline once you have looked at the result and want to
+# keep it.
 
 diagrams:
   - id: stage
     title: Stage
     groups: [stage]
+    # This sheet is a source -> infrastructure -> monitors chain, which reads
+    # far better as columns than as rows; TB forces the monitor fan-out into
+    # a tall ragged staircase. The UI's rankdir toggle still overrides.
+    rankdir: LR
   - id: booth
     title: Sound Booth
     groups: [booth, foh, sanctuary, maintenance]
@@ -30,8 +49,31 @@ diagrams:
 groups:
   - id: stage
     label: Stage
+    # Split by ROLE, not by signal-flow depth. Without this the EarMixes come
+    # out interleaved with the stageboxes and switches, because dot ranks by
+    # hops-from-the-console and a monitor is the same distance out as a
+    # stagebox. They are different things: monitors are endpoints a musician
+    # touches, the switches and boxes are infrastructure nobody touches.
+    subgroups:
+      - {id: sources, label: "Sources (inputs)"}
+      - {id: avb, label: "AVB infrastructure (pass-through)"}
+      - {id: monitors, label: "Personal monitors (endpoints)"}
+      # The camera is on stage physically but is video, not part of the audio
+      # chain at all. Boxing it says so, and stops it being placed in the
+      # middle of the AVB fan-out.
+      - {id: cam, label: "Camera"}
   - id: booth
     label: Booth (rack + PC)
+    # Only ONE subgroup here, deliberately. The three extenders are one
+    # thing -- the HDMI distribution tier -- and boxing them halves the
+    # sheet's edge crossings (12 -> 5) by stopping dot interleaving them
+    # with the ATEM and the console. Adding a second box to this group
+    # (tried: capture chain, console) puts it straight back to 12: the two
+    # clusters then compete for position and dot resolves it by stretching
+    # the links between them. Measured with
+    # dashboard/backend/tests/signal-chain-layout-check.py.
+    subgroups:
+      - {id: dist, label: "HDMI distribution (pass-through)"}
   - id: foh
     label: FOH / House Audio
   - id: sanctuary
@@ -44,12 +86,14 @@ nodes:
   - id: stage_sources
     label: Stage mics / vocals
     group: stage
+    subgroup: sources
     ports:
       - {id: out, label: XLR}
 
   - id: di_box
     label: Behringer DI (8ch)
     group: stage
+    subgroup: sources
     ports:
       - {id: inst_in, label: Instrument in}
       - {id: out, label: XLR out}
@@ -57,6 +101,7 @@ nodes:
   - id: td27
     label: Roland TD-27 (V-Drums)
     group: stage
+    subgroup: sources
     ports:
       - {id: out, label: Out}
 
@@ -70,15 +115,22 @@ nodes:
   - id: avb_switch_sr
     label: PreSonus SW5E — stage right
     group: stage
+    subgroup: avb
     ports:
+      # Port ORDER is presentation, not topology, and it decides which edge
+      # leaves above which. Stagebox / to-stage-left / EarMix matches the
+      # order those destinations end up in down the sheet; listing EarMix
+      # before the stage-left uplink made those two edges cross immediately
+      # outside the box for no reason at all.
       - {id: console, label: From console}
       - {id: box, label: Stagebox}
-      - {id: monitors, label: EarMix}
       - {id: sl, label: To stage-left switch}
+      - {id: monitors, label: EarMix}
 
   - id: avb_switch_sl
     label: PreSonus SW5E — stage left
     group: stage
+    subgroup: avb
     ports:
       - {id: uplink, label: From stage-right}
       - {id: box, label: Stagebox}
@@ -87,6 +139,7 @@ nodes:
   - id: nsb_right
     label: NSB 16.8 — stage right
     group: stage
+    subgroup: avb
     ports:
       - {id: in, label: Mic/line in}
       - {id: avb, label: AVB}
@@ -94,6 +147,7 @@ nodes:
   - id: nsb_left
     label: NSB 16.8 — stage left
     group: stage
+    subgroup: avb
     ports:
       - {id: in, label: Mic/line in}
       - {id: avb, label: AVB}
@@ -103,6 +157,7 @@ nodes:
   - id: em_jordan
     label: EarMix — Jordan
     group: stage
+    subgroup: monitors
     ports:
       - {id: avb_in, label: AVB in}
       - {id: thru, label: AVB thru}
@@ -110,6 +165,7 @@ nodes:
   - id: em_bassist
     label: EarMix — Bassist
     group: stage
+    subgroup: monitors
     ports:
       - {id: avb_in, label: AVB in}
       - {id: thru, label: AVB thru}
@@ -117,12 +173,14 @@ nodes:
   - id: em_keyboard
     label: EarMix — Keyboard
     group: stage
+    subgroup: monitors
     ports:
       - {id: avb_in, label: AVB in}
 
   - id: em_drums
     label: EarMix — Drums
     group: stage
+    subgroup: monitors
     ports:
       - {id: avb_in, label: AVB in}
 
@@ -130,24 +188,28 @@ nodes:
   - id: em_tom
     label: EarMix — Tom
     group: stage
+    subgroup: monitors
     ports:
       - {id: avb_in, label: AVB in}
 
   - id: em_vocal1
     label: EarMix — Vocal 1
     group: stage
+    subgroup: monitors
     ports:
       - {id: avb_in, label: AVB in}
 
   - id: em_vocal2
     label: EarMix — Vocal 2
     group: stage
+    subgroup: monitors
     ports:
       - {id: avb_in, label: AVB in}
 
   - id: camera
     label: PTZOptics PT12X-SDI
     group: stage
+    subgroup: cam
     ports:
       - {id: sdi_out, label: SDI Out}
       - {id: net, label: "LAN (VISCA/RTSP)"}
@@ -216,6 +278,7 @@ nodes:
   - id: ext_foh
     label: HDMI extender — 4-port (DP-2, FOH)
     group: booth
+    subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
       - {id: cat_out, label: Cat out}
@@ -223,6 +286,7 @@ nodes:
   - id: ext_back
     label: HDMI extender — 4-port (DP-4, back)
     group: booth
+    subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
       - {id: cat_out, label: Cat out}
@@ -230,6 +294,7 @@ nodes:
   - id: ext_pulpit
     label: HDMI extender — single (DP-3, pulpit)
     group: booth
+    subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
       - {id: cat_out, label: Cat out}

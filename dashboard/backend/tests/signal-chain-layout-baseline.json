@@ -1,0 +1,42 @@
+{
+  "booth/LR": {
+    "area": 404.8,
+    "crossings": 3,
+    "edge_len": 96.8,
+    "edges": 22,
+    "nodes": 20,
+    "self_overlap": 2,
+    "served": false,
+    "through_nodes": 0
+  },
+  "booth/TB": {
+    "area": 382.2,
+    "crossings": 5,
+    "edge_len": 81.9,
+    "edges": 22,
+    "nodes": 20,
+    "self_overlap": 0,
+    "served": true,
+    "through_nodes": 0
+  },
+  "stage/LR": {
+    "area": 382.7,
+    "crossings": 0,
+    "edge_len": 55.7,
+    "edges": 16,
+    "nodes": 19,
+    "self_overlap": 0,
+    "served": true,
+    "through_nodes": 0
+  },
+  "stage/TB": {
+    "area": 239.5,
+    "crossings": 0,
+    "edge_len": 48.0,
+    "edges": 16,
+    "nodes": 19,
+    "self_overlap": 3,
+    "served": false,
+    "through_nodes": 0
+  }
+}
