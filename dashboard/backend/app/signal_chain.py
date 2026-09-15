@@ -76,9 +76,17 @@ def esc(s):
 def classify_port_sides(node, links):
     """{port_id: 'in'|'out'|'both'}. Explicit port['side'] wins; otherwise
     infer from how the port is used across links — only a target -> in, only
-    a source -> out, both (or on a two-way link) -> both. This is what puts
-    inputs on the left and outputs on the right so edges land facing the
-    direction they arrive from instead of arcing around the node body."""
+    a source -> out, each of them somewhere -> both. This is what puts inputs
+    on the left and outputs on the right so edges land facing the direction
+    they arrive from instead of arcing around the node body.
+
+    DIRECTION IS DELIBERATELY IGNORED HERE. `two-way` decides where arrowheads
+    are drawn, not which face a port lives on. Counting a two-way link as
+    using its port in both roles made every AVB port on the stage sheet
+    'both', which pushed all of them onto the input face — so every outgoing
+    edge left from the top of the box and looped back around it. Links are
+    written in flow order (console -> switch -> stagebox), so the written role
+    is the right signal for placement even when audio travels both ways."""
     port_ids = {p["id"] for p in (node.get("ports") or [])}
     usage = {pid: set() for pid in port_ids}
     for link in links:
@@ -88,8 +96,6 @@ def classify_port_sides(node, links):
             node_id, port_id = ref.split(".", 1)
             if node_id == node["id"] and port_id in usage:
                 usage[port_id].add(role)
-                if link.get("direction") == "two-way":
-                    usage[port_id].update({"from", "to"})
 
     sides = {}
     for p in node.get("ports") or []:
@@ -237,7 +243,7 @@ def stub_label(far_node, far_port_label, sheet_title):
     )
 
 
-def build_dot(data, rankdir="LR", splines="spline", diagram_id=None):
+def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
     groups = {g["id"]: g for g in data.get("groups", [])}
     links = data["links"]
     nodes_by_id = {n["id"]: n for n in data["nodes"]}
@@ -290,9 +296,17 @@ def build_dot(data, rankdir="LR", splines="spline", diagram_id=None):
         "digraph signal_chain {",
         f"  rankdir={rankdir};",
         f'  bgcolor="{BG}";',
+        # polyline, not spline: straight segments with clean bends. Splines
+        # turned every long link into a swooping curve and — because dot puts
+        # an edge label at the curve's midpoint — left the labels floating in
+        # mid-canvas, detached from the line they belonged to. ortho is
+        # tidier still but routes lines straight THROUGH node boxes, which on
+        # a wiring diagram reads as a connection that isn't there.
         f"  splines={splines};",
-        "  nodesep=0.45;",
-        "  ranksep=0.85;",
+        # Loose enough that the band of links between the console, the ATEM
+        # and the PC has room to fan out and keep its labels on one line.
+        "  nodesep=0.6;",
+        "  ranksep=1.1;",
         "  newrank=true;",
         '  fontname="Helvetica";',
         '  node [shape=plaintext, fontname="Helvetica"];',
@@ -302,6 +316,40 @@ def build_dot(data, rankdir="LR", splines="spline", diagram_id=None):
     by_group = {}
     for n in data["nodes"]:
         by_group.setdefault(n.get("group"), []).append(n)
+
+    # Work out the off-sheet connectors BEFORE drawing the clusters, because
+    # each one has to be declared INSIDE the cluster holding the node it
+    # attaches to. A stub declared at top level belongs to no cluster, and
+    # dot then banishes it to the canvas margin — which is what produced the
+    # single longest edge on both sheets (the console stub sat far right while
+    # the switch it feeds sat centre-left). Declared in the right cluster it
+    # lands next to its neighbour and the edge becomes a short stub again.
+    # One connector per far endpoint (node+port), so several links to the same
+    # far port share a connector instead of stacking duplicates.
+    stub_decls, stub_edges, seen_stubs = {}, [], set()
+    for link in crossing:
+        src_node, src_port = split_ref(link["from"])
+        dst_node, dst_port = split_ref(link["to"])
+        src_in = on_sheet(src_node)
+        near_node_id = src_node if src_in else dst_node
+        far_node_id, far_port_id = (
+            (dst_node, dst_port) if src_in else (src_node, src_port)
+        )
+        far_sheet = sheets.get(node_sheet.get(far_node_id), {})
+        stub_id = f"__stub_{far_node_id}_{far_port_id or 'node'}"
+
+        if stub_id not in seen_stubs:
+            seen_stubs.add(stub_id)
+            near_group = nodes_by_id[near_node_id].get("group")
+            stub_decls.setdefault(near_group, []).append(
+                f"    {stub_id} [label="
+                f"{stub_label(nodes_by_id[far_node_id], port_label(far_node_id, far_port_id), far_sheet.get('title', '?'))}];"
+            )
+
+        near = (link["from"] if src_in else link["to"]).replace(".", ":", 1)
+        stub_edges.append(
+            (link, f"{near} -> {stub_id}" if src_in else f"{stub_id} -> {near}")
+        )
 
     for gid, group in groups.items():
         muted = gid == "maintenance"
@@ -317,11 +365,11 @@ def build_dot(data, rankdir="LR", splines="spline", diagram_id=None):
                 f'    {n["id"]} '
                 f"[label={node_html_label(n, all_links, horizontal=rankdir in ('LR', 'RL'))}];"
             )
+        lines.extend(stub_decls.get(gid, []))
         lines.append("  }")
 
-    for link in links:
-        kind = link.get("kind")
-        color = KIND_COLOR.get(kind, "#8b949e")
+    def edge_attrs(link):
+        color = KIND_COLOR.get(link.get("kind"), "#8b949e")
         unverified = link.get("status") == "needs-verification"
         attrs = [
             f'color="{color}{"99" if unverified else ""}"',
@@ -334,46 +382,16 @@ def build_dot(data, rankdir="LR", splines="spline", diagram_id=None):
             attrs.append(f'label=" {esc(label)} "')
         if link.get("constraint") is False:
             attrs.append("constraint=false")
-        lines.append(
-            f'  {link["from"].replace(".", ":", 1)} -> {link["to"].replace(".", ":", 1)} '
-            f'[{", ".join(attrs)}];'
+        return ", ".join(attrs)
+
+    for link in links:
+        endpoints = (
+            f'{link["from"].replace(".", ":", 1)} -> {link["to"].replace(".", ":", 1)}'
         )
+        lines.append(f"  {endpoints} [{edge_attrs(link)}];")
 
-    # Off-sheet connectors for links that leave this sheet. One stub per far
-    # endpoint (node+port), so several links to the same far port share a
-    # single connector instead of stacking duplicates.
-    emitted_stubs = set()
-    for link in crossing:
-        src_node, src_port = split_ref(link["from"])
-        dst_node, dst_port = split_ref(link["to"])
-        src_in = on_sheet(src_node)
-        far_node_id, far_port_id = (dst_node, dst_port) if src_in else (src_node, src_port)
-        far_node = nodes_by_id[far_node_id]
-        far_sheet = sheets.get(node_sheet.get(far_node_id), {})
-        stub_id = f"__stub_{far_node_id}_{far_port_id or 'node'}"
-
-        if stub_id not in emitted_stubs:
-            emitted_stubs.add(stub_id)
-            lines.append(
-                f"  {stub_id} [label="
-                f"{stub_label(far_node, port_label(far_node_id, far_port_id), far_sheet.get('title', '?'))}];"
-            )
-
-        kind = link.get("kind")
-        color = KIND_COLOR.get(kind, "#8b949e")
-        unverified = link.get("status") == "needs-verification"
-        attrs = [
-            f'color="{color}{"99" if unverified else ""}"',
-            f'fontcolor="{color}{"cc" if unverified else ""}"',
-            f'dir={"both" if link.get("direction") == "two-way" else "forward"}',
-            f'style={"dashed" if unverified else "solid"}',
-        ]
-        label = (link.get("label") or "").strip()
-        if label:
-            attrs.append(f'label=" {esc(label)} "')
-        near = (link["from"] if src_in else link["to"]).replace(".", ":", 1)
-        endpoints = f"{near} -> {stub_id}" if src_in else f"{stub_id} -> {near}"
-        lines.append(f'  {endpoints} [{", ".join(attrs)}];')
+    for link, endpoints in stub_edges:
+        lines.append(f"  {endpoints} [{edge_attrs(link)}];")
 
     legend_links = links + crossing
     kinds_used = [k for k in KIND_COLOR if any(l.get("kind") == k for l in legend_links)]

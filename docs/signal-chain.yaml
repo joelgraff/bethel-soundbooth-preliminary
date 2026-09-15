@@ -303,21 +303,21 @@ links:
   # Which sources land on which box and which channels is the remaining gap —
   # see docs/mixer-channel-map.md when it exists.
   - {from: stage_sources.out, to: nsb_right.in, direction: one-way, kind: audio,
-     label: "mic lines — box/channel not yet mapped", status: needs-verification}
+     label: "mic lines", status: needs-verification}
   - {from: di_box.out, to: nsb_right.in, direction: one-way, kind: audio,
-     label: "DI'd instruments — not yet mapped", status: needs-verification}
+     label: "DI", status: needs-verification}
   - {from: td27.out, to: nsb_left.in, direction: one-way, kind: audio,
-     label: "drum module — not yet mapped", status: needs-verification}
+     label: "drums", status: needs-verification}
 
   # ---- AVB network ----
   # Two-way throughout: each AVB link carries both directions on one cable —
   # box inputs up to the console, monitor mixes back down to the EarMixes.
   - {from: presonus.avb, to: avb_switch_sr.console, direction: two-way, kind: network,
-     label: "AVB — console to stage-right switch", status: confirmed}
+     label: "AVB", status: confirmed}
   - {from: avb_switch_sr.box, to: nsb_right.avb, direction: two-way, kind: network,
      label: "AVB", status: confirmed}
   - {from: avb_switch_sr.sl, to: avb_switch_sl.uplink, direction: two-way, kind: network,
-     label: "AVB — switch to switch", status: confirmed}
+     label: "AVB", status: confirmed}
   - {from: avb_switch_sl.box, to: nsb_left.avb, direction: two-way, kind: network,
      label: "AVB", status: confirmed}
 
@@ -346,30 +346,42 @@ links:
   - {from: presonus.sub_out, to: peavey.in, direction: one-way, kind: audio,
      label: "sub feed", status: needs-verification}
   - {from: crown.out, to: bose.in, direction: one-way, kind: audio,
-     label: "8 speakers / 2 ch", status: needs-verification}
+     label: "8 spk / 2 ch", status: needs-verification}
   - {from: peavey.out, to: sub.in, direction: one-way, kind: audio,
      status: needs-verification}
 
   # ---- Software audio return (SYSTEM-STATE: the live FOH path) ----
+  # Carried by presonus-foh-bridge; this is the link whose USB end has the
+  # failure history behind the ch 21 contingency below.
   - {from: presonus.usb, to: pc.usb_presonus, direction: two-way, kind: audio,
-     label: "USB return 1-2 via presonus-foh-bridge", status: confirmed}
+     label: "USB return 1–2", status: confirmed}
   # Second, independent PC->mixer path: the analog contingency feed
   # (lineout-fallback.service), deliberately sharing nothing with the USB link
   # so it can't fail the same way. Stays muted at the board until needed.
   - {from: pc.lineout, to: presonus.ch21, direction: one-way, kind: audio,
-     label: "analog line-out → ch 21 (FOH contingency)", status: confirmed}
+     label: "ch 21 (backup)", status: confirmed}
 
   # ---- Video / program ----
   - {from: camera.sdi_out, to: sdi_hdmi_conv.sdi_in, direction: one-way, kind: video,
      label: "SDI coax", status: confirmed}
   - {from: sdi_hdmi_conv.hdmi_out, to: atem.cam2, direction: one-way, kind: video,
-     label: "HDMI → Camera 2", status: confirmed}
+     label: "HDMI", status: confirmed}
+  # Labels here are kept to two or three words on purpose: dot reserves canvas
+  # space for every edge label, so long ones physically push the nodes apart
+  # and turn short links into long diagonals. The detail lives in these
+  # comments and in docs/equipment-and-connections.md.
+  #
+  # UVC: a single-opener device — one process at a time holds /dev/video0.
   - {from: atem.uvc_out, to: pc.video0, direction: one-way, kind: video,
-     label: "UVC — single opener", status: confirmed}
+     label: "UVC", status: confirmed}
+  # ATEM control lives in atem.conf.
   - {from: atem.eth, to: pc.lan, direction: two-way, kind: control,
-     label: "control (atem.conf)", status: confirmed}
+     label: "control", status: confirmed}
+  # VISCA (pan/tilt/zoom) and RTSP (preview stream), both in camera.conf. The
+  # camera sits on its OWN subnet, not the booth LAN — that separation is not
+  # recorded anywhere else, so do not drop it from here.
   - {from: camera.net, to: pc.lan, direction: two-way, kind: control,
-     label: "VISCA / RTSP (camera.conf, separate subnet)", status: confirmed}
+     label: "VISCA / RTSP", status: confirmed}
 
   # ---- Displays ----
   - {from: pc.dp1, to: booth_monitor.dp_in, direction: one-way, kind: video,
@@ -379,29 +391,30 @@ links:
   # one extender. Each display panel is one output of its extender.
   - {from: pc.dp2, to: ext_foh.hdmi_in, direction: one-way, kind: video,
      label: "FreeShow Primary", status: confirmed}
+  # 4-port extender, 2 ports in use — one per Bravia, 2 spare.
   - {from: ext_foh.cat_out, to: foh_tvs.hdmi_in, direction: one-way, kind: video,
-     label: "Cat — 2 of 4 ports used", status: confirmed}
+     label: "Cat", status: confirmed}
   - {from: pc.dp3, to: ext_pulpit.hdmi_in, direction: one-way, kind: video,
      label: "FreeShow Stage", status: confirmed}
   - {from: ext_pulpit.cat_out, to: boh_tv.hdmi_in, direction: one-way, kind: video,
-     label: "Cat — single output", status: confirmed}
+     label: "Cat", status: confirmed}
   - {from: pc.dp4, to: ext_back.hdmi_in, direction: one-way, kind: video,
-     label: "program (ffplay) — the livestream content", status: confirmed}
+     label: "program", status: confirmed}
   - {from: ext_back.cat_out, to: outside_tvs.feed_in, direction: one-way, kind: video,
-     label: "Cat — 2 of 4 ports used, up to ~200 ft", status: confirmed}
+     label: "Cat ~200 ft", status: confirmed}
   # The DP-2 feed doesn't only go out to the front TVs — it also comes back
   # into the ATEM on Camera 3, so FreeShow Primary can be switched into the
   # program feed (slides/lower-thirds to the stream and the back TVs).
   # NEEDS VERIFICATION: where it's tapped — a splitter off DP-2 before the
   # GoFanco hub, or a spare output on the hub itself.
   - {from: pc.dp2, to: atem.cam3, direction: one-way, kind: video,
-     label: "same feed as the front TVs → Camera 3", status: confirmed}
+     label: "FreeShow Primary", status: confirmed, constraint: false}
 
   # ---- Maintenance workstation (never in the operational path) ----
   # Wi-Fi only — the MacBook has no USB connection to anything, which also
   # means it can't contend for /dev/video0 with ffmpeg-capture (the risk
   # flagged in STATUS.md 2026-09-14). It reaches exactly two things:
   - {from: macbook.net, to: atem.eth, direction: two-way, kind: control,
-     label: "Wi-Fi — ATEM Software Control", status: confirmed}
+     label: "ATEM Control", status: confirmed}
   - {from: macbook.net, to: pc.lan, direction: two-way, kind: control,
-     label: "Wi-Fi — web dashboard", status: confirmed}
+     label: "dashboard", status: confirmed}
