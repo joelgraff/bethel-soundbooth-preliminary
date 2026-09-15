@@ -60,9 +60,9 @@
     "through_nodes": 0
   },
   "router/LR": {
-    "area": 63.6,
+    "area": 67.4,
     "crossings": 0,
-    "edge_len": 11.1,
+    "edge_len": 11.6,
     "edges": 5,
     "nodes": 7,
     "self_overlap": 0,
@@ -70,7 +70,7 @@
     "through_nodes": 0
   },
   "router/TB": {
-    "area": 65.3,
+    "area": 68.8,
     "crossings": 0,
     "edge_len": 8.3,
     "edges": 5,
@@ -80,9 +80,9 @@
     "through_nodes": 0
   },
   "stage/LR": {
-    "area": 377.3,
+    "area": 404.0,
     "crossings": 0,
-    "edge_len": 55.5,
+    "edge_len": 63.3,
     "edges": 16,
     "nodes": 19,
     "self_overlap": 0,
@@ -90,9 +90,9 @@
     "through_nodes": 0
   },
   "stage/TB": {
-    "area": 239.5,
+    "area": 270.6,
     "crossings": 0,
-    "edge_len": 48.1,
+    "edge_len": 53.4,
     "edges": 16,
     "nodes": 19,
     "self_overlap": 3,

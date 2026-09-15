@@ -470,7 +470,6 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
     sheet_title = (sheets.get(diagram_id) or {}).get("title")
 
     for gid, group in groups.items():
-        muted = gid == "maintenance"
         members = by_group.get(gid, [])
 
         # A group box whose label just repeats the sheet title, on a sheet
@@ -489,10 +488,9 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
         if not redundant:
             lines.append(f"  subgraph cluster_{gid} {{")
             lines.append(
-                f'    label="  {esc(group["label"])}  "; fontsize=11.5; labeljust="c"; '
-                f'fontcolor="{"#6e7787" if muted else "#93a1b5"}"; '
-                f'color="{"#3a414d" if muted else "#2c3440"}"; '
-                f'style="{"rounded,dashed" if muted else "rounded"}"; margin=24;'
+                f'    label="  {esc(group["label"])}  "; fontsize=11.5; '
+                f'labeljust="c"; fontcolor="#93a1b5"; color="#2c3440"; '
+                f'style="rounded"; margin=24;'
             )
 
         # Subgroups become nested clusters, which is the only thing dot

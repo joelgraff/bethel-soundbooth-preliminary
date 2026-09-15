@@ -118,7 +118,10 @@ groups:
     # stagebox. They are different things: monitors are endpoints a musician
     # touches, the switches and boxes are infrastructure nobody touches.
     subgroups:
-      - {id: sources, label: "Sources (inputs)"}
+      # same_rank for the same reason as the PC sheet's extenders: these three
+      # are peers with no connection to each other, so nothing but their
+      # accidental depth in the chain was keeping them in separate columns.
+      - {id: sources, label: "Sources (inputs)", same_rank: true}
       - {id: avb, label: "AVB infrastructure (pass-through)"}
       - {id: monitors, label: "Personal monitors (endpoints)"}
       # The camera is on stage physically but is video, not part of the audio
@@ -266,6 +269,10 @@ nodes:
     ports:
       - {id: avb, label: AVB network}
       - {id: eth, label: Ethernet}
+      # Explicit side, though inference currently agrees: this port's face is
+      # a fact about the console, not about which links happen to exist. See
+      # pc.lan for what happens when an inferred face is left to depend on a
+      # link at the far end of the graph. Do not "tidy" these away.
       - {id: usb, label: "USB (64ch)", side: out}
       # No aux/monitor-send port modelled on purpose: the EarMixes are fed
       # over the AVB network via the switch, NOT from console aux outs. A
@@ -286,6 +293,7 @@ nodes:
       - {id: cam2, label: "HDMI in — Camera 2"}
       - {id: cam3, label: "HDMI in — Camera 3"}
       - {id: uvc_out, label: UVC / USB}
+      # Explicit for the same reason as presonus.usb — see the note there.
       - {id: eth, label: Ethernet (control), side: out}
 
   # NEEDS VERIFICATION: make/model, and whether it lives in the booth rack or
@@ -443,8 +451,10 @@ nodes:
 
   # Outside the sanctuary proper (lobby/overflow). These are the "outside
   # monitors" SYSTEM-STATE mentions, and they carry the livestream content.
-  # NEEDS VERIFICATION: whether they're on the same DP-4/GoFanco HDMI split as
-  # the pulpit TV, or a separate device actually receiving the stream.
+  # RESOLVED 2026-09-14: they are NOT on the pulpit TV's split. The pulpit TV
+  # is DP-3's single extender; these are on DP-4's own 4-port extender. The
+  # modelled topology has said so since then — this comment had simply been
+  # left behind still asking the question.
   - id: outside_tvs
     label: Outside TVs (x2) — livestream
     group: pc
@@ -476,7 +486,7 @@ nodes:
   - id: macbook
     label: MacBook
     group: router
-    note: "Wi-Fi only — no cabled connections"
+    note: "Maintenance only — Wi-Fi, no cabled connections"
 
 links:
   # ---- Stage analog in ----
