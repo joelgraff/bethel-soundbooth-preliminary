@@ -51,16 +51,33 @@ KIND_LABEL = {
     "power": "Power",
 }
 
-# Per-group tint for the device-name cell, so a node still tells you which
-# zone it belongs to when you're looking at it in isolation.
+# Tint for the device-name cell, so a node still tells you what kind of thing
+# it is when you're looking at it in isolation. Keyed by SUBGROUP first: now
+# that a group is a component sheet rather than a physical zone, the group id
+# says "this is on the PC's sheet", which is not information the box needs to
+# repeat. The subgroup is what carries meaning — speakers, screens, monitors.
+SUBGROUP_TINT = {
+    "house": "#2b4a3c",      # amps and speakers
+    "screens": "#36304a",    # displays
+    "monitors": "#2b4a3c",   # stage personal monitors
+    "dist": "#2f3a4d",       # HDMI distribution
+    "sources": "#2b3a55",    # mics, DI, drums
+    "avb": "#2f3a4d",        # switches and stageboxes
+    "cam": "#2b3a55",
+}
 GROUP_TINT = {
     "stage": "#2b3a55",
-    "booth": "#2f3a4d",
-    "foh": "#2b4a3c",
-    "sanctuary": "#36304a",
-    "maintenance": "#33373d",
+    "pc": "#2f3a4d",
+    "atem": "#2f3a4d",
+    "mixer": "#2f3a4d",
 }
 DEFAULT_TINT = "#2f3a4d"
+
+
+def node_tint(node):
+    if node.get("subgroup") in SUBGROUP_TINT:
+        return SUBGROUP_TINT[node["subgroup"]]
+    return GROUP_TINT.get(node.get("group"), DEFAULT_TINT)
 
 BG = "#0d1117"
 CELL_BORDER = "#46516244"
@@ -134,7 +151,7 @@ def node_html_label(node, links, horizontal=True, visible_ports=None):
     sheets). On a single-domain sheet the rest are noise: the Booth PC's
     analog line-out means nothing on the video sheet, and drawing it invites
     the reader to hunt for a cable that was deliberately left out."""
-    tint = GROUP_TINT.get(node.get("group"), DEFAULT_TINT)
+    tint = node_tint(node)
     name_cell_inner = (
         f'<FONT POINT-SIZE="12.5" COLOR="{NAME_FG}"><B>{esc(node["label"])}</B></FONT>'
     )
@@ -234,19 +251,33 @@ def legend_label(kinds_used, has_unverified):
 
 
 def stub_label(far_node, far_port_label, sheet_title):
-    """Off-sheet connector: the far end of a link that crosses a sheet
-    boundary. Carries the far device AND port name so the reader knows
-    exactly where it lands, plus which sheet to go look at."""
+    """Off-sheet connector: the far end of a link that leaves this sheet.
+
+    Reads as a destination — "To ATEM Mini Extreme / HDMI in — Camera 3" —
+    because on component sheets that is the whole point: every cable that
+    goes somewhere else terminates in a label telling you where, and you go
+    to that component's own sheet to pick it up.
+
+    The "see <sheet>" line is dropped when the sheet is named after the
+    device, which is the normal case now that a sheet IS a component. Saying
+    'To ATEM Mini Extreme ... see "ATEM Mini Extreme"' is just noise."""
     port_line = (
         f'<BR/><FONT POINT-SIZE="9" COLOR="{PORT_FG}">{esc(far_port_label)}</FONT>'
         if far_port_label else ""
     )
+    name = far_node["label"]
+    see_line = ""
+    if sheet_title and sheet_title.lower() not in name.lower():
+        see_line = (
+            f'<BR/><FONT POINT-SIZE="8.5" COLOR="#7c8798">'
+            f'see &#8220;{esc(sheet_title)}&#8221;</FONT>'
+        )
     return (
         f'<<TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="7" '
         f'COLOR="#4a556688"><TR><TD BGCOLOR="#1a1f28" ALIGN="CENTER">'
-        f'<FONT POINT-SIZE="10.5" COLOR="#c3ccd9">{esc(far_node["label"])}</FONT>'
-        f'{port_line}'
-        f'<BR/><FONT POINT-SIZE="8.5" COLOR="#7c8798">&#8594; see &#8220;{esc(sheet_title)}&#8221;</FONT>'
+        f'<FONT POINT-SIZE="8.5" COLOR="#7c8798">TO</FONT> '
+        f'<FONT POINT-SIZE="10.5" COLOR="#c3ccd9">{esc(name)}</FONT>'
+        f'{port_line}{see_line}'
         f'</TD></TR></TABLE>>'
     )
 

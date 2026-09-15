@@ -20,15 +20,20 @@
 #     is occasionally needed for a two-way link between two adjacent nodes.
 #   - port ORDER within a node is presentation: it decides which link leaves
 #     above which, so list ports in the order their far ends appear.
-#   - a group may declare `subgroups`, and a node may name one in `subgroup`.
-#     These render as nested boxes and are the ONLY reliable way to keep like
-#     equipment together — dot otherwise orders purely by signal-flow depth,
+#   - a GROUP is a component: the subject of one sheet. A group may declare
+#     `subgroups`, and a node may name one in `subgroup`; these render as
+#     nested boxes and are the ONLY reliable way to keep like equipment
+#     together, because dot otherwise orders purely by signal-flow depth,
 #     which interleaves monitors with infrastructure.
 #   - a diagram may set `rankdir: TB|LR` to pick its own orientation.
-#   - a diagram may set `kinds: [...]` to show only those link kinds. Nodes
-#     with no matching link, and ports nothing on the sheet lands on, drop out
-#     by themselves. This is how the booth is three sheets over one set of
-#     groups. Out-of-kind links are dropped, NOT drawn as off-sheet stubs.
+#   - a diagram may set `kinds: [...]` to show only those link kinds; nodes
+#     with no matching link drop out by themselves, and out-of-kind links are
+#     dropped rather than drawn as off-sheet stubs. NO SHEET USES THIS TODAY
+#     — it is what the short-lived video/audio/control split was built on. Kept
+#     because the sheet model has already changed twice and this makes the
+#     next change cheap; delete it if that stops being true.
+#   - ports are drawn only where a link on that sheet lands on them, so a
+#     device shows the connections relevant to the sheet you are reading.
 #
 # AFTER EDITING, run:
 #     dashboard/backend/tests/signal-chain-layout-check.py
@@ -37,43 +42,54 @@
 # in particular can improve one sheet and wreck another; the numbers say
 # which. Use --update-baseline once you have looked at the result and want to
 # keep it.
-
 diagrams:
+  # ONE SHEET PER COMPONENT. Each sheet is a single piece of equipment plus
+  # the accessories that hang off it; every cable that leaves for another
+  # component stops at a labelled connector ("TO ATEM Mini Extreme / HDMI in
+  # — Camera 3") and is picked up again on that component's own sheet.
+  #
+  # This replaced two earlier attempts. One combined booth sheet put 11 links
+  # on the Booth PC and they crossed. Splitting by signal domain
+  # (video/audio/control) un-crossed them, but it scattered one device's
+  # cables across three drawings, so "what is plugged into the PC?" meant
+  # reading all three. Per component that question is one sheet, and the hub
+  # problem goes away because most far ends are connectors, not boxes.
+  - id: pc
+    title: Booth PC
+    groups: [pc]
+    # LR reads as a patch sheet: everything arriving from other components
+    # down the left, the PC and its ports in the middle, what it drives on
+    # the right. TB stacked the same content into two crossings.
+    rankdir: LR
+  - id: atem
+    title: ATEM Mini Extreme
+    groups: [atem]
+    rankdir: TB
+  - id: mixer
+    title: PreSonus StudioLive 32SX
+    groups: [mixer]
+    rankdir: TB
   - id: stage
     title: Stage
     groups: [stage]
-    # This sheet is a source -> infrastructure -> monitors chain, which reads
-    # far better as columns than as rows; TB forces the monitor fan-out into
-    # a tall ragged staircase. The UI's rankdir toggle still overrides.
+    # Columns, not rows: this sheet is a source -> infrastructure -> monitors
+    # chain, and TB forces the monitor fan-out into a tall ragged staircase.
     rankdir: LR
-  # The booth is THREE sheets, one per signal domain, over the same groups —
-  # `kinds` does the separating. One combined booth sheet put 11 links on the
-  # Booth PC (6 video, 2 audio, 3 control), and dot has a single flow
-  # direction to spend on them, so they piled onto two faces of the box and
-  # crossed. Per domain the same hub is 6, 2 and 3 links and each sheet is a
-  # line. Nodes with no link of the sheet's kinds drop out automatically, as
-  # do ports nothing on the sheet lands on.
-  #
-  # AVB is kind `network` but it is how audio reaches the stage, so it sits
-  # on the audio sheet, not the control one. Sheet membership follows what an
-  # operator is tracing, not what the wire technically is.
-  - id: booth-video
-    title: Booth — Video / Program
-    groups: [booth, foh, sanctuary, maintenance]
-    kinds: [video]
-    rankdir: TB
-  - id: booth-audio
-    title: Booth — Audio
-    groups: [booth, foh, sanctuary, maintenance]
-    kinds: [audio, network]
-    rankdir: TB
-  - id: booth-control
-    title: Booth — Control / Network
-    groups: [booth, foh, sanctuary, maintenance]
-    kinds: [control]
-    rankdir: TB
 
 groups:
+  # A group is now a COMPONENT — the subject of one sheet — rather than a
+  # physical zone. Subgroups carry the role distinction inside it.
+  - id: pc
+    label: Booth PC
+    subgroups:
+      - {id: dist, label: "HDMI distribution (pass-through)"}
+      - {id: screens, label: "Displays (endpoints)"}
+  - id: atem
+    label: ATEM Mini Extreme
+  - id: mixer
+    label: PreSonus StudioLive 32SX
+    subgroups:
+      - {id: house, label: "House amplification"}
   - id: stage
     label: Stage
     # Split by ROLE, not by signal-flow depth. Without this the EarMixes come
@@ -89,24 +105,6 @@ groups:
       # chain at all. Boxing it says so, and stops it being placed in the
       # middle of the AVB fan-out.
       - {id: cam, label: "Camera"}
-  - id: booth
-    label: Booth (rack + PC)
-    # Only ONE subgroup here, deliberately. The three extenders are one
-    # thing -- the HDMI distribution tier -- and boxing them halves the
-    # sheet's edge crossings (12 -> 5) by stopping dot interleaving them
-    # with the ATEM and the console. Adding a second box to this group
-    # (tried: capture chain, console) puts it straight back to 12: the two
-    # clusters then compete for position and dot resolves it by stretching
-    # the links between them. Measured with
-    # dashboard/backend/tests/signal-chain-layout-check.py.
-    subgroups:
-      - {id: dist, label: "HDMI distribution (pass-through)"}
-  - id: foh
-    label: FOH / House Audio
-  - id: sanctuary
-    label: Sanctuary
-  - id: maintenance
-    label: Maintenance (non-operational)
 
 nodes:
   # ---------------- Stage ----------------
@@ -244,7 +242,7 @@ nodes:
   # ---------------- Booth ----------------
   - id: presonus
     label: PreSonus StudioLive 32SX
-    group: booth
+    group: mixer
     ports:
       - {id: avb, label: AVB network}
       - {id: usb, label: "USB (64ch)", side: out}
@@ -262,7 +260,7 @@ nodes:
   # which is why the SDI camera run goes through a converter first.
   - id: atem
     label: ATEM Mini Extreme
-    group: booth
+    group: atem
     ports:
       - {id: cam2, label: "HDMI in — Camera 2"}
       - {id: cam3, label: "HDMI in — Camera 3"}
@@ -274,14 +272,14 @@ nodes:
   # does the long run and conversion happens at the switcher end.
   - id: sdi_hdmi_conv
     label: SDI → HDMI converter
-    group: booth
+    group: atem
     ports:
       - {id: sdi_in, label: SDI in}
       - {id: hdmi_out, label: HDMI out}
 
   - id: pc
     label: Booth PC
-    group: booth
+    group: pc
     ports:
       - {id: video0, label: /dev/video0}
       - {id: usb_presonus, label: "USB → PreSonus"}
@@ -294,7 +292,7 @@ nodes:
 
   - id: booth_monitor
     label: SAM S34CG50 (booth)
-    group: booth
+    group: pc
     ports:
       - {id: dp_in, label: DP in}
 
@@ -304,7 +302,7 @@ nodes:
   # group and leaves the others up.
   - id: ext_foh
     label: HDMI extender — 4-port (DP-2, FOH)
-    group: booth
+    group: pc
     subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
@@ -312,7 +310,7 @@ nodes:
 
   - id: ext_back
     label: HDMI extender — 4-port (DP-4, back)
-    group: booth
+    group: pc
     subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
@@ -320,7 +318,7 @@ nodes:
 
   - id: ext_pulpit
     label: HDMI extender — single (DP-3, pulpit)
-    group: booth
+    group: pc
     subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
@@ -329,27 +327,31 @@ nodes:
   # ---------------- FOH / house audio ----------------
   - id: crown
     label: Crown XLS202
-    group: foh
+    group: mixer
+    subgroup: house
     ports:
       - {id: in, label: In}
       - {id: out, label: Speaker out}
 
   - id: peavey
     label: Peavey GPS 2600
-    group: foh
+    group: mixer
+    subgroup: house
     ports:
       - {id: in, label: In}
       - {id: out, label: Speaker out}
 
   - id: bose
     label: Bose 251 (x8)
-    group: foh
+    group: mixer
+    subgroup: house
     ports:
       - {id: in, label: "In (2 ch, mono each)"}   # quote anything containing a comma
 
   - id: sub
     label: Subwoofer
-    group: foh
+    group: mixer
+    subgroup: house
     ports:
       - {id: in, label: In}
 
@@ -358,7 +360,8 @@ nodes:
   # for whoever is speaking). Confirmed by the operator 2026-09-14.
   - id: foh_tvs
     label: FOH TVs — 2x 85in Sony Bravia
-    group: sanctuary
+    group: pc
+    subgroup: screens
     ports:
       - {id: hdmi_in, label: HDMI in}
 
@@ -368,7 +371,8 @@ nodes:
   # Stage. It was modelled as two separate nodes until 2026-09-14.
   - id: boh_tv
     label: Pulpit TV / stage confidence monitor
-    group: sanctuary
+    group: pc
+    subgroup: screens
     ports:
       - {id: hdmi_in, label: HDMI in}
 
@@ -378,14 +382,15 @@ nodes:
   # the pulpit TV, or a separate device actually receiving the stream.
   - id: outside_tvs
     label: Outside TVs (x2) — livestream
-    group: sanctuary
+    group: pc
+    subgroup: screens
     ports:
       - {id: feed_in, label: Feed in}
 
   # ---------------- Maintenance ----------------
   - id: macbook
     label: MacBook
-    group: maintenance
+    group: atem
     ports:
       - {id: net, label: Wi-Fi}
 

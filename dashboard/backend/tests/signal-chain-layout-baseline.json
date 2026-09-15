@@ -1,68 +1,68 @@
 {
-  "booth-audio/LR": {
-    "area": 141.1,
-    "crossings": 1,
-    "edge_len": 26.8,
-    "edges": 7,
-    "nodes": 8,
-    "self_overlap": 1,
-    "served": false,
-    "through_nodes": 0
-  },
-  "booth-audio/TB": {
-    "area": 75.9,
-    "crossings": 1,
-    "edge_len": 18.2,
+  "atem/LR": {
+    "area": 110.8,
+    "crossings": 2,
+    "edge_len": 34.4,
     "edges": 7,
     "nodes": 8,
     "self_overlap": 2,
+    "served": false,
+    "through_nodes": 0
+  },
+  "atem/TB": {
+    "area": 97.2,
+    "crossings": 1,
+    "edge_len": 17.6,
+    "edges": 7,
+    "nodes": 8,
+    "self_overlap": 1,
     "served": true,
     "through_nodes": 0
   },
-  "booth-control/LR": {
-    "area": 43.9,
+  "mixer/LR": {
+    "area": 109.1,
     "crossings": 0,
-    "edge_len": 18.8,
-    "edges": 4,
-    "nodes": 5,
+    "edge_len": 18.9,
+    "edges": 7,
+    "nodes": 9,
     "self_overlap": 0,
     "served": false,
     "through_nodes": 0
   },
-  "booth-control/TB": {
-    "area": 65.8,
+  "mixer/TB": {
+    "area": 90.3,
     "crossings": 0,
-    "edge_len": 9.5,
-    "edges": 4,
-    "nodes": 5,
+    "edge_len": 11.0,
+    "edges": 7,
+    "nodes": 9,
+    "self_overlap": 0,
+    "served": true,
+    "through_nodes": 0
+  },
+  "pc/LR": {
+    "area": 222.4,
+    "crossings": 0,
+    "edge_len": 44.7,
+    "edges": 14,
+    "nodes": 16,
     "self_overlap": 1,
     "served": true,
     "through_nodes": 0
   },
-  "booth-video/LR": {
-    "area": 229.4,
-    "crossings": 1,
-    "edge_len": 34.2,
-    "edges": 11,
-    "nodes": 12,
-    "self_overlap": 2,
+  "pc/TB": {
+    "area": 179.3,
+    "crossings": 2,
+    "edge_len": 45.1,
+    "edges": 14,
+    "nodes": 16,
+    "self_overlap": 0,
     "served": false,
     "through_nodes": 0
   },
-  "booth-video/TB": {
-    "area": 285.6,
-    "crossings": 1,
-    "edge_len": 27.6,
-    "edges": 11,
-    "nodes": 12,
-    "self_overlap": 1,
-    "served": true,
-    "through_nodes": 0
-  },
   "stage/LR": {
-    "area": 376.0,
+    "area": 375.3,
     "crossings": 0,
-    "edge_len": 55.2,
+    "edge_len": 55.7,
     "edges": 16,
     "nodes": 19,
     "self_overlap": 0,
@@ -72,10 +72,10 @@
   "stage/TB": {
     "area": 239.5,
     "crossings": 0,
-    "edge_len": 48.3,
+    "edge_len": 48.0,
     "edges": 16,
     "nodes": 19,
-    "self_overlap": 4,
+    "self_overlap": 3,
     "served": false,
     "through_nodes": 0
   }
