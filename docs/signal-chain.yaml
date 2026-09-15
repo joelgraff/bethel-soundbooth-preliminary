@@ -89,7 +89,11 @@ groups:
     # one rank deeper than DP-3/DP-4, so a cluster containing all of them
     # spans two ranks and stretches into the displays. Measured both ways.
     subgroups:
-      - {id: screens, label: "Displays (endpoints)"}
+      # same_rank: the DP-2 branch goes through a splitter, so it is one hop
+      # longer than DP-3/DP-4 and the FOH TVs landed a whole column right of
+      # the other two. They are the same kind of thing at the same end of the
+      # chain, so they line up.
+      - {id: screens, label: "Displays (endpoints)", same_rank: true}
   - id: atem
     label: ATEM Mini Extreme
   - id: router
@@ -340,8 +344,12 @@ nodes:
       # Plain Out 1 / Out 2: the edge labels and the connectors already say
       # where each leg goes, and naming the ports after their destinations
       # repeated that twice on one line.
-      - {id: to_ext, label: Out 1}
-      - {id: to_atem, label: Out 2}
+      #
+      # ATEM leg first: port order decides which of the two legs is drawn
+      # above the other, and the extender belongs on the same side as the
+      # other two extenders below it.
+      - {id: to_atem, label: Out 1}
+      - {id: to_ext, label: Out 2}
 
   - id: ext_foh
     label: HDMI extender — 4-port (DP-2, FOH)

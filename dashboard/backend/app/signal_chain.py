@@ -514,6 +514,17 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
             )
             for n in in_sub:
                 lines.append(node_decl(n, indent + "  "))
+            # same_rank lines the members up in one column (LR) or row (TB)
+            # regardless of how deep each one sits in the signal chain. The
+            # displays need it because the DP-2 branch runs through a splitter
+            # and is therefore one hop longer than DP-3/DP-4, which left the
+            # FOH TVs a whole column right of the other two even though all
+            # three are the same kind of thing at the same end of the chain.
+            # Emitted INSIDE the cluster: clusterrank is local, so a rank
+            # group declared at top level for clustered nodes is ignored.
+            if sub.get("same_rank") and len(in_sub) > 1:
+                ids = "; ".join(n["id"] for n in in_sub)
+                lines.append(f"{indent}  {{rank=same; {ids};}}")
             lines.append(f"{indent}}}")
 
         for n in members:
@@ -596,7 +607,7 @@ NODE_KEYS = {"id", "label", "group", "subgroup", "ports", "note"}
 PORT_KEYS = {"id", "label", "side"}
 LINK_KEYS = {"from", "to", "direction", "kind", "label", "status", "constraint", "align"}
 GROUP_KEYS = {"id", "label", "subgroups"}
-SUBGROUP_KEYS = {"id", "label"}
+SUBGROUP_KEYS = {"id", "label", "same_rank"}
 DIAGRAM_KEYS = {"id", "title", "groups", "rankdir", "kinds"}
 
 
