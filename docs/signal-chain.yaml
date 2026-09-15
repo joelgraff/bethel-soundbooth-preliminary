@@ -89,8 +89,9 @@ groups:
     # DP-2 branch runs through a splitter, so it is one hop longer than
     # DP-3/DP-4; left to itself dot put the FOH extender — and behind it the
     # FOH TVs — a whole column right of their counterparts. Pinning each set
-    # to one rank turns the sheet into a grid: PC, splitter, extenders,
-    # displays, each a column.
+    # to one rank turns the sheet into a grid: PC, distribution, displays.
+    # The splitter is inside the distribution group, so it stacks above the
+    # extenders rather than claiming a column of its own.
     #
     # An earlier attempt dropped the extender box entirely, because without
     # same_rank a cluster over an uneven-length branch stretches across two
@@ -346,6 +347,12 @@ nodes:
   - id: hdmi_splitter
     label: HDMI splitter (DP-2)
     group: pc
+    # In the distribution subgroup, not just near it. Being same_rank with
+    # the extenders is what lets the whole group move back a column: the
+    # splitter stops occupying a rank of its own — a full column wide for one
+    # box, with DP-3 and DP-4 running past it through empty space — and sits
+    # above the extenders instead. 2763 -> 2233 px.
+    subgroup: dist
     ports:
       - {id: in, label: HDMI in}
       # Plain Out 1 / Out 2: the edge labels and the connectors already say
