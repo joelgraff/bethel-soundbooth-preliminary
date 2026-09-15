@@ -118,15 +118,9 @@ nodes:
       # dangling "monitor sends" port here would imply the opposite.
       - {id: main_out, label: Main Out L/R}
       - {id: sub_out, label: Sub Out}
-      # CONFLICT, unresolved: the operator says the booth PC's analog line-out
-      # lands on channel 21. lineout-fallback.service's Description and five
-      # comments in start-lineout-fallback.sh all say channel 32 — including
-      # operational guidance ("if channel 32 is up while USB audio is also
-      # running…", "ch 32 was muted", "Board channel 32 is a BALANCED input").
-      # This is the FOH contingency path, so sending someone to the wrong
-      # fader mid-service is the exact failure it exists to prevent. Someone
-      # needs to look at the back of the board and then fix whichever source
-      # is wrong.
+      # RESOLVED 2026-09-14: this was originally patched to channel 32 and was
+      # later moved to 21. The repo's ch-32 references (lineout-fallback.service
+      # and start-lineout-fallback.sh) were stale and have been corrected.
       - {id: ch21, label: "Ch 21 — PC line-out"}
 
   # The ATEM Mini Extreme's inputs are all HDMI — it has no SDI input at all,
@@ -211,17 +205,16 @@ nodes:
       - {id: in, label: In}
 
   # ---------------- Sanctuary ----------------
-  # NEEDS VERIFICATION: which of these two pairs is the 85" Sony Bravias.
-  # SYSTEM-STATE lists "85in Sony Bravia (2) + stage TV + outside monitors"
-  # without saying which position they occupy, so neither node claims them.
-  - id: front_tvs
-    label: Front TVs (x2)
+  # FOH = facing the congregation; BOH = facing the pulpit (a confidence feed
+  # for whoever is speaking). Confirmed by the operator 2026-09-14.
+  - id: foh_tvs
+    label: FOH TVs — 2x 85in Sony Bravia
     group: sanctuary
     ports:
       - {id: hdmi_in, label: HDMI in}
 
-  - id: back_tvs
-    label: Back-of-house TVs
+  - id: boh_tv
+    label: BOH TV (faces the pulpit)
     group: sanctuary
     ports:
       - {id: hdmi_in, label: HDMI in}
@@ -268,11 +261,10 @@ links:
   - {from: presonus.usb, to: pc.usb_presonus, direction: two-way, kind: audio,
      label: "USB return 1-2 via presonus-foh-bridge", status: confirmed}
   # Second, independent PC->mixer path: the analog contingency feed
-  # (lineout-fallback.service). Dashed because of the ch 21 vs ch 32 conflict
-  # noted on the port above, not because the cable's existence is in doubt.
+  # (lineout-fallback.service), deliberately sharing nothing with the USB link
+  # so it can't fail the same way. Stays muted at the board until needed.
   - {from: pc.lineout, to: presonus.ch21, direction: one-way, kind: audio,
-     label: "analog line-out — ch 21 per operator, scripts say ch 32",
-     status: needs-verification}
+     label: "analog line-out → ch 21 (FOH contingency)", status: confirmed}
 
   # ---- Video / program ----
   - {from: camera.sdi_out, to: sdi_hdmi_conv.sdi_in, direction: one-way, kind: video,
@@ -295,10 +287,10 @@ links:
      label: "program (ffplay)", status: confirmed}
   - {from: pc.dp3, to: gofanco_stage_tx.hdmi_in, direction: one-way, kind: video,
      label: "FreeShow Stage", status: confirmed}
-  - {from: gofanco_hub.cat_out, to: front_tvs.hdmi_in, direction: one-way, kind: video,
+  - {from: gofanco_hub.cat_out, to: foh_tvs.hdmi_in, direction: one-way, kind: video,
      label: "Cat — which TX/RX pair?", status: needs-verification}
-  - {from: gofanco_hub.cat_out, to: back_tvs.hdmi_in, direction: one-way, kind: video,
-     label: "Cat, up to ~200 ft", status: needs-verification}
+  - {from: gofanco_hub.cat_out, to: boh_tv.hdmi_in, direction: one-way, kind: video,
+     label: "Cat, up to ~200 ft — program feed", status: needs-verification}
   # The DP-2 feed doesn't only go out to the front TVs — it also comes back
   # into the ATEM on Camera 3, so FreeShow Primary can be switched into the
   # program feed (slides/lower-thirds to the stream and the back TVs).

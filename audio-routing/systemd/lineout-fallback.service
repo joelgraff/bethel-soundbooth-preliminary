@@ -1,5 +1,5 @@
 [Unit]
-Description=FOH contingency: mirror the Mixer bus to the analog line-out (board ch 32)
+Description=FOH contingency: mirror the Mixer bus to the analog line-out (board ch 21)
 Documentation=file:///home/soundbooth/soundbooth-project/audio-routing/tests/usb-reset-checklist.md
 After=virtual-audio.service ensure-audio-routes.service
 Wants=virtual-audio.service

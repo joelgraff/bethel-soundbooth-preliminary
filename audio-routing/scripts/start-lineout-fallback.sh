@@ -6,14 +6,20 @@
 # audio-routing/tests/usb-reset-checklist.md and the presonus-usb-watch.sh
 # header). When it wedges, FOH goes silent and the only reliable fix is a
 # physical power-cycle — useless mid-service. This is the contingency path:
-# an analog feed of the SAME mix into board channel 32, over a cable that
+# an analog feed of the SAME mix into board channel 21, over a cable that
 # shares nothing with the USB link and cannot fail the same way.
+#
+# CHANNEL MOVED: this fed board channel 32 originally and was re-patched to
+# channel 21 (confirmed by the operator 2026-09-14). Every mention of ch 32
+# in this file and in lineout-fallback.service was stale until then — which
+# mattered, because those comments tell a mid-service operator which fader to
+# reach for. Old commits and notes referring to ch 32 mean this same path.
 #
 # It runs ALL THE TIME by design. The value of a fallback is that switching
 # to it costs one fader move at the board and no terminal, so it has to be
-# already live when it is needed. Channel 32 stays muted until then.
+# already live when it is needed. Channel 21 stays muted until then.
 #
-# NOTE ON RUNNING BOTH AT ONCE: if channel 32 is up while USB audio is also
+# NOTE ON RUNNING BOTH AT ONCE: if channel 21 is up while USB audio is also
 # working, the two paths arrive at slightly different latencies and will
 # comb-filter against each other. Use one or the other, not both.
 #
@@ -32,8 +38,8 @@ set -uo pipefail
 # names; handed "Mixer.monitor" it silently finds nothing, falls back to the
 # DEFAULT SOURCE, and connects to that instead. On 2026-09-05 that default was
 # the PreSonus board's own capture input, so the loopback ran
-# board-in -> line-out -> board channel 32: a feedback loop, silent only
-# because ch 32 was muted. Capturing a sink's monitor requires
+# board-in -> line-out -> board channel 21: a feedback loop, silent only
+# because ch 21 was muted. Capturing a sink's monitor requires
 # stream.capture.sink=true in the capture props (set on the exec line below).
 SOURCE="${LINEOUT_SOURCE:-Mixer}"
 SINK="${LINEOUT_SINK:-alsa_output.pci-0000_09_00.4.analog-stereo}"
@@ -57,7 +63,7 @@ done
 # (Flags: HW_VOLUME_CTRL), so it attenuates the actual analog signal — it
 # was found at 40% / -23.80 dB, which starves a mixer line input of ~24 dB
 # of gain structure. Unity here, and ALL trimming happens at the board's
-# channel-32 trim, which is where a sound operator expects it.
+# channel-21 trim, which is where a sound operator expects it.
 if [[ "${LINEOUT_SET_VOLUME:-1}" == "1" ]]; then
     pactl set-sink-volume "$SINK" "${LINEOUT_VOLUME:-100%}" 2>/dev/null \
         && log "output level → ${LINEOUT_VOLUME:-100%} (trim at the board, not here)"
@@ -115,7 +121,7 @@ apply_makeup_gain &
 log "mirroring ${SOURCE} → ${SINK} (latency ${LATENCY_MS}ms)"
 # MONO SUM ON ONE LEG, not stereo.
 #
-# Board channel 32 is a BALANCED input, so it computes (tip - ring). Fed a
+# Board channel 21 is a BALANCED input, so it computes (tip - ring). Fed a
 # stereo signal (L on tip, R on ring) it therefore renders L-R: every
 # centre-panned element — lead vocals above all — subtracts to nothing, and
 # what survives is the decorrelated edges, which is why it sounded thin and

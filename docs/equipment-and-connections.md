@@ -51,8 +51,9 @@ directly, or dictate them in a session and have it written up here.
 |------|-----|------|--------|
 | Blackmagic ATEM Mini Extreme | 1 | Video switcher/capture; UVC → `/dev/video0`, Pulse audio slave; Ethernet control (IP in `~/.config/soundbooth/atem.conf`, not in git). **All inputs are HDMI — it has no SDI input**, hence the converter below | ✅ SYSTEM-STATE.md |
 | SDI → HDMI converter | 1 | Converts the camera's SDI run to HDMI for the ATEM's **Camera 2** input | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: make/model, and whether it sits in the booth rack or out at the camera) |
-| PTZOptics PT12X-SDI-xx-G2 | 1 | Program camera; SDI out → ATEM program input; also has a separate IP control/preview path (`~/.config/soundbooth/camera.conf`) | ✅ |
-| 85" Sony Bravia TV | 2 | Sanctuary displays | ✅ |
+| PTZOptics PT12X-SDI-xx-G2 | 1 | Program camera; SDI out → converter → ATEM Camera 2; also has a separate IP control/preview path (`~/.config/soundbooth/camera.conf`) | ✅ |
+| 85" Sony Bravia TV | 2 | **FOH displays, facing the congregation** — fed by DP-2 (FreeShow Primary) | ✅ operator, 2026-09-14 |
+| BOH TV | 1 | **Faces the pulpit** — confidence feed for whoever is speaking; fed by DP-4 (program). Distinct from the DP-3 FreeShow Stage monitor | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: make/model/size) |
 | GoFanco 1080p HDMI-over-Cat transceivers | multi-port hub + 1 stage unit | HDMI extension over Cat cable; longest run ~200 ft; known reliability weak point (planned upgrade: HDBaseT/Blackbird) | ✅ |
 
 **NEEDS VERIFICATION — not yet documented anywhere:** any other cameras
@@ -98,7 +99,7 @@ INPUTS
           │                    every input on it is HDMI)
           └──► Camera 2 ─┐
                          │
-  booth PC DP-2 ────► Camera 3 ─┐   (same feed as the two front TVs, so
+  booth PC DP-2 ────► Camera 3 ─┐   (same feed as the FOH Bravias, so
      (FreeShow Primary)         │    slides can be switched to program)
                                 ▼
 ATEM Mini Extreme (program bus)
@@ -122,23 +123,31 @@ the tail end of the same physical chain):
 | Connector | Monitor/target | Path | Run type |
 |-----------|-----------------|------|----------|
 | DP-1 | SAM S34CG50 ultrawide (booth) | direct | short, in-booth |
-| DP-2 | FreeShow Primary → **the two front TVs**, *and* back into the ATEM on **Camera 3** | via GoFanco extender + a tap to the ATEM | **NEEDS VERIFICATION**: run length |
+| DP-2 | FreeShow Primary → **the two FOH Bravias (facing the congregation)**, *and* back into the ATEM on **Camera 3** | via GoFanco extender + a tap to the ATEM | **NEEDS VERIFICATION**: run length |
 | DP-3 | LKV/HDbitT-style (FreeShow Stage) | via GoFanco extender | **NEEDS VERIFICATION**: run length |
-| DP-4 | SII HDMI TV (program → back-of-house) | via GoFanco extender | up to ~200 ft (longest run) |
+| DP-4 | SII HDMI TV (program → the BOH TV facing the pulpit) | via GoFanco extender | up to ~200 ft (longest run) |
 
-**DP-2 feeds two destinations.** As well as driving the two front TVs, the
+**DP-2 feeds two destinations.** As well as driving the two FOH Bravias, the
 same output returns to the ATEM as **Camera 3** — so FreeShow Primary
 (slides, lower thirds) can be switched into the program feed and therefore
 into the livestream and the back-of-house TVs, not just shown on the front
 screens (operator, 2026-09-14).
 
+**Sanctuary display layout** (confirmed, operator 2026-09-14): the **two 85"
+Sony Bravias are the FOH pair, facing the congregation** (fed by DP-2,
+FreeShow Primary). There is **one BOH TV facing the pulpit** — a confidence
+feed for whoever is speaking — fed by DP-4, the program output. Note this is
+a *different* display from the FreeShow Stage confidence monitor on DP-3,
+which serves the stage/musicians.
+
 **NEEDS VERIFICATION:** where the Camera 3 feed is tapped — a splitter off
-DP-2 ahead of the GoFanco hub, or a spare output on the hub itself. Also
-which physical GoFanco transmitter/receiver pair serves which connector (the
-multi-port hub vs. the single stage unit), where each Cat run physically
-terminates, and **which pair of displays are the two 85" Sony Bravias** —
-SYSTEM-STATE lists them without saying whether they're the front or the
-back-of-house pair, so neither is labelled as such here.
+DP-2 ahead of the GoFanco hub, or a spare output on the hub itself. Which
+physical GoFanco transmitter/receiver pair serves which connector (the
+multi-port hub vs. the single stage unit), and where each Cat run physically
+terminates. Also whether DP-4's split feeds anything besides the single BOH
+TV — the dashboard's own tile calls it "Split that feeds the back-of-house
+TVs" (plural), and SYSTEM-STATE separately mentions "outside monitors", so
+there may be more on that leg than the one pulpit-facing display.
 
 ### Audio path — stage to FOH
 
@@ -173,15 +182,15 @@ The EarMix units are **not** fed from console aux outs — they sit on the AVB
 network alongside the stageboxes, and the switch is the hub for all of it
 (operator, 2026-09-14).
 
-> **⚠ Unresolved conflict — booth PC analog line-out channel.** The operator
-> says the PC's line-out lands on **channel 21**. The repo says **channel 32**
-> in six places: `lineout-fallback.service`'s `Description=`, and five comments
-> in `start-lineout-fallback.sh` — including operational guidance ("if channel
-> 32 is up while USB audio is also running…", "ch 32 was muted", "Board
-> channel 32 is a BALANCED input, so it computes (tip − ring)"). This is the
-> FOH contingency path, so whichever is wrong sends someone to the wrong fader
-> in exactly the situation it exists for. Check the back of the board, then
-> correct whichever source is wrong.
+> **Booth PC analog line-out → board channel 21** (resolved 2026-09-14). This
+> was originally patched to **channel 32** and later re-patched to 21, but the
+> repo was never updated — `lineout-fallback.service`'s `Description=` and
+> five comments in `start-lineout-fallback.sh` all still said 32, including
+> the operational guidance a mid-service operator would actually read ("if
+> channel 32 is up while USB audio is also running…", "Board channel 32 is a
+> BALANCED input"). All corrected, with a note in the script header so older
+> commits and notes mentioning ch 32 remain interpretable. Nothing functional
+> depended on the number — every reference was documentary.
 
 **NEEDS VERIFICATION (the real gap this doc exists to close):**
 - Which physical inputs on which NSB stagebox carry which stage sources
