@@ -90,12 +90,17 @@ STATUS.md: with no USB path at all, it can't contend with `ffmpeg-capture`.
 ### Video path
 
 ```
-PTZOptics camera (SDI out)
-        │  SDI coax
-        ▼
-SDI → HDMI converter          (the ATEM Mini Extreme has NO SDI input —
-        │                      every input on it is HDMI)
-        ▼  HDMI, into "Camera 2"
+INPUTS
+  PTZOptics camera (SDI out)
+          │  SDI coax
+          ▼
+  SDI → HDMI converter        (the ATEM Mini Extreme has NO SDI input —
+          │                    every input on it is HDMI)
+          └──► Camera 2 ─┐
+                         │
+  booth PC DP-2 ────► Camera 3 ─┐   (same feed as the two front TVs, so
+     (FreeShow Primary)         │    slides can be switched to program)
+                                ▼
 ATEM Mini Extreme (program bus)
         │
         ├─ UVC/USB ──► booth PC (/dev/video0) ──► ffmpeg-capture.service
@@ -117,13 +122,23 @@ the tail end of the same physical chain):
 | Connector | Monitor/target | Path | Run type |
 |-----------|-----------------|------|----------|
 | DP-1 | SAM S34CG50 ultrawide (booth) | direct | short, in-booth |
-| DP-2 | HXA BMD HDMI (FreeShow Primary → sanctuary) | via GoFanco extender | **NEEDS VERIFICATION**: run length |
+| DP-2 | FreeShow Primary → **the two front TVs**, *and* back into the ATEM on **Camera 3** | via GoFanco extender + a tap to the ATEM | **NEEDS VERIFICATION**: run length |
 | DP-3 | LKV/HDbitT-style (FreeShow Stage) | via GoFanco extender | **NEEDS VERIFICATION**: run length |
-| DP-4 | SII HDMI TV (program → sanctuary) | via GoFanco extender | up to ~200 ft (longest run) |
+| DP-4 | SII HDMI TV (program → back-of-house) | via GoFanco extender | up to ~200 ft (longest run) |
 
-**NEEDS VERIFICATION:** which physical GoFanco transmitter/receiver pair
-serves which connector (the multi-port hub vs. the single stage unit), and
-where each Cat run physically terminates (which TV, which wall plate).
+**DP-2 feeds two destinations.** As well as driving the two front TVs, the
+same output returns to the ATEM as **Camera 3** — so FreeShow Primary
+(slides, lower thirds) can be switched into the program feed and therefore
+into the livestream and the back-of-house TVs, not just shown on the front
+screens (operator, 2026-09-14).
+
+**NEEDS VERIFICATION:** where the Camera 3 feed is tapped — a splitter off
+DP-2 ahead of the GoFanco hub, or a spare output on the hub itself. Also
+which physical GoFanco transmitter/receiver pair serves which connector (the
+multi-port hub vs. the single stage unit), where each Cat run physically
+terminates, and **which pair of displays are the two 85" Sony Bravias** —
+SYSTEM-STATE lists them without saying whether they're the front or the
+back-of-house pair, so neither is labelled as such here.
 
 ### Audio path — stage to FOH
 

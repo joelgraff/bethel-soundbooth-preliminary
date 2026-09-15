@@ -136,6 +136,7 @@ nodes:
     group: booth
     ports:
       - {id: cam2, label: "HDMI in — Camera 2"}
+      - {id: cam3, label: "HDMI in — Camera 3"}
       - {id: uvc_out, label: UVC / USB}
       - {id: eth, label: Ethernet (control), side: out}
 
@@ -210,14 +211,17 @@ nodes:
       - {id: in, label: In}
 
   # ---------------- Sanctuary ----------------
-  - id: main_screen
-    label: Sanctuary main screen
+  # NEEDS VERIFICATION: which of these two pairs is the 85" Sony Bravias.
+  # SYSTEM-STATE lists "85in Sony Bravia (2) + stage TV + outside monitors"
+  # without saying which position they occupy, so neither node claims them.
+  - id: front_tvs
+    label: Front TVs (x2)
     group: sanctuary
     ports:
       - {id: hdmi_in, label: HDMI in}
 
   - id: back_tvs
-    label: Back-of-house TVs (Sony Bravia x2)
+    label: Back-of-house TVs
     group: sanctuary
     ports:
       - {id: hdmi_in, label: HDMI in}
@@ -291,10 +295,17 @@ links:
      label: "program (ffplay)", status: confirmed}
   - {from: pc.dp3, to: gofanco_stage_tx.hdmi_in, direction: one-way, kind: video,
      label: "FreeShow Stage", status: confirmed}
-  - {from: gofanco_hub.cat_out, to: main_screen.hdmi_in, direction: one-way, kind: video,
+  - {from: gofanco_hub.cat_out, to: front_tvs.hdmi_in, direction: one-way, kind: video,
      label: "Cat — which TX/RX pair?", status: needs-verification}
   - {from: gofanco_hub.cat_out, to: back_tvs.hdmi_in, direction: one-way, kind: video,
      label: "Cat, up to ~200 ft", status: needs-verification}
+  # The DP-2 feed doesn't only go out to the front TVs — it also comes back
+  # into the ATEM on Camera 3, so FreeShow Primary can be switched into the
+  # program feed (slides/lower-thirds to the stream and the back TVs).
+  # NEEDS VERIFICATION: where it's tapped — a splitter off DP-2 before the
+  # GoFanco hub, or a spare output on the hub itself.
+  - {from: pc.dp2, to: atem.cam3, direction: one-way, kind: video,
+     label: "same feed as the front TVs → Camera 3", status: confirmed}
   - {from: gofanco_stage_tx.cat_out, to: stage_monitor.hdmi_in, direction: one-way, kind: video,
      label: "Cat to stage", status: needs-verification}
 
