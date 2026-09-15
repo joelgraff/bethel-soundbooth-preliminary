@@ -36,9 +36,9 @@ directly, or dictate them in a session and have it written up here.
 | Item | Qty | Role | Source |
 |------|-----|------|--------|
 | PreSonus StudioLive 32SX | 1 | Main mixer, USB to booth PC | ✅ |
-| NSB 16.8 stagebox | 2 | Stage inputs onto the AVB network | ✅ (**NEEDS VERIFICATION**: which NSB carries which mixer channel range) |
-| PreSonus AVB switch | ? | Hub for the whole PreSonus audio network — stageboxes, EarMixes and the console all connect through it | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: how many, exact model, and whether any live in the booth rack rather than on stage) |
-| Earmix 16M | 7 | Personal monitor mixers, fed over AVB via the switch — **not** from console aux outs | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: how many in active use; daisy-chained or one switch port each) |
+| NSB 16.8 stagebox | 2 | Stage inputs onto the AVB network — one stage right, one stage left | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: which carries which mixer channel range) |
+| PreSonus AVB switch | 2 | Stage right + stage left, in series. Console feeds stage-right; stage-right feeds stage-left. Also PoE-powers the EarMixes | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: exact model — SW5E?) |
+| EarMix 16M | 7 | Personal monitor mixers on the AVB network — **not** fed from console aux outs. **Stage right:** Jordan → *thru* → Keyboard; Bassist → *thru* → Drums. **Stage left:** Tom, Vocal 1, Vocal 2 (direct drops) | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: which of Keyboard/Drums chains behind which) |
 | Behringer DI, 8-channel | 1 | Direct injection boxes for stage instruments | ✅ (booth-context.md; **NEEDS VERIFICATION**: which stage inputs run through it vs. direct to a stagebox) |
 | Roland TD-27 (V-Drums module) | 1 | Electronic drum kit sound module | ✅ (booth-context.md; **NEEDS VERIFICATION**: output routing — stereo pair? which stagebox/channel?) |
 | Crown XLS202 | 1 | House amplifier | ✅ (booth-context.md; **NEEDS VERIFICATION**: which mixer output(s) feed it, and which speaker zone it drives) |
@@ -54,13 +54,18 @@ directly, or dictate them in a session and have it written up here.
 | PTZOptics PT12X-SDI-xx-G2 | 1 | Program camera; SDI out → converter → ATEM Camera 2; also has a separate IP control/preview path (`~/.config/soundbooth/camera.conf`) | ✅ |
 | 85" Sony Bravia TV | 2 | **FOH displays, facing the congregation** — fed by DP-2 (FreeShow Primary) | ✅ operator, 2026-09-14 |
 | BOH TV | 1 | **Faces the pulpit** — confidence feed for whoever is speaking; fed by DP-4 (program). Distinct from the DP-3 FreeShow Stage monitor | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: make/model/size) |
+| Outside TVs | 2 | **Outside the sanctuary** (lobby/overflow), carrying the livestream content. These are the "outside monitors" SYSTEM-STATE mentions | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: same DP-4/GoFanco HDMI split as the pulpit TV, or a separate stream receiver? Plus make/model) |
 | GoFanco 1080p HDMI-over-Cat transceivers | multi-port hub + 1 stage unit | HDMI extension over Cat cable; longest run ~200 ft; known reliability weak point (planned upgrade: HDBaseT/Blackbird) | ✅ |
+
+**Five displays outside the booth**, easy to conflate: 2 FOH Bravias (DP-2,
+congregation), 1 BOH TV (DP-4, pulpit), 2 outside the sanctuary (livestream),
+plus the DP-3 FreeShow Stage confidence monitor on stage.
 
 **NEEDS VERIFICATION — not yet documented anywhere:** any other cameras
 (wide/confidence shots?), wireless mic receivers/transmitters and channel
-count, in-ear monitor transmitters, any lighting-console or DMX gear sharing
-the booth, and the make/model of the outside/lobby monitors mentioned
-elsewhere as "outside monitors" in `SYSTEM-STATE.md`'s hardware table.
+count, and any lighting-console or DMX gear sharing the booth. (In-ear
+monitoring is covered — it's the EarMix 16M units on the AVB network, not a
+separate transmitter system.)
 
 ### Maintenance workstation
 
@@ -151,17 +156,35 @@ there may be more on that leg than the one pulpit-facing display.
 
 ### Audio path — stage to FOH
 
+**AVB network topology** (operator, 2026-09-14). Two switches in series; every
+AVB link is bidirectional on one cable — box inputs up to the console, monitor
+mixes back down. "Stage right/left" as stated, facing the stage:
+
+```
+PreSonus 32SX (booth)
+        │  AVB
+        ▼
+AVB switch — STAGE RIGHT
+        ├──► NSB 16.8 stagebox (stage right)
+        ├──► EarMix: Jordan  ──thru──► EarMix: Keyboard
+        ├──► EarMix: Bassist ──thru──► EarMix: Drums
+        └──► AVB switch — STAGE LEFT
+                     ├──► NSB 16.8 stagebox (stage left)
+                     ├──► EarMix: Tom
+                     ├──► EarMix: Vocal 1
+                     └──► EarMix: Vocal 2
+```
+
+Seven EarMixes total, matching the count in `booth-context.md`. The first two
+are PoE-powered from the stage-right switch and each **pass through** to a
+second unit rather than that unit taking its own switch port — so losing
+Jordan's or the Bassist's unit takes the one chained behind it with it.
+
 ```
 Stage instruments / mics / DI / TD-27
-        │  (analog XLR)
+        │  (analog XLR — patch not yet mapped)
         ▼
-NSB 16.8 stagebox A + B
-        │
-        │  ┌──────────── PreSonus AVB network ────────────┐
-        └──┤  NSB A ─┐                                    │
-           │  NSB B ─┼─► PreSonus AVB switch ─► 32SX      │
-           │  EarMix ┘        (hub for all of it)         │
-           └──────────────────────────────────────────────┘
+NSB stageboxes ──► AVB network (above) ──► 32SX
         │
         ▼
 32SX mixer (channel assignments: see docs/mixer-channel-map.md, in progress)
@@ -179,8 +202,7 @@ NSB 16.8 stagebox A + B
 ```
 
 The EarMix units are **not** fed from console aux outs — they sit on the AVB
-network alongside the stageboxes, and the switch is the hub for all of it
-(operator, 2026-09-14).
+network alongside the stageboxes (operator, 2026-09-14).
 
 > **Booth PC analog line-out → board channel 21** (resolved 2026-09-14). This
 > was originally patched to **channel 32** and later re-patched to 21, but the
@@ -192,13 +214,15 @@ network alongside the stageboxes, and the switch is the hub for all of it
 > commits and notes mentioning ch 32 remain interpretable. Nothing functional
 > depended on the number — every reference was documentary.
 
-**NEEDS VERIFICATION (the real gap this doc exists to close):**
-- Which physical inputs on which NSB stagebox carry which stage sources
-  (vocals, acoustic guitar ×2 per the in-progress channel map, drums via the
-  TD-27 module, DI'd instruments via the Behringer 8-ch DI, etc.)
+**NEEDS VERIFICATION (the remaining gaps):**
+- **The mic/instrument patch** — which physical inputs on which NSB stagebox
+  carry which stage sources (vocals, acoustic guitar ×2 per the in-progress
+  channel map, drums via the TD-27, DI'd instruments via the Behringer 8-ch
+  DI). Deliberately deferred 2026-09-14; this is the largest remaining gap.
 - Which NSB carries which mixer channel range over AVB
-- How many AVB switches there are, their model, and where each physically sits
-- Whether the EarMixes daisy-chain or take one switch port each
+- The EarMix pass-through pairing: does Jordan feed Keyboard and Bassist feed
+  Drums, or the other way round?
+- Exact model of the two AVB switches (PreSonus SW5E or similar)
 - Which 32SX output bus(es) feed the Crown XLS202 and Peavey GPS 2600
 - Any patch bay or wall-panel connectors between the stage and the booth
 

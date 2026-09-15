@@ -60,38 +60,90 @@ nodes:
     ports:
       - {id: out, label: Out}
 
-  - id: nsb_a
-    label: NSB 16.8 Stagebox A
+  # AVB network topology (operator, 2026-09-14). Two switches in series:
+  # the console feeds the stage-right switch, which feeds the stage-left one.
+  # "stage right/left" here is as stated by the operator, facing the stage.
+  # The EarMixes are PoE-powered from the switches, and the first pair each
+  # daisy-chain ("pass through") to a second unit rather than taking their
+  # own switch port. Seven EarMixes total, which matches the count in
+  # booth-context.md.
+  - id: avb_switch_sr
+    label: AVB switch — stage right
     group: stage
     ports:
-      - {id: in, label: Mic/line in}
-      - {id: avb, label: AVB}
-
-  - id: nsb_b
-    label: NSB 16.8 Stagebox B
-    group: stage
-    ports:
-      - {id: in, label: Mic/line in}
-      - {id: avb, label: AVB}
-
-  # The stageboxes, the EarMixes and the console are all on one PreSonus AVB
-  # network rather than point-to-point analog — the switch is the hub for all
-  # of it. NEEDS VERIFICATION: how many switches there are and where each one
-  # lives (one on stage, or one on stage + one in the booth rack), and the
-  # exact model.
-  - id: avb_switch
-    label: PreSonus AVB switch
-    group: stage
-    ports:
-      - {id: boxes, label: Stageboxes}
+      - {id: console, label: From console}
+      - {id: box, label: Stagebox}
       - {id: monitors, label: EarMix}
-      - {id: console, label: Console}
+      - {id: sl, label: To stage-left switch}
 
-  - id: earmix
-    label: Earmix 16M (x7)
+  - id: avb_switch_sl
+    label: AVB switch — stage left
     group: stage
     ports:
+      - {id: uplink, label: From stage-right}
+      - {id: box, label: Stagebox}
+      - {id: monitors, label: EarMix}
+
+  - id: nsb_right
+    label: NSB 16.8 — stage right
+    group: stage
+    ports:
+      - {id: in, label: Mic/line in}
       - {id: avb, label: AVB}
+
+  - id: nsb_left
+    label: NSB 16.8 — stage left
+    group: stage
+    ports:
+      - {id: in, label: Mic/line in}
+      - {id: avb, label: AVB}
+
+  # EarMixes on the stage-right switch; each of these passes through to one
+  # more unit rather than the second unit taking its own switch port.
+  - id: em_jordan
+    label: EarMix — Jordan
+    group: stage
+    ports:
+      - {id: avb_in, label: AVB in}
+      - {id: thru, label: AVB thru}
+
+  - id: em_bassist
+    label: EarMix — Bassist
+    group: stage
+    ports:
+      - {id: avb_in, label: AVB in}
+      - {id: thru, label: AVB thru}
+
+  - id: em_keyboard
+    label: EarMix — Keyboard
+    group: stage
+    ports:
+      - {id: avb_in, label: AVB in}
+
+  - id: em_drums
+    label: EarMix — Drums
+    group: stage
+    ports:
+      - {id: avb_in, label: AVB in}
+
+  # EarMixes on the stage-left switch — three direct drops, no pass-through.
+  - id: em_tom
+    label: EarMix — Tom
+    group: stage
+    ports:
+      - {id: avb_in, label: AVB in}
+
+  - id: em_vocal1
+    label: EarMix — Vocal 1
+    group: stage
+    ports:
+      - {id: avb_in, label: AVB in}
+
+  - id: em_vocal2
+    label: EarMix — Vocal 2
+    group: stage
+    ports:
+      - {id: avb_in, label: AVB in}
 
   - id: camera
     label: PTZOptics PT12X-SDI
@@ -219,6 +271,16 @@ nodes:
     ports:
       - {id: hdmi_in, label: HDMI in}
 
+  # Outside the sanctuary proper (lobby/overflow). These are the "outside
+  # monitors" SYSTEM-STATE mentions, and they carry the livestream content.
+  # NEEDS VERIFICATION: whether they're on the same DP-4/GoFanco HDMI split as
+  # the pulpit TV, or a separate device actually receiving the stream.
+  - id: outside_tvs
+    label: Outside TVs (x2) — livestream
+    group: sanctuary
+    ports:
+      - {id: feed_in, label: Feed in}
+
   # ---------------- Maintenance ----------------
   - id: macbook
     label: MacBook
@@ -227,25 +289,48 @@ nodes:
       - {id: net, label: Wi-Fi}
 
 links:
-  # ---- Stage audio in ----
-  - {from: stage_sources.out, to: nsb_a.in, direction: one-way, kind: audio,
-     label: "mic lines", status: needs-verification}
-  - {from: di_box.out, to: nsb_a.in, direction: one-way, kind: audio,
-     label: "DI'd instruments", status: needs-verification}
-  - {from: td27.out, to: nsb_b.in, direction: one-way, kind: audio,
-     label: "drum module out", status: needs-verification}
-  # AVB network: stageboxes, EarMixes and the console all hang off the
-  # PreSonus switch rather than running point-to-point. Two-way because each
-  # AVB link carries both directions — box inputs up to the console, monitor
-  # mixes back down to the EarMixes — over the same cable.
-  - {from: nsb_a.avb, to: avb_switch.boxes, direction: two-way, kind: network,
-     label: "AVB — which channel range?", status: needs-verification}
-  - {from: nsb_b.avb, to: avb_switch.boxes, direction: two-way, kind: network,
-     label: "AVB — which channel range?", status: needs-verification}
-  - {from: earmix.avb, to: avb_switch.monitors, direction: two-way, kind: network,
-     label: "AVB — daisy-chained or one port each?", status: needs-verification}
-  - {from: avb_switch.console, to: presonus.avb, direction: two-way, kind: network,
-     label: "AVB to console", status: needs-verification}
+  # ---- Stage analog in ----
+  # Mic/instrument patch deliberately not mapped yet (deferred 2026-09-14).
+  # Which sources land on which box and which channels is the remaining gap —
+  # see docs/mixer-channel-map.md when it exists.
+  - {from: stage_sources.out, to: nsb_right.in, direction: one-way, kind: audio,
+     label: "mic lines — box/channel not yet mapped", status: needs-verification}
+  - {from: di_box.out, to: nsb_right.in, direction: one-way, kind: audio,
+     label: "DI'd instruments — not yet mapped", status: needs-verification}
+  - {from: td27.out, to: nsb_left.in, direction: one-way, kind: audio,
+     label: "drum module — not yet mapped", status: needs-verification}
+
+  # ---- AVB network ----
+  # Two-way throughout: each AVB link carries both directions on one cable —
+  # box inputs up to the console, monitor mixes back down to the EarMixes.
+  - {from: presonus.avb, to: avb_switch_sr.console, direction: two-way, kind: network,
+     label: "AVB — console to stage-right switch", status: confirmed}
+  - {from: avb_switch_sr.box, to: nsb_right.avb, direction: two-way, kind: network,
+     label: "AVB", status: confirmed}
+  - {from: avb_switch_sr.sl, to: avb_switch_sl.uplink, direction: two-way, kind: network,
+     label: "AVB — switch to switch", status: confirmed}
+  - {from: avb_switch_sl.box, to: nsb_left.avb, direction: two-way, kind: network,
+     label: "AVB", status: confirmed}
+
+  # EarMixes on the stage-right switch, each daisy-chaining to a second unit.
+  # NEEDS VERIFICATION: the pairing — whether Jordan feeds Keyboard and
+  # Bassist feeds Drums, or the other way round.
+  - {from: avb_switch_sr.monitors, to: em_jordan.avb_in, direction: two-way, kind: network,
+     label: "AVB + PoE", status: confirmed}
+  - {from: avb_switch_sr.monitors, to: em_bassist.avb_in, direction: two-way, kind: network,
+     label: "AVB + PoE", status: confirmed}
+  - {from: em_jordan.thru, to: em_keyboard.avb_in, direction: two-way, kind: network,
+     label: "thru — pairing unconfirmed", status: needs-verification}
+  - {from: em_bassist.thru, to: em_drums.avb_in, direction: two-way, kind: network,
+     label: "thru — pairing unconfirmed", status: needs-verification}
+
+  # Three direct EarMix drops off the stage-left switch.
+  - {from: avb_switch_sl.monitors, to: em_tom.avb_in, direction: two-way, kind: network,
+     label: "AVB + PoE", status: confirmed}
+  - {from: avb_switch_sl.monitors, to: em_vocal1.avb_in, direction: two-way, kind: network,
+     label: "AVB + PoE", status: confirmed}
+  - {from: avb_switch_sl.monitors, to: em_vocal2.avb_in, direction: two-way, kind: network,
+     label: "AVB + PoE", status: confirmed}
 
   # ---- House audio out ----
   - {from: presonus.main_out, to: crown.in, direction: one-way, kind: audio,
@@ -291,6 +376,9 @@ links:
      label: "Cat — which TX/RX pair?", status: needs-verification}
   - {from: gofanco_hub.cat_out, to: boh_tv.hdmi_in, direction: one-way, kind: video,
      label: "Cat, up to ~200 ft — program feed", status: needs-verification}
+  - {from: gofanco_hub.cat_out, to: outside_tvs.feed_in, direction: one-way, kind: video,
+     label: "livestream content — same HDMI split, or a stream receiver?",
+     status: needs-verification}
   # The DP-2 feed doesn't only go out to the front TVs — it also comes back
   # into the ATEM on Camera 3, so FreeShow Primary can be switched into the
   # program feed (slides/lower-thirds to the stream and the back TVs).
