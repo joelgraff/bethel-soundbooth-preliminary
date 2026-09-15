@@ -20,9 +20,9 @@
     "through_nodes": 0
   },
   "mixer/LR": {
-    "area": 104.2,
+    "area": 126.8,
     "crossings": 0,
-    "edge_len": 21.2,
+    "edge_len": 22.4,
     "edges": 8,
     "nodes": 10,
     "self_overlap": 0,
@@ -30,9 +30,9 @@
     "through_nodes": 0
   },
   "mixer/TB": {
-    "area": 105.1,
+    "area": 114.7,
     "crossings": 0,
-    "edge_len": 15.1,
+    "edge_len": 14.0,
     "edges": 8,
     "nodes": 10,
     "self_overlap": 0,
@@ -40,29 +40,29 @@
     "through_nodes": 0
   },
   "pc/LR": {
-    "area": 248.1,
-    "crossings": 1,
-    "edge_len": 46.2,
-    "edges": 14,
+    "area": 201.6,
+    "crossings": 0,
+    "edge_len": 45.8,
+    "edges": 15,
     "nodes": 16,
     "self_overlap": 0,
     "served": true,
     "through_nodes": 0
   },
   "pc/TB": {
-    "area": 204.1,
-    "crossings": 1,
-    "edge_len": 38.9,
-    "edges": 14,
+    "area": 202.9,
+    "crossings": 0,
+    "edge_len": 33.8,
+    "edges": 15,
     "nodes": 16,
     "self_overlap": 1,
     "served": false,
     "through_nodes": 0
   },
   "router/LR": {
-    "area": 59.5,
+    "area": 51.8,
     "crossings": 0,
-    "edge_len": 13.1,
+    "edge_len": 8.0,
     "edges": 4,
     "nodes": 6,
     "self_overlap": 0,
@@ -70,9 +70,9 @@
     "through_nodes": 0
   },
   "router/TB": {
-    "area": 55.9,
+    "area": 52.9,
     "crossings": 0,
-    "edge_len": 8.9,
+    "edge_len": 5.7,
     "edges": 4,
     "nodes": 6,
     "self_overlap": 0,

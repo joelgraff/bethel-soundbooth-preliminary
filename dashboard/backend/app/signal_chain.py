@@ -153,8 +153,18 @@ def node_html_label(node, links, horizontal=True, visible_ports=None):
     analog line-out means nothing on the video sheet, and drawing it invites
     the reader to hunt for a cable that was deliberately left out."""
     tint = node_tint(node)
+    # A `note` is for a device whose relevant fact is that it does NOT cable
+    # to anything (the MacBook is Wi-Fi only). Drawing it as an isolated box
+    # invites "is this diagram missing a link?"; the note answers that in
+    # place, which a legend or a separate prose doc would not.
+    note = node.get("note")
+    note_line = (
+        f'<BR/><FONT POINT-SIZE="8.5" COLOR="#8b97a8">{esc(note)}</FONT>'
+        if note else ""
+    )
     name_cell_inner = (
         f'<FONT POINT-SIZE="12.5" COLOR="{NAME_FG}"><B>{esc(node["label"])}</B></FONT>'
+        f"{note_line}"
     )
     ports = node.get("ports") or []
     if visible_ports is not None:
@@ -415,6 +425,7 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
     # One connector per far endpoint (node+port), so several links to the same
     # far port share a connector instead of stacking duplicates.
     stub_decls, stub_edges, seen_stubs = {}, [], set()
+    same_rank_pairs = []
     for link in crossing:
         src_node, src_port = split_ref(link["from"])
         dst_node, dst_port = split_ref(link["to"])
@@ -438,6 +449,14 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
         stub_edges.append(
             (link, f"{near} -> {stub_id}" if src_in else f"{stub_id} -> {near}")
         )
+        # align: same-rank pins the connector into its device's own rank, so
+        # it sits directly beside it (directly BELOW, in LR) rather than a
+        # rank downstream with a long diagonal reaching back. constraint is
+        # forced off too: a rank-advancing edge and a same-rank constraint
+        # are contradictory, and dot resolves the contradiction by ignoring
+        # the rank group.
+        if link.get("align") == "same-rank":
+            same_rank_pairs.append((near_node_id, stub_id))
 
     def node_decl(n, indent):
         label = node_html_label(
@@ -518,7 +537,7 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
         label = (link.get("label") or "").strip()
         if label:
             attrs.append(f'label=" {esc(label)} "')
-        if link.get("constraint") is False:
+        if link.get("constraint") is False or link.get("align") == "same-rank":
             attrs.append("constraint=false")
         return ", ".join(attrs)
 
@@ -530,6 +549,15 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
 
     for link, endpoints in stub_edges:
         lines.append(f"  {endpoints} [{edge_attrs(link)}];")
+
+    for near_id, stub_id in same_rank_pairs:
+        lines.append(f"  {{rank=same; {near_id}; {stub_id};}}")
+        # Within a rank group dot orders by the edges between its members, so
+        # an invisible one fixes which side the connector lands on: device
+        # first means the connector comes after it — below, in LR. Without
+        # this it consistently landed ABOVE, which is the same information
+        # but not what was asked for.
+        lines.append(f"  {near_id} -> {stub_id} [style=invis, weight=10];")
 
     legend_links = links + crossing
     kinds_used = [k for k in KIND_COLOR if any(l.get("kind") == k for l in legend_links)]
@@ -564,9 +592,9 @@ def _load(project_dir: Path) -> dict:
     return data
 
 
-NODE_KEYS = {"id", "label", "group", "subgroup", "ports"}
+NODE_KEYS = {"id", "label", "group", "subgroup", "ports", "note"}
 PORT_KEYS = {"id", "label", "side"}
-LINK_KEYS = {"from", "to", "direction", "kind", "label", "status", "constraint"}
+LINK_KEYS = {"from", "to", "direction", "kind", "label", "status", "constraint", "align"}
 GROUP_KEYS = {"id", "label", "subgroups"}
 SUBGROUP_KEYS = {"id", "label"}
 DIAGRAM_KEYS = {"id", "title", "groups", "rankdir", "kinds"}
@@ -657,6 +685,8 @@ def validate(data: dict) -> list[str]:
             problems.append(f"link #{i + 1}: direction must be one-way or two-way")
         if link.get("status") not in (None, "confirmed", "needs-verification"):
             problems.append(f"link #{i + 1}: status must be confirmed or needs-verification")
+        if link.get("align") not in (None, "same-rank"):
+            problems.append(f"link #{i + 1}: align must be same-rank")
         for end in ("from", "to"):
             ref = link.get(end)
             if not ref:

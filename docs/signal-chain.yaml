@@ -290,14 +290,22 @@ nodes:
     label: Booth PC
     group: pc
     ports:
-      - {id: video0, label: /dev/video0}
-      - {id: usb_presonus, label: "USB → PreSonus"}
+      # Port order on the inputs face is load-bearing, not cosmetic: it decides
+      # which connector sits above which down the left of the sheet, and which
+      # end of the face the LAN run leaves from. Audio pair first, then video
+      # in, then LAN last so the router connector directly below it is reached
+      # without the cable cutting back across the PC's own box. Measured over
+      # all 24 permutations; this is one of only two that reach zero crossings
+      # AND zero self-overlap with the connector below, and the other splits
+      # the audio pair.
       # side: in puts this on the INPUTS face, which in LR is the left. It
       # is an output electrically — the arrow still leaves it — but the PC's
       # faces are organised by signal type, not by direction: video out on
       # the right, audio on the left. Mixing the analog send in among the DP
       # outs made the right-hand face mean two different things.
       - {id: lineout, label: Analog line-out, side: in}
+      - {id: usb_presonus, label: "USB → PreSonus"}
+      - {id: video0, label: /dev/video0}
       - {id: lan, label: LAN}
       - {id: dp1, label: DP-1}
       - {id: dp2, label: DP-2}
@@ -324,8 +332,11 @@ nodes:
     group: pc
     ports:
       - {id: in, label: HDMI in}
-      - {id: to_ext, label: To FOH extender}
-      - {id: to_atem, label: To ATEM Camera 3}
+      # Plain Out 1 / Out 2: the edge labels and the connectors already say
+      # where each leg goes, and naming the ports after their destinations
+      # repeated that twice on one line.
+      - {id: to_ext, label: Out 1}
+      - {id: to_atem, label: Out 2}
 
   - id: ext_foh
     label: HDMI extender — 4-port (DP-2, FOH)
@@ -418,15 +429,24 @@ nodes:
   - id: router
     label: Router
     group: router
+    # No Wi-Fi PORT: ports exist to land cables on, and nothing is cabled to
+    # the Wi-Fi. It was being trimmed off the drawing anyway (ports render
+    # only where a link lands), which left a router that looked Ethernet-only.
+    # The note says it plainly instead.
+    note: "Also serves Wi-Fi"
     ports:
       - {id: lan, label: LAN (Ethernet)}
-      - {id: wifi, label: Wi-Fi}
 
+  # Deliberately NO ports and NO links. The MacBook is a maintenance laptop
+  # on Wi-Fi; it has no cable to anything, and drawing a Wi-Fi association as
+  # though it were a patch lead put a line on the sheet that does not exist
+  # in the room. The note carries the fact instead. It also has no USB to
+  # anything, which is why it can't contend for /dev/video0 with
+  # ffmpeg-capture (the risk flagged in STATUS.md 2026-09-14).
   - id: macbook
     label: MacBook
     group: router
-    ports:
-      - {id: net, label: Wi-Fi}
+    note: "Wi-Fi only — no cabled connections"
 
 links:
   # ---- Stage analog in ----
@@ -489,12 +509,8 @@ links:
   # Second, independent PC->mixer path: the analog contingency feed
   # (lineout-fallback.service), deliberately sharing nothing with the USB link
   # so it can't fail the same way. Stays muted at the board until needed.
-  # constraint=false so this connector lands on the PC's audio face (left in
-  # LR) beside the USB one, instead of being pushed a rank downstream to the
-  # right — which put the two PreSonus connectors on opposite sides of the
-  # same sheet and made the line-out edge wrap around the PC to get there.
   - {from: pc.lineout, to: presonus.ch21, direction: one-way, kind: audio,
-     label: "ch 21 (backup)", status: confirmed, constraint: false}
+     label: "ch 21 (backup)", status: confirmed}
 
   # ---- Video / program ----
   - {from: camera.sdi_out, to: sdi_hdmi_conv.sdi_in, direction: one-way, kind: video,
@@ -513,19 +529,16 @@ links:
   # One run per component to the router; nothing cables to anything else.
   # The ATEM/dashboard/control relationships still exist, they just travel
   # over this network rather than over a cable worth drawing.
+  # align: same-rank keeps this connector in the PC's own rank, i.e. directly
+  # under the PC box in LR. Left to advance a rank it was pushed out to the
+  # right and reached back across the sheet on a long diagonal that cut under
+  # everything else.
   - {from: pc.lan, to: router.lan, direction: two-way, kind: control,
-     label: "Ethernet", status: confirmed}
+     label: "Ethernet", status: confirmed, align: same-rank}
   - {from: atem.eth, to: router.lan, direction: two-way, kind: control,
      label: "Ethernet (atem.conf)", status: confirmed}
   - {from: presonus.eth, to: router.lan, direction: two-way, kind: control,
      label: "Ethernet", status: needs-verification}
-  # Maintenance workstation, never in the operational path. Wi-Fi only — the
-  # MacBook has no USB connection to anything, which also means it can't
-  # contend for /dev/video0 with ffmpeg-capture (the risk flagged in
-  # STATUS.md 2026-09-14). It reaches the ATEM (ATEM Software Control) and
-  # the dashboard over this network, not over any cable of its own.
-  - {from: macbook.net, to: router.wifi, direction: two-way, kind: control,
-     label: "Wi-Fi", status: confirmed}
   # VISCA (pan/tilt/zoom) and RTSP (preview stream), both in camera.conf. The
   # camera sits on its OWN subnet, not the booth LAN — that separation is not
   # recorded anywhere else, so do not drop it from here.
