@@ -53,21 +53,30 @@ directly, or dictate them in a session and have it written up here.
 | SDI → HDMI converter | 1 | Converts the camera's SDI run to HDMI for the ATEM's **Camera 2** input | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: make/model, and whether it sits in the booth rack or out at the camera) |
 | PTZOptics PT12X-SDI-xx-G2 | 1 | Program camera; SDI out → converter → ATEM Camera 2; also has a separate IP control/preview path (`~/.config/soundbooth/camera.conf`) | ✅ |
 | 85" Sony Bravia TV | 2 | **FOH displays, facing the congregation** — fed by DP-2 (FreeShow Primary) | ✅ operator, 2026-09-14 |
-| BOH TV | 1 | **Faces the pulpit** — confidence feed for whoever is speaking; fed by DP-4 (program). Distinct from the DP-3 FreeShow Stage monitor | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: make/model/size) |
-| Outside TVs | 2 | **Outside the sanctuary** (lobby/overflow), carrying the livestream content, on their own 4-port extender. These are the "outside monitors" SYSTEM-STATE mentions | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: what feeds that extender — see below; plus make/model) |
-| HDMI-over-Cat extender — 4-port | 1 | Feeds the **two FOH Bravias** from DP-2 (2 of 4 ports used) | ✅ operator, 2026-09-14 |
-| HDMI-over-Cat extender — 4-port | 1 | Feeds the **two outside/back TVs** (2 of 4 ports used) — a *different* unit from the FOH one | ✅ operator, 2026-09-14 |
-| HDMI-over-Cat extender — single | 1 | Feeds the **pulpit BOH TV** from DP-4 | ✅ operator, 2026-09-14 |
-| HDMI-over-Cat extender — stage | 1 | Feeds the **stage confidence monitor** from DP-3 | ✅ (**NEEDS VERIFICATION**: whether this is a fourth physical unit or one of the three above — SYSTEM-STATE calls it the "single stage TX", but the single extender is now accounted for by the pulpit TV) |
+| Pulpit TV / stage confidence monitor | 1 | Back of house, facing forward so whoever is speaking sees **FreeShow Stage**. Fed by DP-3 via the single extender. **The operator's "pulpit TV" and SYSTEM-STATE's "stage confidence monitor" are the same panel** — they were double-counted until 2026-09-14 | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: make/model/size) |
+| Outside TVs | 2 | **Outside the sanctuary** (lobby/overflow), showing the program/livestream feed from DP-4 via their own 4-port extender. These are the "outside monitors" SYSTEM-STATE mentions | ✅ operator, 2026-09-14 (**NEEDS VERIFICATION**: make/model) |
+| HDMI-over-Cat extender — 4-port | 1 | **DP-2** → the two FOH Bravias (2 of 4 ports used) | ✅ operator, 2026-09-14 |
+| HDMI-over-Cat extender — single | 1 | **DP-3** → the pulpit / stage confidence monitor (one panel, one port) | ✅ operator, 2026-09-14 |
+| HDMI-over-Cat extender — 4-port | 1 | **DP-4** → the two outside TVs (2 of 4 ports used) — a *different* unit from the FOH one | ✅ operator, 2026-09-14 |
 
 GoFanco 1080p, longest run ~200 ft; a known reliability weak point (planned
 upgrade: HDBaseT/Blackbird). Note these are **separate units per display
 group**, not one shared hub as SYSTEM-STATE's "multi-port + single stage TX"
 implies — so an extender failure takes out one group and leaves the rest up.
 
-**Five displays outside the booth**, easy to conflate: 2 FOH Bravias (DP-2,
-congregation), 1 BOH TV (DP-4, pulpit), 2 outside the sanctuary (livestream),
-plus the DP-3 FreeShow Stage confidence monitor on stage.
+**Five panels outside the booth, on three extenders, from three GPU ports** —
+and the mapping accounts for all four outputs exactly (verified against
+`xrandr` on the live machine, 2026-09-14):
+
+| GPU port | Content | Extender | Panels |
+|----------|---------|----------|--------|
+| DP-1 | booth desktop | none (direct) | SAM S34CG50 ultrawide, 3440×1440 |
+| DP-2 | FreeShow **Primary** | 4-port | 2× 85" Bravia, facing the congregation |
+| DP-3 | FreeShow **Stage** | single | pulpit / stage confidence monitor |
+| DP-4 | program (ffplay) | 4-port | 2× outside the sanctuary (livestream) |
+
+Each panel is one output of its extender. Both 4-ports are half-used (2 of 4),
+which is worth knowing before buying hardware to add a display.
 
 **NEEDS VERIFICATION — not yet documented anywhere:** any other cameras
 (wide/confidence shots?), wireless mic receivers/transmitters and channel
@@ -121,7 +130,7 @@ ATEM Mini Extreme (program bus)
         │                                              │
         │                                    (see SYSTEM-STATE.md for the
         │                                     digital fan-out from here:
-        │                                     DP-4 TV, dashboard previews,
+        │                                     DP-4 → outside TVs, previews,
         │                                     SRT relay to Subsplash)
         │
         └─ Ethernet (control only, not video) ──► atem.conf IP
@@ -137,8 +146,8 @@ the tail end of the same physical chain):
 |-----------|-----------------|------|----------|
 | DP-1 | SAM S34CG50 ultrawide (booth) | direct | short, in-booth |
 | DP-2 | FreeShow Primary → **the two FOH Bravias (facing the congregation)**, *and* back into the ATEM on **Camera 3** | via the 4-port FOH extender + a tap to the ATEM | **NEEDS VERIFICATION**: run length |
-| DP-3 | LKV/HDbitT-style (FreeShow Stage) → stage confidence monitor | via the stage extender | **NEEDS VERIFICATION**: run length |
-| DP-4 | SII HDMI TV (program → the BOH TV facing the pulpit) | via the **single** extender | up to ~200 ft (longest run) |
+| DP-3 | FreeShow Stage → **pulpit / stage confidence monitor** | via the single extender | **NEEDS VERIFICATION**: run length |
+| DP-4 | program (ffplay) → **the two TVs outside the sanctuary** | via the 4-port back extender | up to ~200 ft (longest run) |
 
 **DP-2 feeds two destinations.** As well as driving the two FOH Bravias, the
 same output returns to the ATEM as **Camera 3** — so FreeShow Primary
@@ -153,18 +162,15 @@ feed for whoever is speaking — fed by DP-4, the program output. Note this is
 a *different* display from the FreeShow Stage confidence monitor on DP-3,
 which serves the stage/musicians.
 
-**NEEDS VERIFICATION — what feeds the back/outside extender.** The two
-outside TVs have their own 4-port extender, but nothing yet says what drives
-its input. They carry livestream content, so a split off DP-4 is the obvious
-guess — except the pulpit TV already takes DP-4 on its own single extender,
-so either DP-4 is split ahead of both, or those TVs are fed some other way.
-The dashboard's DP-4 tile calling it "Split that feeds the back-of-house TVs"
-(plural) supports the split theory but isn't proof.
+**NEEDS VERIFICATION:** where the Camera 3 feed is tapped — a splitter off
+DP-2 ahead of the FOH extender, or one of that extender's two spare ports —
+and where each Cat run physically terminates (which wall plate).
 
-**Also unverified:** where the Camera 3 feed is tapped (a splitter off DP-2
-ahead of the FOH extender, or a spare port on that extender — it has 2 free),
-where each Cat run physically terminates, and whether the stage extender is a
-fourth physical unit or one of the other three.
+> **Note for anyone reading older docs:** the dashboard's DP-4 tile still
+> describes it as "Split that feeds the back-of-house TVs", and SYSTEM-STATE's
+> 4-head map labels DP-4 "ffplay ATEM program to sanctuary TV" (singular).
+> Both predate this mapping. DP-4 drives the two TVs *outside* the sanctuary;
+> the pulpit panel is on DP-3.
 
 ### Audio path — stage to FOH
 
