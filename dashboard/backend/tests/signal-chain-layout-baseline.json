@@ -40,9 +40,9 @@
     "through_nodes": 0
   },
   "pc/LR": {
-    "area": 231.1,
+    "area": 206.0,
     "crossings": 0,
-    "edge_len": 60.5,
+    "edge_len": 45.8,
     "edges": 14,
     "nodes": 15,
     "self_overlap": 0,
@@ -50,12 +50,12 @@
     "through_nodes": 0
   },
   "pc/TB": {
-    "area": 171.7,
+    "area": 179.8,
     "crossings": 0,
-    "edge_len": 33.1,
+    "edge_len": 30.6,
     "edges": 14,
     "nodes": 15,
-    "self_overlap": 2,
+    "self_overlap": 1,
     "served": false,
     "through_nodes": 0
   },

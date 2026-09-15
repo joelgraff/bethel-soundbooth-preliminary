@@ -85,14 +85,21 @@ groups:
   # physical zone. Subgroups carry the role distinction inside it.
   - id: pc
     label: Booth PC
-    # No box round the extenders any more: the DP-2 splitter puts that branch
-    # one rank deeper than DP-3/DP-4, so a cluster containing all of them
-    # spans two ranks and stretches into the displays. Measured both ways.
+    # Both boxes are same_rank, and that is the whole point of them here. The
+    # DP-2 branch runs through a splitter, so it is one hop longer than
+    # DP-3/DP-4; left to itself dot put the FOH extender — and behind it the
+    # FOH TVs — a whole column right of their counterparts. Pinning each set
+    # to one rank turns the sheet into a grid: PC, splitter, extenders,
+    # displays, each a column.
+    #
+    # An earlier attempt dropped the extender box entirely, because without
+    # same_rank a cluster over an uneven-length branch stretches across two
+    # ranks and collides with the next one. same_rank is the fix for that, so
+    # the box is back. Aligning both sets is also SMALLER than aligning only
+    # the displays (2763 vs 3097 px wide), which is not obvious — holding the
+    # columns lets dot pack the ranks instead of staggering them.
     subgroups:
-      # same_rank: the DP-2 branch goes through a splitter, so it is one hop
-      # longer than DP-3/DP-4 and the FOH TVs landed a whole column right of
-      # the other two. They are the same kind of thing at the same end of the
-      # chain, so they line up.
+      - {id: dist, label: "HDMI distribution (pass-through)", same_rank: true}
       - {id: screens, label: "Displays (endpoints)", same_rank: true}
   - id: atem
     label: ATEM Mini Extreme
@@ -354,6 +361,7 @@ nodes:
   - id: ext_foh
     label: HDMI extender — 4-port (DP-2, FOH)
     group: pc
+    subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
       - {id: cat_out, label: Cat out}
@@ -361,6 +369,7 @@ nodes:
   - id: ext_back
     label: HDMI extender — 4-port (DP-4, back)
     group: pc
+    subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
       - {id: cat_out, label: Cat out}
@@ -368,6 +377,7 @@ nodes:
   - id: ext_pulpit
     label: HDMI extender — single (DP-3, pulpit)
     group: pc
+    subgroup: dist
     ports:
       - {id: hdmi_in, label: HDMI in}
       - {id: cat_out, label: Cat out}
