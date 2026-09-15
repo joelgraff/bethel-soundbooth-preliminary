@@ -306,7 +306,12 @@ nodes:
       - {id: lineout, label: Analog line-out, side: in}
       - {id: usb_presonus, label: "USB → PreSonus"}
       - {id: video0, label: /dev/video0}
-      - {id: lan, label: LAN}
+      # side: in for the same reason as the line-out: the right-hand face is
+      # video out only. This needs to be explicit now the camera has moved to
+      # the router — pc.lan used to be inferred onto the inputs face because
+      # the camera also fed INTO it, and losing that link silently flipped it
+      # over to the outputs face beside the DP ports.
+      - {id: lan, label: LAN, side: in}
       - {id: dp1, label: DP-1}
       - {id: dp2, label: DP-2}
       - {id: dp3, label: DP-3}
@@ -509,8 +514,12 @@ links:
   # Second, independent PC->mixer path: the analog contingency feed
   # (lineout-fallback.service), deliberately sharing nothing with the USB link
   # so it can't fail the same way. Stays muted at the board until needed.
+  # constraint=false keeps this connector off the downstream rank so it lands
+  # on the PC's audio face — the left of the sheet, beside the other PreSonus
+  # connector — instead of being pushed out to the right where the two ends of
+  # the same device sat on opposite sides of the drawing.
   - {from: pc.lineout, to: presonus.ch21, direction: one-way, kind: audio,
-     label: "ch 21 (backup)", status: confirmed}
+     label: "ch 21 (backup)", status: confirmed, constraint: false}
 
   # ---- Video / program ----
   - {from: camera.sdi_out, to: sdi_hdmi_conv.sdi_in, direction: one-way, kind: video,
@@ -539,17 +548,14 @@ links:
      label: "Ethernet (atem.conf)", status: confirmed}
   - {from: presonus.eth, to: router.lan, direction: two-way, kind: control,
      label: "Ethernet", status: needs-verification}
-  # VISCA (pan/tilt/zoom) and RTSP (preview stream), both in camera.conf. The
-  # camera sits on its OWN subnet, not the booth LAN — that separation is not
-  # recorded anywhere else, so do not drop it from here.
-  #
-  # NEEDS VERIFICATION 2026-09-15: every other component was confirmed as one
-  # run to the router, which leaves this the only peer-to-peer network cable
-  # on the drawings. Either the camera really is direct to the PC (plausible,
-  # given the separate subnet — a second NIC), or it reaches the router too
-  # and this should become camera -> router like the rest. Nobody has looked.
-  - {from: camera.net, to: pc.lan, direction: two-way, kind: control,
-     label: "VISCA / RTSP", status: needs-verification}
+  # Camera is on the house network like everything else (operator,
+  # 2026-09-15) — it runs to the router, not to the PC. It is still addressed
+  # on its own subnet in camera.conf, which is a subnet on this router rather
+  # than a separate physical network; that distinction is not recorded
+  # anywhere else, so keep it here. VISCA is pan/tilt/zoom, RTSP the preview
+  # stream; both reach the PC over this network, not over a cable of their own.
+  - {from: camera.net, to: router.lan, direction: two-way, kind: control,
+     label: "VISCA / RTSP", status: confirmed}
 
   # ---- Displays ----
   - {from: pc.dp1, to: booth_monitor.dp_in, direction: one-way, kind: video,
