@@ -403,24 +403,20 @@ def build_dot(data, rankdir="LR", splines="polyline", diagram_id=None):
         # tidier still but routes lines straight THROUGH node boxes, which on
         # a wiring diagram reads as a connection that isn't there.
         f"  splines={splines};",
-        # These two together are what stops the connections looking scruffy.
-        # In a layered layout an edge's slope is set by how far it travels
-        # along the rank axis versus how far it is displaced across it, so a
-        # wide ranksep and a tight nodesep flatten every edge towards the
-        # rank axis and make a fan-out read as near-parallel instead of as a
-        # starburst. Measured across all five sheets: mean tilt off-axis
-        # drops from 24 to 19 degrees on the PC sheet, 12 to 5 on the ATEM
-        # one, 41 to 28 on the router, 27 to 18 on stage — at roughly
-        # unchanged area, because the extra width is paid for by the tighter
-        # vertical packing.
+        # Moderate on both axes, deliberately. ranksep spreads the drawing
+        # along the rank axis, so in LR it buys width — the axis that is
+        # already long — and a wide setting turned the sheets into ribbons
+        # (the ATEM sheet reached 5.4:1) while barely touching what it was
+        # supposed to fix: the PC sheet's slope spread moved 34.0 to 31.2
+        # degrees for an aspect ratio of 3.1 to 4.3. These values give
+        # slightly better slope spread AND slightly smaller area than the
+        # original 1.1/0.6 on every sheet, without the stretch.
         #
-        # Do not reach for splines=ortho to get this instead. Re-tested on
-        # these sheets (not just the old two-sheet layout): it is 100%
-        # axis-aligned but drives lines straight down through the extender
-        # boxes and drops xlabels on top of node text — 20 self-overlaps
-        # across the five sheets versus 0 here.
-        "  nodesep=0.4;",
-        "  ranksep=2.6;",
+        # Do not reach for splines=ortho either. Re-tested on these sheets: it
+        # is fully axis-aligned but drives lines through the extender boxes
+        # and drops xlabels on node text, 20 self-overlaps against 0 here.
+        "  nodesep=0.5;",
+        "  ranksep=1.4;",
         "  newrank=true;",
         '  fontname="Helvetica";',
         '  node [shape=plaintext, fontname="Helvetica"];',

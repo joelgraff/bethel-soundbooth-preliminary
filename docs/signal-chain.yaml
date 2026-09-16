@@ -64,15 +64,26 @@ diagrams:
   - id: atem
     title: ATEM Mini Extreme
     groups: [atem]
-    rankdir: LR
+    # TB, not LR. This sheet is a short linear chain (camera -> converter ->
+    # ATEM) and laying it along the long axis turned it into a 4:1 ribbon —
+    # 5.4:1 once rank separation went up. Top-to-bottom it is square (1.0:1)
+    # and a third smaller. It had been switched to LR on crossing count alone,
+    # which both orientations tie on at zero.
+    rankdir: TB
   - id: mixer
     title: PreSonus StudioLive 32SX
     groups: [mixer]
-    rankdir: TB
+    # LR: the console fans out to five destinations, and laying that fan
+    # along the rank axis nearly halves how much the slopes differ from each
+    # other (37.7 -> 19.9 degrees of spread) for a slightly taller shape.
+    rankdir: LR
   - id: router
     title: Network / Router
     groups: [router]
-    rankdir: TB
+    # LR wins on both counts here, which is rare: slope spread 40.5 -> 15.9
+    # degrees AND aspect 3.8 -> 1.2. A hub with four peers hanging off it
+    # fans much more evenly across the rank axis than along it.
+    rankdir: LR
   - id: stage
     title: Stage
     groups: [stage]

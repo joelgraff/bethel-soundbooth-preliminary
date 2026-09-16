@@ -25,21 +25,26 @@ WHAT IT MEASURES
                 is the metric that catches splines=ortho (7 on the stage
                 sheet, versus 0 for polyline) and it is why ortho was
                 rejected despite being tidier by every other measure.
-  mean_tilt     Average angle each edge sits off the rank axis, in degrees.
-                This is what "the connections look sloppy" measures: in a
-                layered layout every edge's slope is set by its own endpoints,
-                so a sheet full of unrelated angles reads as a starburst even
-                when nothing crosses. Lower is tidier. Reported, not gated —
-                it trades against area, and a sheet that must fan out to one
-                side legitimately cannot be flat.
+  slope_spread  Standard deviation of the edge angles off the rank axis, in
+                degrees. This is what "the connections look sloppy" actually
+                measures — lines are tidy when they are PARALLEL TO EACH
+                OTHER, not when they are individually shallow. An earlier
+                version of this file tracked the mean angle instead and drove
+                a change that flattened every edge, cost a lot of width, and
+                moved the PC sheet's spread by 2.8 degrees. Angles are folded
+                to (-90, 90] so an edge running backwards does not read as
+                170 degrees off-axis.
+  aspect        Longest canvas side over shortest. Tracked because the mean-
+                angle mistake above produced a 5.4:1 ribbon that measured
+                well on every other metric.
   edge_len      Total path length in inches. A tie-breaker, not a goal —
                 shorter is usually tidier, but squeezing length at the cost
                 of crossings is the wrong trade.
   area          Canvas area in square inches. Also a tie-breaker. A sheet
                 that grows but un-crosses itself is a win.
 
-crossings, through_nodes and self_overlap are the gates; mean_tilt, edge_len
-and area are reported but never fail the run, because grouping nodes
+crossings, through_nodes and self_overlap are the gates; slope_spread,
+aspect, edge_len and area are reported but never fail the run, because grouping nodes
 logically legitimately costs some compactness and we do not want that fight
 every time.
 
@@ -225,15 +230,19 @@ def measure(dot_src: str, horizontal: bool = True) -> dict:
             ** 0.5
             for k in range(len(pts) - 1)
         )
-    tilts = []
+    angles = []
     for _, _, pts in paths:
         dx, dy = pts[-1][0] - pts[0][0], pts[-1][1] - pts[0][1]
-        tilts.append(
-            math.degrees(math.atan2(abs(dy), abs(dx))) if horizontal
-            else math.degrees(math.atan2(abs(dx), abs(dy)))
+        a = (
+            math.degrees(math.atan2(dy, dx)) if horizontal
+            else math.degrees(math.atan2(dx, dy))
         )
+        angles.append((a + 90) % 180 - 90)
     return {
-        "mean_tilt": round(statistics.mean(tilts), 1) if tilts else 0.0,
+        "slope_spread": (
+            round(statistics.pstdev(angles), 1) if len(angles) > 1 else 0.0
+        ),
+        "aspect": round(max(w, h) / min(w, h), 2) if min(w, h) else 0.0,
         "crossings": crossings,
         "through_nodes": through,
         "self_overlap": self_overlap,
@@ -293,7 +302,7 @@ def main() -> int:
                 f"  {key:12} crossings={m['crossings']:3}  "
                 f"through_nodes={m['through_nodes']:3}  "
                 f"self_overlap={m['self_overlap']:3}  "
-                f"tilt={m['mean_tilt']:5}deg  "
+                f"spread={m['slope_spread']:5}deg  aspect={m['aspect']:5}  "
                 f"edge_len={m['edge_len']:7}  area={m['area']:7}"
             )
         return 0
@@ -321,7 +330,8 @@ def main() -> int:
             bits.append(f"{name}={m[name]}({delta:+d} {flag})")
         print(
             f"  {key:12} [{tag}] " + "  ".join(bits)
-            + f"  tilt={m['mean_tilt']}deg  edge_len={m['edge_len']}  area={m['area']}"
+            + f"  spread={m['slope_spread']}deg  aspect={m['aspect']}"
+            + f"  area={m['area']}"
         )
 
     print(
