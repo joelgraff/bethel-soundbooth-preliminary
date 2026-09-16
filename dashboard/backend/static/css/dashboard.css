@@ -28,6 +28,7 @@
   --neutral: oklch(0.70 0.01 255);
   --neutral-bg: oklch(0.70 0.01 255 / 0.14);
   --neutral-border: oklch(0.70 0.01 255 / 0.35);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
 * { box-sizing: border-box; }
@@ -41,7 +42,6 @@ html, body {
 }
 
 a { color: var(--accent); text-decoration: none; }
-a:hover { color: oklch(0.85 0.11 195); }
 
 .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
 
@@ -81,11 +81,11 @@ button { font-family: inherit; cursor: pointer; }
   font-weight: 700;
   padding: 10px 18px;
   border: 1px solid transparent;
+  transition: transform 140ms var(--ease-out);
 }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
 .btn-primary { background: var(--accent); color: var(--accent-text); }
 .btn-ghost { background: transparent; border-color: var(--border); color: var(--text); }
-.btn-ghost:hover:not(:disabled) { background: var(--surface-2); }
 .btn-warn { background: var(--warn-bg); border-color: var(--warn-border); color: var(--warn); }
 .btn-sm { padding: 5px 12px; font-size: 11.5px; border-radius: 7px; }
 
@@ -94,8 +94,8 @@ button { font-family: inherit; cursor: pointer; }
   display: flex; align-items: center; justify-content: center;
   border: 1px solid var(--border); background: var(--surface-2); color: var(--text-muted);
   flex-shrink: 0;
+  transition: transform 140ms var(--ease-out), color 140ms ease, border-color 140ms ease;
 }
-.icon-btn:hover:not(:disabled) { color: var(--text); border-color: var(--accent-border); }
 .icon-btn:disabled { opacity: .4; cursor: not-allowed; }
 
 /* ---- header ---- */
@@ -152,7 +152,6 @@ button { font-family: inherit; cursor: pointer; }
 .svc-group-label { padding: 14px 12px 4px; }
 .svc-group-label:first-child { padding-top: 8px; }
 .svc-row { display: flex; align-items: center; gap: 12px; padding: 8px 12px; border-radius: 8px; }
-.svc-row:hover { background: var(--surface-2); }
 .svc-row.is-loading { opacity: .55; }
 .svc-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
 .svc-dot.good { background: var(--good); box-shadow: 0 0 0 4px var(--good-bg); }
@@ -161,7 +160,6 @@ button { font-family: inherit; cursor: pointer; }
 .svc-dot.off { background: var(--text-faint); }
 .svc-name { flex: 1; }
 .svc-name a { color: var(--text); }
-.svc-name a:hover { color: var(--accent); }
 .svc-unit { font-size: 11px; color: var(--text-faint); margin-left: 6px; }
 .svc-state { font-size: 12px; font-weight: 600; width: 76px; flex-shrink: 0; }
 .svc-state.good { color: var(--good); }
@@ -220,7 +218,6 @@ button { font-family: inherit; cursor: pointer; }
    it — align: center + a single-line issue-sub (below) keep each row short;
    clicking one scrolls to and flashes the matching full-detail row above. */
 .issue-row { display: flex; align-items: center; gap: 10px; border-radius: 10px; padding: 8px 12px; cursor: pointer; }
-.issue-row:hover { filter: brightness(1.15); }
 .issue-row.warn { background: var(--warn-bg); border: 1px solid var(--warn-border); }
 .issue-row.fail { background: var(--fail-bg); border: 1px solid var(--fail-border); }
 .issue-row svg { flex-shrink: 0; }
@@ -296,7 +293,6 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--text-muted); font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px;
   cursor: pointer; text-align: center; user-select: none;
 }
-.rec-chan-btn:hover { border-color: var(--accent-border); color: var(--text); }
 .rec-chan-btn.active { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); font-weight: 700; }
 #rec-name {
   background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
@@ -317,7 +313,6 @@ button { font-family: inherit; cursor: pointer; }
   padding: 7px 0; border-radius: 7px; border: 1px solid var(--border); background: var(--surface-2);
   color: var(--text-muted); font-size: 12px; cursor: pointer; text-align: center; user-select: none;
 }
-.sched-day-btn:hover { border-color: var(--accent-border); color: var(--text); }
 .sched-day-btn.active { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); font-weight: 700; }
 #sched-time {
   background: var(--surface-2); border: 1px solid var(--border); color: var(--text);
@@ -338,7 +333,6 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: 10px; padding: 9px 16px; font-size: 13px; font-weight: 700; cursor: pointer;
   display: flex; align-items: center; gap: 8px;
 }
-.doc-tab:hover { border-color: var(--accent-border); color: var(--text); }
 .doc-tab.active { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
 .doc-tab-badge {
   font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
@@ -375,6 +369,60 @@ button { font-family: inherit; cursor: pointer; }
   padding: 16px; font-size: 12.5px; line-height: 1.7; outline: none;
 }
 .doc-textarea:focus { border-color: var(--accent-border); }
+
+/* Hover is useful on a mouse, but can stick after a tap on touch devices. */
+@media (hover: hover) and (pointer: fine) {
+  a:hover { color: oklch(0.85 0.11 195); }
+  .btn-ghost:hover:not(:disabled) { background: var(--surface-2); }
+  .icon-btn:hover:not(:disabled) { color: var(--text); border-color: var(--accent-border); }
+  .svc-row:hover { background: var(--surface-2); }
+  .svc-name a:hover { color: var(--accent); }
+  .issue-row:hover { filter: brightness(1.15); }
+  .rec-chan-btn:hover { border-color: var(--accent-border); color: var(--text); }
+  .sched-day-btn:hover { border-color: var(--accent-border); color: var(--text); }
+  .doc-tab:hover { border-color: var(--accent-border); color: var(--text); }
+}
+
+button:active:not(:disabled),
+.issue-row:active,
+.rec-chan-btn:active,
+.sched-day-btn:active,
+.doc-tab:active {
+  transform: scale(0.97);
+}
+
+.rec-chan-btn,
+.sched-day-btn,
+.doc-tab,
+.issue-row {
+  transition: transform 140ms var(--ease-out);
+}
+
+@media (max-width: 720px) {
+  .page { padding: 20px 16px 40px; }
+  .header { align-items: flex-start; flex-wrap: wrap; gap: 16px; }
+  .header > div:last-child { width: 100%; justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
+  .health-issue { align-items: flex-start; flex-wrap: wrap; padding: 12px 18px; }
+  .grid { gap: 24px; }
+  .col, .col-wide { flex-basis: 100%; min-width: 0; }
+  .svc-header { align-items: flex-start; gap: 10px; flex-wrap: wrap; }
+  .hdmi-grid { grid-template-columns: 1fr; grid-template-rows: repeat(4, minmax(140px, auto)); min-height: auto; }
+  .rec-channel-grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .icon-btn,
+  .issue-row,
+  .rec-chan-btn,
+  .sched-day-btn,
+  .doc-tab,
+  .toggle .knob {
+    transition: none;
+  }
+  .flash-highlight { animation: none; background: var(--surface-3); }
+  .spinner { animation: none; border-top-color: var(--text-faint); }
+}
 
 /* Rendered markdown — this project's docs are dense (headers, tables, fenced
    ASCII diagrams, wrapped lists), so these rules cover exactly that shape
