@@ -5,7 +5,7 @@ WHY THIS EXISTS
 Diagram quality was being judged by eye: render a PNG, look at it, decide it
 feels cluttered. That works but it doesn't survive a refactor — a change to
 node grouping or a Graphviz attribute can quietly make a sheet worse and
-nobody notices until someone opens it during a service. This turns the two
+nobody notices until someone opens it during a service. This turns the
 defects that actually matter into numbers, so a regression fails a check
 instead of waiting to be spotted.
 
@@ -25,16 +25,23 @@ WHAT IT MEASURES
                 is the metric that catches splines=ortho (7 on the stage
                 sheet, versus 0 for polyline) and it is why ortho was
                 rejected despite being tidier by every other measure.
+  mean_tilt     Average angle each edge sits off the rank axis, in degrees.
+                This is what "the connections look sloppy" measures: in a
+                layered layout every edge's slope is set by its own endpoints,
+                so a sheet full of unrelated angles reads as a starburst even
+                when nothing crosses. Lower is tidier. Reported, not gated —
+                it trades against area, and a sheet that must fan out to one
+                side legitimately cannot be flat.
   edge_len      Total path length in inches. A tie-breaker, not a goal —
                 shorter is usually tidier, but squeezing length at the cost
                 of crossings is the wrong trade.
   area          Canvas area in square inches. Also a tie-breaker. A sheet
                 that grows but un-crosses itself is a win.
 
-crossings, through_nodes and self_overlap are the gates; edge_len and area
-are reported but never fail the run, because grouping nodes logically
-legitimately costs some compactness and we do not want that fight every
-time.
+crossings, through_nodes and self_overlap are the gates; mean_tilt, edge_len
+and area are reported but never fail the run, because grouping nodes
+logically legitimately costs some compactness and we do not want that fight
+every time.
 
 USAGE
   ./signal-chain-layout-check.py                 # check against baseline
@@ -47,6 +54,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
+import statistics
 import subprocess
 import sys
 from pathlib import Path
@@ -159,7 +168,7 @@ def seg_intersect(a, b, c, d):
     return None
 
 
-def measure(dot_src: str) -> dict:
+def measure(dot_src: str, horizontal: bool = True) -> dict:
     _, w, h, nodes, edges = parse_plain(plain(dot_src))
     paths = [(t, hd, flatten(p)) for t, hd, p in edges]
 
@@ -216,7 +225,15 @@ def measure(dot_src: str) -> dict:
             ** 0.5
             for k in range(len(pts) - 1)
         )
+    tilts = []
+    for _, _, pts in paths:
+        dx, dy = pts[-1][0] - pts[0][0], pts[-1][1] - pts[0][1]
+        tilts.append(
+            math.degrees(math.atan2(abs(dy), abs(dx))) if horizontal
+            else math.degrees(math.atan2(abs(dx), abs(dy)))
+        )
     return {
+        "mean_tilt": round(statistics.mean(tilts), 1) if tilts else 0.0,
         "crossings": crossings,
         "through_nodes": through,
         "self_overlap": self_overlap,
@@ -261,7 +278,7 @@ def main() -> int:
         for rankdir in ("TB", "LR"):
             dot_src = sc.build_dot(data, rankdir=rankdir, diagram_id=sid)
             key = f"{sid}/{rankdir}"
-            results[key] = measure(dot_src)
+            results[key] = measure(dot_src, horizontal=rankdir == "LR")
             results[key]["served"] = rankdir == want
 
     if args.json:
@@ -276,6 +293,7 @@ def main() -> int:
                 f"  {key:12} crossings={m['crossings']:3}  "
                 f"through_nodes={m['through_nodes']:3}  "
                 f"self_overlap={m['self_overlap']:3}  "
+                f"tilt={m['mean_tilt']:5}deg  "
                 f"edge_len={m['edge_len']:7}  area={m['area']:7}"
             )
         return 0
@@ -303,7 +321,7 @@ def main() -> int:
             bits.append(f"{name}={m[name]}({delta:+d} {flag})")
         print(
             f"  {key:12} [{tag}] " + "  ".join(bits)
-            + f"  edge_len={m['edge_len']}  area={m['area']}"
+            + f"  tilt={m['mean_tilt']}deg  edge_len={m['edge_len']}  area={m['area']}"
         )
 
     print(
