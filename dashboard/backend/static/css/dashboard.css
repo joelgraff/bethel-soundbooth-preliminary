@@ -1,33 +1,43 @@
 /* Soundbooth Control Dashboard — shared styles.
-   Tokens ported from the design mockup (dark, high-contrast, calm-under-
-   pressure control panel for a dim booth). */
+   Booth Console pass (2026-09): re-grounded in the room this thing is
+   actually used in — a dim booth full of real rack gear (PreSonus, ATEM,
+   Blackmagic) — rather than the generic dark-dashboard defaults the first
+   pass had drifted into. Warm rack-charcoal instead of cool tech-blue; one
+   accent (an indicator-lamp gold) spent only on links/primary actions/the
+   live state; semantic good/warn/fail colors deliberately left close to
+   where they were, since an operator has already learned that vocabulary.
+   See the mockup this was approved from: mockup-booth-console.html. */
 
 :root {
-  --bg: oklch(0.16 0.014 255);
-  --surface: oklch(0.205 0.014 255);
-  --surface-2: oklch(0.255 0.016 255);
-  --surface-3: oklch(0.30 0.018 255);
+  --bg: oklch(0.16 0.012 55);
+  --surface: oklch(0.205 0.013 55);
+  --surface-2: oklch(0.255 0.015 55);
+  --surface-3: oklch(0.30 0.017 55);
   --border-soft: oklch(1 0 0 / 0.08);
-  --border: oklch(1 0 0 / 0.14);
-  --text: oklch(0.96 0.006 255);
-  --text-muted: oklch(0.70 0.014 255);
-  --text-faint: oklch(0.52 0.014 255);
-  --accent: oklch(0.78 0.13 195);
-  --accent-text: oklch(0.16 0.03 195);
-  --accent-bg: oklch(0.78 0.13 195 / 0.16);
-  --accent-border: oklch(0.78 0.13 195 / 0.4);
-  --good: oklch(0.76 0.16 152);
-  --good-bg: oklch(0.76 0.16 152 / 0.14);
-  --good-border: oklch(0.76 0.16 152 / 0.35);
-  --warn: oklch(0.80 0.15 80);
-  --warn-bg: oklch(0.80 0.15 80 / 0.14);
-  --warn-border: oklch(0.80 0.15 80 / 0.4);
+  --border: oklch(1 0 0 / 0.15);
+  --text: oklch(0.96 0.006 55);
+  --text-muted: oklch(0.70 0.013 55);
+  --text-faint: oklch(0.50 0.013 55);
+  /* The one accent — an indicator-lamp gold, the color of a lit VU-meter
+     needle or a warm incandescent panel light. Kept well apart in hue from
+     both --warn (58) and --fail (25) so the three are never confusable when
+     they sit side by side. */
+  --accent: oklch(0.80 0.15 85);
+  --accent-text: oklch(0.16 0.03 85);
+  --accent-bg: oklch(0.80 0.15 85 / 0.15);
+  --accent-border: oklch(0.80 0.15 85 / 0.4);
+  --good: oklch(0.76 0.17 148);
+  --good-bg: oklch(0.76 0.17 148 / 0.14);
+  --good-border: oklch(0.76 0.17 148 / 0.38);
+  --warn: oklch(0.78 0.15 58);
+  --warn-bg: oklch(0.78 0.15 58 / 0.14);
+  --warn-border: oklch(0.78 0.15 58 / 0.4);
   --fail: oklch(0.70 0.19 25);
   --fail-bg: oklch(0.70 0.19 25 / 0.14);
   --fail-border: oklch(0.70 0.19 25 / 0.4);
-  --neutral: oklch(0.70 0.01 255);
-  --neutral-bg: oklch(0.70 0.01 255 / 0.14);
-  --neutral-border: oklch(0.70 0.01 255 / 0.35);
+  --neutral: oklch(0.70 0.01 55);
+  --neutral-bg: oklch(0.70 0.01 55 / 0.14);
+  --neutral-border: oklch(0.70 0.01 55 / 0.35);
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
@@ -37,7 +47,7 @@ html, body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: 'Manrope', system-ui, sans-serif;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
   min-height: 100vh;
 }
 
@@ -45,19 +55,27 @@ a { color: var(--accent); text-decoration: none; }
 
 .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
 
+/* Structural/section labels: mono and sentence-case, not tracked-out caps.
+   Real rack gear labels its ports and sections in stencil/mono-width type,
+   not letter-spaced sans — this is that vernacular, and it also happens to
+   be one of the two most literal "AI-generated dashboard" tells (the other
+   was the dot-joined stat lines below), so it does double duty. */
 .lbl {
-  font-family: 'Manrope', system-ui, sans-serif;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  font-size: 11px;
-  font-weight: 700;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: .01em;
   color: var(--text-faint);
 }
 
 .page {
   max-width: 1600px;
   margin: 0 auto;
-  padding: 32px 40px 60px;
+  /* Top padding compensates for .tally being position:fixed (44px height +
+     1px border), on top of the original 32px breathing room before the
+     header — written as a sum so the relationship stays legible instead of
+     being a bare magic number. */
+  padding: calc(44px + 1px + 32px) 40px 60px;
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -98,6 +116,37 @@ button { font-family: inherit; cursor: pointer; }
 }
 .icon-btn:disabled { opacity: .4; cursor: not-allowed; }
 
+/* ---- tally strip ----
+   The one thing on this page with real permanence. Everything below it is a
+   quiet, disciplined card list; this is the persistent readout of the one
+   question an operator mid-service actually needs answered without
+   scrolling — is the program feed live — the way a broadcast switcher's
+   tally bar works.
+
+   position:fixed, not sticky. sticky was tried first and, as the first
+   paintable element in <body> with no wrapping scroll container, rendered
+   as nothing at all in testing — a known-fragile configuration for sticky
+   (no defined nearest scrolling ancestor besides the viewport itself).
+   fixed is unambiguous: pinned to the viewport, full stop. The one thing it
+   costs is that .page needs compensating top padding, since a fixed element
+   is removed from flow entirely — see padding-top on .page below. */
+.tally {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 20; height: 44px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 20px; background: oklch(0.13 0.012 55);
+  border-bottom: 1px solid var(--border);
+}
+.tally-lamp { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; background: var(--text-faint); }
+.tally-lamp.live {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-bg), 0 0 10px 1px var(--accent);
+  animation: tally-pulse 2.4s var(--ease-out) infinite;
+}
+@keyframes tally-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+.tally-label { font-weight: 600; font-size: 13px; }
+.tally-sub { color: var(--text-muted); font-size: 12.5px; }
+.tally-clock { font-size: 12px; color: var(--text-faint); margin-left: auto; }
+
 /* ---- header ---- */
 .header { display: flex; align-items: center; justify-content: space-between; }
 .brand { display: flex; align-items: center; gap: 14px; }
@@ -116,7 +165,21 @@ button { font-family: inherit; cursor: pointer; }
 .health-banner.fail { border-color: var(--fail-border); background: var(--fail-bg); }
 .health-top { display: flex; align-items: center; justify-content: space-between; padding: 20px 28px; gap: 16px; flex-wrap: wrap; }
 .health-headline { font-size: 20px; font-weight: 800; }
-.health-sub { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+.health-sub { font-size: 12px; color: var(--text-faint); margin-top: 6px; }
+/* Stat chips, not a dot-joined "44 passed · 2 warnings · 4 failures" line —
+   three discrete numbers scan faster than one prose sentence, which is what
+   a status summary glanced at mid-service actually needs. */
+.stat-chips { display: flex; gap: 8px; margin-top: 10px; }
+.chip {
+  display: flex; align-items: baseline; gap: 5px;
+  background: var(--surface-2); border: 1px solid var(--border-soft);
+  border-radius: 7px; padding: 4px 10px;
+}
+.chip b { font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 13px; font-weight: 600; }
+.chip span { font-size: 11.5px; color: var(--text-muted); }
+.chip.fail b { color: var(--fail); }
+.chip.warn b { color: var(--warn); }
+.chip.good b { color: var(--good); }
 .health-issue {
   border-top: 1px solid var(--border-soft); background: var(--surface);
   padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px;
@@ -179,7 +242,7 @@ button { font-family: inherit; cursor: pointer; }
 .hdmi-tile .hdmi-placeholder { color: var(--text-faint); opacity: .6; }
 .hdmi-caption {
   position: absolute; left: 0; right: 0; bottom: 0; padding: 10px 14px;
-  background: linear-gradient(to top, oklch(0.1 0.01 255 / .9), transparent);
+  background: linear-gradient(to top, oklch(0.1 0.01 55 / .9), transparent);
 }
 .hdmi-caption .name { font-size: 13px; font-weight: 700; }
 .hdmi-caption .role { font-size: 11px; color: var(--text-muted); }
@@ -244,7 +307,7 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: 8px; padding: 8px 12px; margin: 0 0 4px;
 }
 .log-view {
-  flex: 1; overflow-y: auto; background: oklch(0.11 0.01 255); border: 1px solid var(--border-soft);
+  flex: 1; overflow-y: auto; background: oklch(0.11 0.01 55); border: 1px solid var(--border-soft);
   border-radius: 8px; padding: 10px 12px; font-size: 11px; line-height: 1.9; color: var(--text-muted); min-height: 0;
 }
 
@@ -258,7 +321,7 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ---- modal (confirm dialog) ---- */
 .modal-backdrop {
-  position: fixed; inset: 0; background: oklch(0.1 0.01 255 / .6);
+  position: fixed; inset: 0; background: oklch(0.1 0.01 55 / .6);
   display: flex; align-items: center; justify-content: center; z-index: 50;
 }
 .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; max-width: 420px; width: 90%; }
@@ -305,7 +368,8 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 12px;
 }
 .rec-item .rec-item-name { font-family: 'IBM Plex Mono', ui-monospace, monospace; color: var(--text); }
-.rec-item .rec-item-meta { color: var(--text-muted); font-size: 11px; }
+/* flex+gap, not a dot-joined string — same reasoning as .stat-chips. */
+.rec-item .rec-item-meta { display: flex; gap: 10px; color: var(--text-muted); font-size: 11px; }
 
 /* ---- livestream schedule ---- */
 .sched-day-row { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
@@ -335,7 +399,8 @@ button { font-family: inherit; cursor: pointer; }
 }
 .doc-tab.active { background: var(--accent-bg); border-color: var(--accent-border); color: var(--accent); }
 .doc-tab-badge {
-  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+  font-family: 'IBM Plex Mono', ui-monospace, monospace;
+  font-size: 10px; font-weight: 500;
   background: var(--neutral-bg); border: 1px solid var(--neutral-border); color: var(--neutral);
   padding: 2px 7px; border-radius: 20px;
 }
@@ -356,7 +421,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 .sigchain-frame {
   overflow: auto; max-height: 70vh; border: 1px solid var(--border-soft);
-  border-radius: 10px; background: oklch(0.11 0.01 255);
+  border-radius: 10px; background: oklch(0.11 0.01 55);
 }
 .sigchain-img { display: block; max-width: none; }
 
@@ -364,7 +429,7 @@ button { font-family: inherit; cursor: pointer; }
 .doc-empty-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
 
 .doc-textarea {
-  width: 100%; min-height: 60vh; resize: vertical; background: oklch(0.11 0.01 255);
+  width: 100%; min-height: 60vh; resize: vertical; background: oklch(0.11 0.01 55);
   border: 1px solid var(--border-soft); border-radius: 10px; color: var(--text);
   padding: 16px; font-size: 12.5px; line-height: 1.7; outline: none;
 }
@@ -372,7 +437,7 @@ button { font-family: inherit; cursor: pointer; }
 
 /* Hover is useful on a mouse, but can stick after a tap on touch devices. */
 @media (hover: hover) and (pointer: fine) {
-  a:hover { color: oklch(0.85 0.11 195); }
+  a:hover { color: oklch(0.85 0.15 85); }
   .btn-ghost:hover:not(:disabled) { background: var(--surface-2); }
   .icon-btn:hover:not(:disabled) { color: var(--text); border-color: var(--accent-border); }
   .svc-row:hover { background: var(--surface-2); }
@@ -399,7 +464,9 @@ button:active:not(:disabled),
 }
 
 @media (max-width: 720px) {
-  .page { padding: 20px 16px 40px; }
+  /* Top term still compensates for the fixed .tally bar — see .page above.
+     Dropping it here would tuck the header under the bar on phone widths. */
+  .page { padding: calc(44px + 1px + 20px) 16px 40px; }
   .header { align-items: flex-start; flex-wrap: wrap; gap: 16px; }
   .header > div:last-child { width: 100%; justify-content: flex-start; gap: 8px; flex-wrap: wrap; }
   .health-issue { align-items: flex-start; flex-wrap: wrap; padding: 12px 18px; }
@@ -445,7 +512,7 @@ button:active:not(:disabled),
   padding: 1px 5px;
 }
 .doc-rendered pre {
-  background: oklch(0.11 0.01 255); border: 1px solid var(--border-soft); border-radius: 10px;
+  background: oklch(0.11 0.01 55); border: 1px solid var(--border-soft); border-radius: 10px;
   padding: 14px 16px; overflow-x: auto; margin: 0 0 14px;
 }
 .doc-rendered pre code {

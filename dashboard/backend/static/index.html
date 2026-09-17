@@ -5,10 +5,22 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Soundbooth Control</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/css/dashboard.css">
 </head>
 <body>
+
+<!-- Tally strip: the one thing on this page with real permanence. Populated
+     by updateTally() in dashboard.js from the same data the rest of the page
+     already loads (services + the srt-relay unit's active_state) — nothing
+     here is a separate data source to keep in sync. -->
+<div class="tally">
+  <div class="tally-lamp" id="tally-lamp"></div>
+  <div class="tally-label" id="tally-label">Checking…</div>
+  <div class="tally-sub" id="tally-sub"></div>
+  <div class="tally-clock mono" id="tally-clock"></div>
+</div>
+
 <div class="page">
 
   <div class="header">
@@ -113,7 +125,7 @@
           <button class="btn btn-warn btn-sm" id="rec-stop-btn" style="display:none;">Stop Recording</button>
         </div>
         <div class="mono" id="rec-active-info" style="display:none; font-size:12px; color:var(--text-muted);"></div>
-        <div class="lbl" style="padding-top:6px;">Past Recordings</div>
+        <div class="lbl" style="padding-top:6px;">Past recordings</div>
         <div id="rec-list" style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto;"></div>
       </div>
     </div>
@@ -141,12 +153,12 @@
       <div class="card trbl-card">
         <div class="svc-title">Troubleshooting</div>
         <div>
-          <div class="lbl" style="padding-bottom:8px;">Needs Attention</div>
+          <div class="lbl" style="padding-bottom:8px;">Needs attention</div>
           <div id="trbl-issues" style="display:flex; flex-direction:column; gap:8px;"></div>
         </div>
         <div style="flex:1; display:flex; flex-direction:column; gap:8px; min-height:0;">
           <div class="log-picker">
-            <div class="lbl" style="flex-shrink:0;">Service Log</div>
+            <div class="lbl" style="flex-shrink:0;">Service log</div>
             <select id="log-unit-select"></select>
           </div>
           <div class="log-view mono" id="log-view">Select a service above.</div>

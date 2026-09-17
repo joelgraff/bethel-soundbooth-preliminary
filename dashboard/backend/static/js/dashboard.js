@@ -3,12 +3,20 @@
 // on this page is sample/fake data. Where a subsystem isn't built yet (the AI
 // agent bridge) the UI says so instead of faking it.
 
+// `name` is the plain label; `display` doubles as the mono tag rendered
+// beside it (see renderHdmiGrid) — no more joining the two with a "·" into
+// one string, which is the dashboard's other literal generic-dashboard tell.
 const HDMI_OUTPUTS = [
-  { display: "DP-4", name: "DP-4 · Back TVs", role: "Split that feeds the back-of-house TVs", program: true },
-  { display: "LIVESTREAM", name: "Livestream", role: "Encode leg sent to the SRT relay (Subsplash)" },
-  { display: "DP-2", name: "DP-2 · FreeShow Primary", role: "Front (sanctuary main screen)" },
-  { display: "DP-3", name: "DP-3 · FreeShow Stage", role: "Stage confidence monitor" },
+  { display: "DP-4", name: "Back TVs", role: "Split that feeds the back-of-house TVs", program: true },
+  { display: "LIVESTREAM", name: "SRT relay", role: "Encode leg sent to the SRT relay (Subsplash)" },
+  { display: "DP-2", name: "FreeShow Primary", role: "Front (sanctuary main screen)" },
+  { display: "DP-3", name: "FreeShow Stage", role: "Stage confidence monitor" },
 ];
+
+// Unit backing the tally strip's on-air lamp — the exact same service
+// renderQuickActions() already reads for the Start/Stop Livestream button,
+// so the two can never disagree about whether the program is live.
+const RELAY_UNIT = "ffmpeg-srt-relay.service";
 
 // Best-effort mapping from a health-check "section" (the exact strings
 // soundbooth-health.sh's log_result calls use — verified against
@@ -33,12 +41,42 @@ let latestServicesResponse = null;
 let latestUnitIndex = {}; // unit -> {display_name, group, ...status}
 
 function tick() {
-  document.getElementById("clock").textContent = new Date().toLocaleString(undefined, {
+  const now = new Date().toLocaleString(undefined, {
     weekday: "short", hour: "2-digit", minute: "2-digit",
   });
+  document.getElementById("clock").textContent = now;
+  document.getElementById("tally-clock").textContent = now;
 }
 tick();
 setInterval(tick, 30000);
+
+// Tally strip. Reads only from state the page already has (latestUnitIndex,
+// latestServicesResponse) — called from renderQuickActions() and
+// renderHealth() after each of them refreshes, so whichever finishes last on
+// a given poll leaves it correct; never a separate fetch of its own.
+function updateTally() {
+  const lamp = document.getElementById("tally-lamp");
+  const label = document.getElementById("tally-label");
+  const sub = document.getElementById("tally-sub");
+  const relay = latestUnitIndex[RELAY_UNIT];
+  const live = relay && relay.active_state === "active";
+  lamp.classList.toggle("live", !!live);
+  label.textContent = live ? "Program on air" : "Off air";
+
+  // One fact, not several joined with a separator glyph — the bar is slim on
+  // purpose, and "the one thing that matters most" means picking one thing:
+  // which feed is live while it's live, otherwise how much of the rig is up.
+  const prog = HDMI_OUTPUTS.find((o) => o.program);
+  if (live && prog) {
+    sub.textContent = `${prog.display} feed`;
+  } else if (latestServicesResponse) {
+    const total = latestServicesResponse.services.length;
+    const running = latestServicesResponse.services.filter((s) => stateOf(s).cls === "good").length;
+    sub.textContent = `${running} of ${total} services running`;
+  } else {
+    sub.textContent = "";
+  }
+}
 
 document.getElementById("logout-btn").addEventListener("click", async () => {
   await api.logout();
@@ -77,7 +115,16 @@ function renderHealth(data) {
   iconEl.innerHTML = data.fail > 0 || data.warn > 0
     ? ICONS.warningTriangle(32, color)
     : ICONS.checkCircle(32, color);
-  sub.textContent = `${data.pass} checks passed · ${data.warn} warning${data.warn === 1 ? "" : "s"} · ${data.fail} failure${data.fail === 1 ? "" : "s"} · updated ${timeAgo(healthLoadedAt)}`;
+  // Stat chips, not a dot-joined "N passed · N warnings · N failures" line —
+  // three discrete numbers scan faster than one prose sentence when this is
+  // what gets glanced at mid-service.
+  sub.innerHTML = `
+    <div class="stat-chips">
+      <div class="chip good"><b>${data.pass}</b><span>passed</span></div>
+      <div class="chip warn"><b>${data.warn}</b><span>warning${data.warn === 1 ? "" : "s"}</span></div>
+      <div class="chip fail"><b>${data.fail}</b><span>failure${data.fail === 1 ? "" : "s"}</span></div>
+    </div>
+    <div style="margin-top:6px;">updated ${timeAgo(healthLoadedAt)}</div>`;
 
   issuesEl.classList.remove("stale");
 
@@ -116,6 +163,7 @@ function renderHealth(data) {
   });
 
   renderTroubleshooting(issues);
+  updateTally();
 }
 
 function renderHealthError(err) {
@@ -310,6 +358,7 @@ function renderQuickActions(data) {
   el.querySelectorAll("button[data-qa-unit]").forEach((btn) => {
     btn.addEventListener("click", () => handleAction(btn.dataset.qaUnit, btn.dataset.qaAction));
   });
+  updateTally();
 }
 
 // ---------- Service log picker ----------
@@ -359,7 +408,7 @@ function renderHdmiGrid() {
       <img class="hdmi-img" id="hdmi-img-${o.display}" style="display:none; width:100%; height:100%; object-fit:cover;">
       <div class="hdmi-placeholder" id="hdmi-placeholder-${o.display}">${ICONS.monitor(36)}</div>
       <div class="hdmi-caption">
-        <div class="name">${escapeHtml(o.name)}</div>
+        <div class="name"><span class="mono" style="color:var(--text-faint); margin-right:6px;">${escapeHtml(o.display)}</span>${escapeHtml(o.name)}</div>
         <div class="role" id="hdmi-role-${o.display}">${escapeHtml(o.role)}</div>
       </div>
     </div>`).join("");
@@ -685,7 +734,7 @@ async function refreshRecList() {
     <div class="rec-item">
       <div>
         <div class="rec-item-name">${escapeHtml(r.filename)}</div>
-        <div class="rec-item-meta">${formatBytes(r.size_bytes)} · ${timeAgo(r.mtime * 1000)}</div>
+        <div class="rec-item-meta"><span>${formatBytes(r.size_bytes)}</span><span>${timeAgo(r.mtime * 1000)}</span></div>
       </div>
       <a class="btn btn-ghost btn-sm" href="/api/recording/download/${encodeURIComponent(r.filename)}" download>Download</a>
     </div>`).join("");

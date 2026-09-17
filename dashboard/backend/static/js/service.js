@@ -134,6 +134,7 @@ async function loadLog() {
 document.getElementById("refresh-log-btn").addEventListener("click", loadLog);
 
 (async function init() {
+  await bootstrapLocalToken();
   await loadService();
   await loadLog();
 })();
