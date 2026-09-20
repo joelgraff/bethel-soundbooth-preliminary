@@ -81,6 +81,7 @@ EXPECTED_SERVICES=(
     ffmpeg-capture.service
     ffmpeg-display.service
     ffmpeg-display-guard.service
+    ffplay-audio-guard.service
     ffmpeg-srt-watch.service
     livestream-camera-watch.service
     qpwgraph.service
@@ -469,15 +470,7 @@ check_audio() {
     elif echo "$def_sink" | grep -qiE 'Mixer|PreSonus|StudioLive'; then
         log_result PASS "audio" "Default sink is board path: ${def_sink}"
     else
-        log_result WARN "audio" "Default sink is NOT Mixer/Presonus: ${def_sink} (apps without WP rules may go to speakers)"
-    fi
-
-    # WirePlumber policy file
-    local wp_live="${HOME}/.config/wireplumber/main.lua.d/50-soundbooth-software-to-mixer.lua"
-    if [[ -f "$wp_live" ]]; then
-        log_result PASS "audio" "WirePlumber software→Mixer rule installed"
-    else
-        log_result WARN "audio" "WirePlumber rule missing at ${wp_live}"
+        log_result WARN "audio" "Default sink is NOT Mixer/Presonus: ${def_sink} (streams with no explicit sink land on the default sink and may go to speakers)"
     fi
 
     # Active non-VLC sink inputs: warn if not on Mixer/Presonus

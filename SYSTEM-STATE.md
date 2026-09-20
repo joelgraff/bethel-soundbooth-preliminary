@@ -55,8 +55,8 @@ Layout also stored in `~/.config/monitors.xml`. After hotplug, **connectors** ar
 
 ### Key audio files / services
 
-- WirePlumber rule: `~/.config/wireplumber/main.lua.d/50-soundbooth-software-to-mixer.lua`  
-  (source copy: `soundbooth-project/audio-routing/wireplumber/`)
+- ~~WirePlumber rule `50-soundbooth-software-to-mixer.lua`~~ — **removed 2026-09-20**: dead code. It sat in `alsa_monitor.rules`, which only matches ALSA devices/nodes, never client streams; verified that neither its Spotify/browser rule nor its ffplay rule ever applied `node.target` to a live stream. Software lands on Mixer because **Mixer is the session default sink**; ffplay lands on HDMI because `start-ffmpeg-display.sh` pins it with `PULSE_SINK` (and `ffplay-audio-guard.service` keeps it there — see Program display).
+  (remaining WP rules, source copies in `soundbooth-project/audio-routing/wireplumber/`: `51-presonus-soft-mixer.lua`, `52-atem-audio-ignore.lua` — both *device* rules)
 - Virtual sinks: `~/.config/pipewire/pipewire-pulse.conf.d/virtual-controllers.conf`  
   (source: `soundbooth-project/audio-routing/pipewire-pulse/`) — **Mixer** has elevated `priority.session`
 - Session default sink: **Mixer** (WirePlumber `default-nodes` state; re-applied by `ensure-audio-routes.sh` / `virtual-audio.service`)
@@ -229,9 +229,9 @@ daemon. **Live schedule: every Sunday 09:23** local (`America/Chicago`).
 - Local feed: `udp://@127.0.0.1:5000` from ffmpeg-capture
 - **Audio:** Pulse → `alsa_output…hdmi-stereo-extra1` (**HDMI TV** / DP-4), **not Mixer/FOH**
   - GPU card profile: `output:hdmi-stereo-extra1` (not pro-audio multi-PCM)
-  - WirePlumber: ffplay → HDMI TV; software apps still → Mixer
+  - Pinned by `PULSE_SINK` at start only. If the HDMI sink vanishes (extender reset, DP-4 hotplug, card profile → `off`) WirePlumber 0.4.17 silently moves ffplay to the **default sink = Mixer = house speakers** and never moves it back. `node.dont-fallback` does not help on this version. **`ffplay-audio-guard.service`** (`ffplay-audio-guard.sh`) closes this: on any sink/card event it parks ffplay on **LocalLive** (a null sink) when the HDMI sink is missing, then tries to restore the card profile, and moves ffplay back when the sink returns. Verified with silent stand-in streams: ~40 ms on Mixer before it parks, ~40 ms to restore. It only ever touches streams named `ffplay`.
 - Window title: **Soundbooth Program** (no always-on-top)
-- Guard: `ffmpeg-display-guard.service` only restarts if `ffplay` process dies (debounced). **Not** `BindsTo=ffmpeg-capture` (that killed the guard on first encode crash at boot)
+- Guard: `ffmpeg-display-guard.service` only restarts if `ffplay` process dies (debounced). **Not** `BindsTo=ffmpeg-capture` (that killed the guard on first encode crash at boot). It does not watch where ffplay's *audio* goes — that is `ffplay-audio-guard.service` (above).
 - **VLC services removed** — do not reinstall `vlc.service` / `vlc-display-guard` (fights FFmpeg for `/dev/video0`). Optional manual VLC as a normal media player is OK.
 - Aggregate target: `soundbooth.target` Wants FFmpeg stack + qpwgraph + **ensure-audio-routes** (+ virtual sinks). **Not** Ardour. **Not** VLC.
 - Restart program (TV path only, does not touch livestream): `systemctl --user restart ffmpeg-capture.service ffmpeg-display.service`

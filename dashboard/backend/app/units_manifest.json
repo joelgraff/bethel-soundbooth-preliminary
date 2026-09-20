@@ -66,6 +66,13 @@
           "actions": [
             "restart"
           ]
+        },
+        {
+          "unit": "ffplay-audio-guard.service",
+          "display_name": "TV Audio Guard",
+          "actions": [
+            "restart"
+          ]
         }
       ]
     },

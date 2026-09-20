@@ -1,6 +1,53 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-09-14 (MacBook workstation formalized; ATEM/switcher replacement research; mixer channel map in progress)
+Updated: 2026-09-20 (ffplay-audio-guard added after program audio leaked to house speakers; dead WirePlumber rule removed)
+
+## Current State (2026-09-20 — program audio leaked to FOH after HDMI extender reset)
+
+- [x] **Incident (Sun 2026-09-20, ~09:25, live stream running):** the operator reset
+  the HDMI-over-Cat extender feeding the back TVs. DP-4 dropped and returned
+  (journal: "Silicon Image 36\"" monitor gone 09:25:11, back 09:25:16), and the
+  livestream/program audio came out of the house speakers. Operator rebooted at
+  09:25:39 (~30 s later) to stop it. Third occurrence of "ffplay audio on Mixer"
+  (also 2026-09-13, and an earlier entry below) — first time the cause is known.
+- [x] **Root cause (reproduced, not merely inferred):** ffplay is pinned to the
+  HDMI sink only by `PULSE_SINK` at startup. When that sink vanishes, WirePlumber
+  0.4.17 moves the stream to the default sink, **Mixer → PreSonus/house speakers**,
+  and does not move it back when the sink returns. Reproduced with a silent
+  `paplay` stand-in on a temporary null sink. One link is *not* directly observed:
+  WirePlumber logs nothing at default level, so the sink vanishing at 09:25:11 is
+  inferred from the monitor event, the symptom and the reproduction.
+- [x] **Fix: `ffplay-audio-guard.service`** (`audio-routing/scripts/ffplay-audio-guard.sh`).
+  Event-driven (`pactl subscribe`) + periodic sweep. HDMI sink missing → park ffplay
+  on **LocalLive** (null sink) first, then try to restore the card profile; sink
+  back → move ffplay onto it. Touches only streams named `ffplay`. Measured with
+  silent stand-ins: ~40 ms on Mixer before parking, ~40 ms to restore. It cannot
+  reduce that gap to zero (races WirePlumber's own fallback).
+  - Bugs found by testing, worth knowing: `pactl subscribe` block-buffers on a pipe
+    (needs `stdbuf -oL`, otherwise events arrive minutes late); every `pactl` call
+    emits client events, so a naive loop wakes itself and a chatty client can starve
+    the sweep (the coalescing window is capped); the sink's "new" event can precede
+    it appearing in `pactl list` (hence a 1 s sweep while parked).
+  - **Not tested on the real card:** the actual profile-repair call and a real
+    hotplug. Do that once, with the room quiet and the stream off: watch
+    `journalctl --user -u ffplay-audio-guard -f`, then
+    `pactl set-card-profile alsa_card.pci-0000_07_00.1 off` and back to
+    `output:hdmi-stereo-extra1`.
+- [x] **Removed dead code:** `audio-routing/wireplumber/50-soundbooth-software-to-mixer.lua`.
+  Both its rules lived in `alsa_monitor.rules` (ALSA devices only); verified
+  neither ever applied `node.target` to a live stream. Also dropped the health
+  check that only looked for that file. Software reaches Mixer because Mixer is the
+  default sink. `51-`/`52-` are real device rules and stay.
+- [x] **Dead end, don't retry:** `node.dont-fallback=true` reaches the stream but
+  WirePlumber 0.4.17 falls back regardless.
+- **Quick live remedy if it ever recurs without the guard:**
+  `pactl move-sink-input <ffplay id> LocalLive` (silences instantly), then
+  `pactl set-card-profile alsa_card.pci-0000_07_00.1 output:hdmi-stereo-extra1` and
+  `systemctl --user restart ffmpeg-display.service`. No reboot needed.
+- Residue: my test sinks left four inert `Audio/Sink:node.name:zz_repro_sink:*` lines in
+  `~/.local/state/wireplumber/restore-stream` (WirePlumber rewrites the file from memory,
+  so deleting them live doesn't stick). Harmless; purges on a `wireplumber` restart.
+
 
 ## Current State (2026-09-14 — MacBook formally added to architecture; ATEM switcher research)
 

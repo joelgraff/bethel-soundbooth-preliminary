@@ -19,7 +19,8 @@ way to confirm the live machine still matches git. It never starts or stops anyt
 
 ## Contents
 - `scripts/install-soundbooth-system.sh` — installs scripts + units and enables the right set; `--check` verifies without changing anything.
-- `wireplumber/` — Lua policy scripts for auto linking (WirePlumber 0.4 style).
+- `wireplumber/` — WirePlumber 0.4 *device* rules (PreSonus soft-mixer, ATEM audio ignore). Not stream routing: `alsa_monitor.rules` never applies to client streams.
+- `scripts/ffplay-audio-guard.sh` — keeps ffplay off Mixer/FOH: parks it on LocalLive if the HDMI sink vanishes, restores it when the sink returns.
 - `pipewire-pulse/virtual-controllers.conf` — **Mixer** + **LocalLive** null sinks.
 - `scripts/ensure-audio-routes.sh` — Repair default sink, app→Mixer, **Mixer→Presonus AUX0/1**.
 - `scripts/start-ffmpeg-capture.sh` — ATEM capture → local UDP TS tees (display, multiview, probe, livestream relay). Always-on; does not talk to Subsplash directly.

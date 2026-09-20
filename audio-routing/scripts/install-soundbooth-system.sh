@@ -114,6 +114,7 @@ ENABLE_UNITS=(
     ffmpeg-capture-watch.service
     ffmpeg-display.service
     ffmpeg-display-guard.service
+    ffplay-audio-guard.service
     ffmpeg-srt-watch.service
     livestream-camera-watch.service
     livestream-autostart.timer

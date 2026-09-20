@@ -1,0 +1,21 @@
+[Unit]
+Description=Keep ffplay program audio off Mixer/FOH (parks on LocalLive if the HDMI sink vanishes)
+Documentation=file:///home/soundbooth/soundbooth-project/SYSTEM-STATE.md
+# Order after the pulse server and the virtual sinks (LocalLive is the parking sink).
+# Does NOT need ffmpeg-display: the script does nothing while ffplay isn't running.
+After=pipewire-pulse.service virtual-sinks-loaded.target
+Wants=virtual-sinks-loaded.target
+PartOf=soundbooth.target
+# Ceiling so this can't crash-loop forever — same convention as ffmpeg-capture.service.
+StartLimitIntervalSec=600
+StartLimitBurst=30
+
+[Service]
+Type=simple
+Environment=PATH=%h/bin:/usr/local/bin:/usr/bin:/bin
+ExecStart=%h/bin/ffplay-audio-guard.sh
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=soundbooth.target
