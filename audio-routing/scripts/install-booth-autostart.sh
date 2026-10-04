@@ -54,9 +54,18 @@ if [[ -f "$HOME/soundbooth-project/audio-routing/desktop/soundbooth-dashboard.de
         "$HOME/.local/share/applications/soundbooth-dashboard.desktop"
 fi
 
+# Livestream cockpit widget — manual-launch only for now (no autostart
+# .desktop yet; see docs/dp1-desktop-cockpit-plan.md), but still installed
+# from the repo like every other live script so it can't silently drift.
+if [[ -f "$HOME/soundbooth-project/audio-routing/scripts/start-widget-livestream.sh" ]]; then
+    install -m 0755 "$HOME/soundbooth-project/audio-routing/scripts/start-widget-livestream.sh" \
+        "$HOME/bin/start-widget-livestream.sh"
+fi
+
 echo "Done. Autostart applies on next graphical login (or reboot)."
 echo "Start now without rebooting:"
 echo "  /snap/bin/spotify &"
 echo "  ~/bin/start-freeshow.sh &"
 echo "  ~/bin/start-booth-browser.sh &        # Vivaldi on DP-1 (not program DP-4)"
 echo "  ~/bin/start-booth-dashboard-view.sh & # dashboard on GNOME workspace 2"
+echo "  ~/bin/start-widget-livestream.sh &    # livestream cockpit widget (manual for now)"

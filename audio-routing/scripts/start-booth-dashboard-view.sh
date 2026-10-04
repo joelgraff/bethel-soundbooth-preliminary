@@ -51,4 +51,5 @@ exec "$BROWSER" \
     --user-data-dir="${PROFILE_DIR}" \
     --class=SoundboothDashboard \
     --window-size=1400,1000 \
+    --password-store=basic \
     "$@"

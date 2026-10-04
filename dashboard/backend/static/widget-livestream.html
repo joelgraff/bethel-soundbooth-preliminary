@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Livestream</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+<div class="widget-page">
+  <div class="card widget-status-card">
+    <div class="widget-status-row">
+      <div class="tally-lamp" id="relay-lamp"></div>
+      <div>
+        <div class="widget-status-label" id="relay-label">Checking…</div>
+        <div class="brand-sub" id="relay-sub"></div>
+      </div>
+    </div>
+    <button class="btn" id="relay-btn" disabled>…</button>
+  </div>
+  <div class="card widget-hdmi-card">
+    <div class="lbl" style="margin-bottom:10px;">DP OUTPUTS</div>
+    <div class="hdmi-grid" id="hdmi-grid"></div>
+  </div>
+</div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<script src="/js/api.js"></script>
+<script src="/js/icons.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/hdmi-grid.js"></script>
+<script src="/js/widget-livestream.js"></script>
+</body>
+</html>

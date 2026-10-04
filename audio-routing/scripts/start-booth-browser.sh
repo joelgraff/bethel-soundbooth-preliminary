@@ -73,4 +73,5 @@ echo "Browser → ${BOOTH_CONNECTOR} target ${POS_X},${POS_Y} size ${WIN_W}x${WI
 exec "$BROWSER" \
     --window-position="${POS_X},${POS_Y}" \
     --window-size="${WIN_W},${WIN_H}" \
+    --password-store=basic \
     "$@"

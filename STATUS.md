@@ -1,6 +1,258 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-09-20 (ffplay-audio-guard added after program audio leaked to house speakers; dead WirePlumber rule removed)
+Updated: 2026-10-04 (widget's undecorated-launch position fixed: was landing under GNOME's top bar)
+
+## Current State (2026-10-04 even later — undecorated widget was landing under the top panel; fixed)
+
+- [x] **Bug, caught live by the operator right after the decoration work
+  above shipped:** the undecorated widget's top edge landed under/behind
+  GNOME's top status bar on DP-1. Two separate problems, both fixed in
+  `start-widget-livestream.sh` / `widget-window-ctl.sh`:
+  1. **No panel clearance in the position math.** The script positioned
+     using raw monitor Y (`POS_Y=$Y`, i.e. DP-1's own top edge, 1080) with
+     no margin for the bar. `_NET_WORKAREA` can't be used to compute this on
+     this box — it reports the full virtual desktop with nothing reserved
+     (`0,0,7280,2520`), apparently because the bar is Shell/Wayland-native
+     UI, not an X11 panel with strut hints, so Mutter never publishes a
+     reduced workarea for XWayland clients to read. Fixed empirically
+     instead: other DP-1 windows placed by Mutter's own (decorated) default
+     placement — FreeShow, Spotify — land with their frame-top at
+     monitor-Y + 28px. Added `TOP_PANEL_MARGIN` (default 28, override via
+     `SOUNDBOOTH_WIDGET_TOP_MARGIN`) and apply it to `POS_Y`. If the booth's
+     panel height/theme ever changes, re-derive this from a
+     currently-correctly-placed window's Y, not by guessing.
+  2. **Mutter re-decorated the window *after* the first successful
+     undecorate**, during Chromium's own startup settling (GPU/vsync errors
+     were logging around the same time) — confirmed live, not theoretical:
+     watched it happen on a cold launch. No confirmed root cause (which
+     internal Chromium map/configure event triggers Mutter to re-evaluate
+     decoration isn't nailed down), so rather than chase it,
+     `undecorate_when_ready()` now **keeps reasserting** undecorate+move for
+     ~8s after the first success instead of trusting a single good read —
+     same philosophy as `vlc-display-lib.sh`'s same-value-twice debounce for
+     the DP-4 boot race elsewhere in this codebase. Watched a full cold
+     launch catch and correct a real re-decoration mid-sequence, then stay
+     clean 15s+ past the end of the reassertion window.
+  - **New `move` action on `widget-window-ctl.sh`** (`CLASS move X Y`,
+    absolute root coords via `xdotool windowmove --sync`) to support the
+    reassertion above; also usable standalone for manual repositioning.
+  - Verified visually at every step using the booth's own screenshot method
+    — and specifically **screenshotted the outer frame window, not the
+    inner client**, after catching myself making the same mistake once
+    already this session (`import -window` on the client ID always shows
+    clean content regardless of whether Mutter has it wrapped in a frame —
+    it only proves the page itself renders, not that the frame is actually
+    gone on screen).
+  - **Unrelated housekeeping note found while fixing this:** `pkill -f
+    "<pattern>"` self-matched the wrapping shell invocation **twice** more
+    this session (the pattern text is also literally present in the
+    submitted command's own argv) — confirms this isn't a one-off, it's a
+    real recurring footgun for this kind of live-system work. Prefer
+    killing a captured exact PID over `pkill -f` whenever the pattern might
+    also appear in the current command's own text.
+
+## Current State (2026-10-04 later — widget decorations stripped; reusable window-control script)
+
+- [x] **`start-widget-livestream.sh` now launches undecorated** — no
+  titlebar, no minimize/maximize/close buttons — so it reads as a fixed
+  cockpit panel rather than a browser window. Two changes made together:
+  1. Added `--ozone-platform=x11` to the Vivaldi launch (was native Wayland).
+     Needed because X11 tools (`xdotool`/`xprop`) cannot see or manipulate a
+     native-Wayland Vivaldi window at all — confirms/extends
+     [[booth_gui_screenshot_method]] beyond "for screenshotting only": this
+     is now how the widget runs permanently, not just a one-off capture
+     trick. Same XWayland path several other booth apps (FreeShow, Camera
+     Management Platform, Spotify) already use per earlier `wmctrl` output,
+     so this isn't a new pattern for the machine.
+  2. On launch, a backgrounded poll (`undecorate_when_ready()` in the
+     script) waits for the window then calls the new
+     **`widget-window-ctl.sh`** to strip it via a live `_MOTIF_WM_HINTS`
+     property change. **Confirmed Mutter honors this live, no relaunch
+     needed** — toggling `decorations=0`/`1` on the already-mapped window
+     immediately drops/restores its `mutter-x11-frames` wrapper. Verified
+     round-trip (undecorate → decorate → undecorate) on the real running
+     widget without disturbing it.
+- [x] **New `audio-routing/scripts/widget-window-ctl.sh`** (installed to
+  `~/bin`) — generic by WM_CLASS (defaults to `SoundboothWidgetLivestream`):
+  `status` / `decorate` / `undecorate` / `close`. This is the safety valve
+  the operator asked for, since an undecorated window has no clickable
+  close button: `widget-window-ctl.sh SoundboothWidgetLivestream decorate`
+  gets the titlebar (and with it drag/resize/close-by-click) back by hand at
+  any time; `... close` closes it outright. Operator's stated direction:
+  fine with no close button long-term (`/thinking` toward a future custom
+  tile manager that fills the screen with fixed panels, no open/close/drag
+  needed), but wanted *some* recovery path — this is it.
+- [x] **Found and fixed a real bug while building this:** `xdotool search
+  --class "$CLASS" | head -1` is not reliable — Vivaldi/Chromium creates a
+  second, hidden **10x10 helper window carrying the same `--class` string**
+  as the real content window (name `vivaldi-stable`, instance
+  `vivaldi-stable`; the real one's instance is the page URL). Matching by
+  class alone and taking the first result silently grabbed the helper once
+  and no-op'd on the actual window (titlebar stayed). Fixed by picking the
+  **largest-area** match among same-class windows instead of the first —
+  robust regardless of title text, which the widget's own `<title>` controls
+  and could change independently.
+- [x] **Verified visually, not just structurally** — screenshotted the real
+  production widget (not a throwaway copy) before and after, via the
+  established `--ozone-platform=x11` + `import -window` method: titlebar
+  fully gone, content starts flush at the top edge, DP-2 tile still showing
+  live real content throughout. Confirmed the live widget's browser process
+  stayed healthy through the whole decorate/undecorate round-trip.
+- **Minor, not yet addressed:** each decorate/undecorate toggle nudges the
+  window's position/size slightly (Chromium re-lays-out its content bounds
+  when the frame appears/disappears — observed drift was a few tens of
+  pixels, not large). Not corrected automatically; if `widget-window-ctl.sh
+  decorate` gets used for real troubleshooting, expect to reposition
+  afterward rather than assuming it snaps back exactly.
+- **Earlier in this same session:** also did the deferred first real
+  launch-and-eyeball pass (see entry below) and found/worked around a
+  stability issue where a parallel throwaway verification browser killed the
+  real widget's process (cause not confirmed — leading suspects a `pkill -f`
+  pattern self-match or GPU contention). That risk is unchanged by today's
+  decoration work; still avoid running a second Vivaldi verification
+  instance at the same time as the real widget.
+
+## Current State (2026-10-04 — livestream widget launched and eyeballed for the first time)
+
+- [x] **Launched `~/bin/start-widget-livestream.sh` live on DP-1** (positioned
+  top-right of the ultrawide, 4900,1080 / 460x900 per the script's placeholder
+  geometry) — confirmed with the operator first that no service was in
+  progress (Sunday, late morning) before doing it, per the prior session's
+  deferral note below.
+- [x] **Visually verified via a throwaway `--ozone-platform=x11` capture**
+  (same method as [[booth_gui_screenshot_method]]): title bar reads
+  "Livestream", status correctly shows **"Off air / Not streaming"** with a
+  **Start Livestream** button, and the DP-outputs tiles render — **DP-2
+  (FreeShow Primary) showed real, current lyrics text**, confirming the
+  preview pipeline behind the widget is genuinely live, not stale/placeholder.
+  DP-4/LIVESTREAM tiles were black, consistent with no program feed /
+  relay-off at the time. DP-3 wasn't scrolled into view this pass.
+- [x] **Deliberately did not click Start/Stop** — that control hits the real
+  `/api/services/.../start` endpoint regardless of which browser window
+  triggers it, so exercising it from a throwaway verification instance would
+  have started the actual broadcast to Subsplash. Confirm-modal / real
+  start-stop behavior is still **not yet exercised**.
+- [x] **Found and worked around a reproducible-once stability issue:**
+  running the throwaway X11 verification browser *alongside* the real widget
+  killed the real widget's browser process with no crash report and no OOM
+  in `dmesg` — cause not confirmed. Leading suspects, neither confirmed:
+  (a) a `pkill -f "user-data-dir=/tmp/..."` cleanup command matching more
+  than the throwaway instance (the pattern text was also present in the
+  wrapping shell invocation's own command line — a pkill/pgrep self-match
+  footgun worth remembering for future cleanup commands: prefer killing a
+  captured exact PID over `pkill -f` with a pattern that may also appear in
+  the current command's own argv); (b) GPU/compositor resource contention
+  between two simultaneous Vivaldi instances on this machine's single WX3200
+  (same class of fragility as CMP's documented GPU-process crashes). Worked
+  around by not running a verification instance and the real widget at the
+  same time going forward. Relaunched the real widget afterward; confirmed
+  stable on its own.
+- [ ] **Still not done:** disable `tiling-assistant`, real Start/Stop +
+  confirm-modal click-through, DP-3 tile visual check, decide autostart
+  wiring once zone geometry is picked.
+
+## Current State (2026-09-27 — DP-1 cockpit: plan + first widget)
+
+- [x] **Plan written:** `docs/dp1-desktop-cockpit-plan.md` — DP-1 desktop
+  reorg (zoning FreeShow/Spotify vs. a fixed widget column), tiling-extension
+  cleanup (drop `tiling-assistant`, keep `tilingshell`), widget approach
+  (small Vivaldi `--app=` pages, same pattern as the existing dashboard/
+  FreeShow launchers), and a camera-control widget design (VISCA/HTTP
+  direct to the PT12X, no video, replaces CMP for day-to-day preset recall).
+  Window-to-DP-1 "locking" deliberately deferred — see the doc.
+- [x] **Built: livestream cockpit widget** —
+  `dashboard/backend/static/widget-livestream.html` /
+  `js/widget-livestream.js` (relay start/stop + DP-2/DP-3/DP-4/LIVESTREAM
+  preview tiles, no other dashboard chrome). Extracted the shared
+  `js/hdmi-grid.js` out of `dashboard.js` in the process so the grid isn't
+  duplicated between pages. Launcher `start-widget-livestream.sh` installed
+  to `~/bin` and wired into `install-booth-autostart.sh`'s copy step (no
+  autostart `.desktop` yet — manual launch only:
+  `~/bin/start-widget-livestream.sh &`).
+- [x] **Verified backend-level only:** JS syntax check on all three touched
+  files; live dashboard service (already running) correctly serves the new
+  page/JS and still serves the unchanged main dashboard after the refactor.
+- [ ] **Not done, on purpose:** this landed while a service was likely still
+  in progress, so no GNOME extension was disabled and no new on-screen
+  window was launched — didn't want a surprise window appearing mid-service.
+  **Next session should:** disable `tiling-assistant`, actually launch the
+  widget and eyeball it (real Start/Stop click, confirm modal, tile
+  freshness), then decide autostart wiring once zone geometry is picked.
+- [ ] Camera control widget, Subsplash status widget, AI chat widget, and
+  the actual DP-1 zone layout are all still pending — see the doc's build
+  order.
+
+## Current State (2026-09-27 — Stage (DP-3) went black during worship; dashboard tile agrees, points away from the extender)
+
+- [ ] **Incident (Sun 2026-09-27, during worship):** the physical Stage monitor
+  (fed by the GoFanco extender on **DP-3**) went black. Operator reset the
+  transmitter; it came back briefly, then went black again. The dashboard's
+  own **Stage preview tile** (captures DP-3 directly off the GPU via Mutter
+  `RecordMonitor`, *before* the extender — see "Control dashboard" /
+  `hdmi-preview-capture.py` in SYSTEM-STATE.md) also showed black at the same
+  time, while **FreeShow itself indicated Stage output was fine**.
+- [x] **Checked (this session, after the fact) — nothing flapped at the OS/GPU
+  level on DP-3 during the service window (~08:06 boot through ~10:04):**
+  - No kernel DRM hotplug/link-training/EDID messages for any connector,
+    filtered broadly (`amdgpu|edid|dp_aux|link.train|dpcd|hotplug`).
+  - No GNOME Shell monitors-changed/reconfigure event for DP-3 (`tilingshell`'s
+    monitor-name refresh at 09:53 just re-queried existing geometry, coords
+    unchanged from boot).
+  - `hdmi-preview.service`'s **`stage`** ScreenCast session (PipeWire node 146)
+    ran the entire window with **zero errors/restarts** — it stayed healthy
+    and kept capturing real frames from DP-3 the whole time.
+- **Read on this:** because the capture pipeline never errored and the GPU
+  never logged a disconnect, the dashboard tile's black frames were **real
+  frames of DP-3's actual composited output at that moment** — not a stale
+  image and not a capture-side failure. That means the fault most likely
+  isn't a source-side (GPU↔transmitter) HDMI link drop — it looks more like
+  **FreeShow's Stage output window itself was rendering black** (or not
+  rendering) while the rest of FreeShow (and the operator's view of it) looked
+  normal. This would also explain why resetting the transmitter looked like it
+  "briefly restored" it: coincidence, or the reset-driven activity nudged a
+  redraw, rather than the extender itself being the root cause.
+- **Not fully confirmed** — no direct visibility into the extender's own link
+  state (no telemetry from that hardware), so a downstream RX-side fault
+  that doesn't produce a source-side HPD toggle can't be ruled out
+  completely. But the OS-side evidence points at the **Stage output window**,
+  not the extender, as the first thing to check next time.
+- **Next occurrence — do this to disambiguate:** watch
+  `journalctl --user -u hdmi-preview.service -f` and the dashboard Stage tile
+  *before* touching the transmitter. If the tile is still updating (fresh
+  timestamps) but black, that confirms FreeShow's Stage output window is the
+  fault, not the hardware link — try toggling FreeShow's Stage output off/on
+  from within FreeShow rather than power-cycling the transmitter. If the
+  dashboard tile instead reports the capture service down/erroring, that
+  points back to the extender/GPU link after all.
+- **Operator's read (post-service):** believes it was the extender; can't
+  explain the black screen otherwise, but also noted that **switching to a
+  different presentation in FreeShow may be what actually fixed it** — not
+  the transmitter reset. That detail leans toward the FreeShow-output-window
+  theory above (an app-level action wouldn't repair a hardware link fault),
+  but is not confirmed either way. Recovered on its own by the sermon; no
+  recurrence same session.
+- **Not yet identified:** which presentation/slide was on screen when it went
+  black (worth checking for video/embedded media — would explain a
+  render-stuck output window). Ask next time it comes up.
+- No fix applied yet — diagnostic only.
+
+### Extender hardware — upgrade options discussed (not yet decided)
+
+- Operator asked what's better than the current **GoFanco** units (2020
+  hardware) given today's incident on the DP-3/pulpit unit specifically.
+  Two directions, not yet chosen between:
+  1. **Real HDBaseT extender** (already the planned upgrade in this doc's
+     "Known limitations" section) — e.g. Monoprice Blackbird 4K series,
+     J-Tech Digital, OREI. Proper HDBaseT chipset vs. GoFanco's Cat-balun
+     tech: sturdier EDID/link-training handshake, more distance headroom,
+     usually single-cable PoC power.
+  2. **Drop the extender box entirely for the DP-3/pulpit run specifically,
+     if it's short** — an active fiber-optic HDMI cable (one cable, no
+     separate TX/RX pair) has fewer failure points than any extender kit.
+  - **Blocking fact, still unverified:** DP-3's actual cable run length.
+    `docs/equipment-and-connections.md` flags this `NEEDS VERIFICATION` —
+    only the *other* extender (DP-4 → outside TVs) has a confirmed length
+    (~200 ft). Measure/estimate the pulpit run before buying either way.
 
 ## Current State (2026-09-20 — program audio leaked to FOH after HDMI extender reset)
 
