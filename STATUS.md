@@ -32,7 +32,8 @@ Updated: 2026-10-04 night (remote follow-ups; see first section). Earlier: (hand
 - [x] **Spotify: snap replaced by the apt `spotify-client`.** The snap's AppArmor blocked FreeShow's MPRIS
   polling (logged every second). Spotify rotated its repo key; upgrade left `spotify.sources` pointing at a
   0-byte key. Autostart now `/usr/bin/spotify`. Snap login data (`~/snap/spotify`) may still exist.
-- [ ] Still open: autologin (needs root), `camera-management` `:9999`, PreSonus audio end-to-end, TVs
+- [x] **Autologin restored** (operator ran the `sed` with sudo; backup `/etc/gdm3/custom.conf.bak-20261004`). Needs a real boot to verify: `journalctl -b -g 'already running'` should be empty and the session should start without the greeter.
+- [ ] Still open: `camera-management` `:9999`, PreSonus audio end-to-end, TVs
   check of FreeShow, dashboard AI chat, stale WirePlumber 0.4 / GNOME 46 claims, autorandr cosmetic.
 
 ## RESUME HERE (handoff written 2026-10-04 ~14:50 CDT, before moving to a remote session)

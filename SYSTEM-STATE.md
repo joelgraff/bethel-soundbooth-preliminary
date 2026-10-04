@@ -338,14 +338,7 @@ fix each when you re-verify it on the new stack):
   (`auto-move-windows` → `soundbooth-dashboard.desktop:2`) does the placement, and only for
   windows created *after* the extension loaded (an already-open dashboard window is not moved).
   Cause of the original `true` is unknown (not found in logs).
-- **Autologin is off** (`/etc/gdm3/custom.conf`, commented out 2026-10-04 14:13 while
-  troubleshooting). Booth now waits at the greeter after boot until someone logs in.
-
-- **Follow-ups 2026-10-04 (evening):** FreeShow launcher must NOT pass `--use-gl=desktop` (26.04 Electron
-  rejects it; GPU process loops, outputs go black). `qpwgraph` is no longer started at boot (manual only).
-  Health has a `session-guard` check for the login-loop pattern. The PreSonus 32SX must **not** be on the
-  Renesas PCIe card — playback fails on it (xhci `0x11` / "Not enough bandwidth"); it is on a motherboard
-  port (bus 3, shared with the ATEM). Spotify is the apt `spotify-client` (snap removed from the plan).
+- **Autologin restored 2026-10-04 (evening)** — `AutomaticLoginEnable=true` / `AutomaticLogin=soundbooth` uncommented in `/etc/gdm3/custom.conf` (backup `custom.conf.bak-20261004`). Takes effect at the next boot; **not yet verified by a real boot**. Expect `gkr-pam: couldn't unlock the login keyring` (also on 24.04).
 
 **Before any future release upgrade:** read the incident doc's "How to diagnose" section, run
 `~/bin/soundbooth-health.sh` before and after, and expect the user manager to start units
