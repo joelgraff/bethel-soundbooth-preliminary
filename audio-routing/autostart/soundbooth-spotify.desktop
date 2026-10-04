@@ -2,7 +2,7 @@
 Type=Application
 Name=Soundbooth Spotify
 Comment=FOH media player (routes to Mixer/Presonus)
-Exec=/snap/bin/spotify
+Exec=/usr/bin/spotify
 Icon=spotify
 Terminal=false
 Categories=Audio;Music;

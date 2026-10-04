@@ -64,7 +64,7 @@ fi
 
 echo "Done. Autostart applies on next graphical login (or reboot)."
 echo "Start now without rebooting:"
-echo "  /snap/bin/spotify &"
+echo "  /usr/bin/spotify &"
 echo "  ~/bin/start-freeshow.sh &"
 echo "  ~/bin/start-booth-browser.sh &        # Vivaldi on DP-1 (not program DP-4)"
 echo "  ~/bin/start-booth-dashboard-view.sh & # dashboard on GNOME workspace 2"

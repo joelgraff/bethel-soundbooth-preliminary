@@ -84,7 +84,6 @@ EXPECTED_SERVICES=(
     ffplay-audio-guard.service
     ffmpeg-srt-watch.service
     livestream-camera-watch.service
-    qpwgraph.service
     ensure-audio-routes.service
 )
 # Optional services: only PASS when active; inactive is silent (not a warn).
@@ -92,7 +91,7 @@ EXPECTED_SERVICES=(
 # ffmpeg-srt-relay is the Subsplash livestream leg (split from capture 2026-08-23)
 # — intentionally stopped between services via stop-live-stream.sh, so its
 # absence is not a health problem.
-OPTIONAL_SERVICES=(ardour.service ffmpeg-srt-relay.service)
+OPTIONAL_SERVICES=(ardour.service qpwgraph.service ffmpeg-srt-relay.service)
 # VLC user units must not exist/run — see check_no_vlc_service.
 
 PASS=0
@@ -702,6 +701,19 @@ check_ffmpeg_program_audio() {
     fi
 }
 
+# --- Upgrade-regression guard: nothing may activate graphical-session.target ---
+check_graphical_session_activation() {
+    local section="session-guard"
+    local hits
+    hits=$(grep -rEl '^(Wants|Requires|BindsTo|Upholds)=.*graphical-session\.target' \
+        "${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user" 2>/dev/null || true)
+    if [[ -n "$hits" ]]; then
+        log_result FAIL "$section" "user unit(s) activate graphical-session.target (breaks GNOME 50 login): $(echo "$hits" | xargs -n1 basename | tr '\n' ' ')— use PartOf="
+    else
+        log_result PASS "$section" "no user unit activates graphical-session.target"
+    fi
+}
+
 # --- Session autostart + browser placement (Sunday boot apps) ---
 check_booth_session_apps() {
     local section="session-apps"
@@ -853,6 +865,7 @@ check_foh_links
 check_vlc_journal
 check_ffmpeg_program_audio
 check_booth_session_apps
+check_graphical_session_activation
 
 if $JSON; then
     print_json

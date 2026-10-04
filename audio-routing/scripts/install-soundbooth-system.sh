@@ -106,7 +106,6 @@ SKIP_SCRIPTS=( install-usb-reset-helper.sh install-soundbooth-system.sh )
 ENABLE_UNITS=(
     soundbooth.target
     virtual-audio.service
-    qpwgraph.service
     ensure-audio-routes.service
     presonus-usb-watch.service
     lineout-fallback.service

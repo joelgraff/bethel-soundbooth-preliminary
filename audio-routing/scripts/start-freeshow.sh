@@ -73,11 +73,12 @@ else
     echo "WARN: ${BOOTH_CONNECTOR} not found; launching FreeShow without force-placement" >&2
 fi
 
-# Common Electron flags that sometimes help video on Linux
+# Common Electron flags that sometimes help video on Linux.
+# NOTE: do NOT add --use-gl=desktop — Electron on Ubuntu 26.04 only allows
+# egl-angle and the GPU process dies in a loop (black output windows).
 # (Vaapi may help H264/HEVC even if VP9 is software)
 FLAGS=(
     --enable-features=VaapiVideoDecoder
-    --use-gl=desktop
 )
 
 # If you want to force the deb version or AppImage, edit below.

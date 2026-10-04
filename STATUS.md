@@ -1,6 +1,37 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-10-04 evening (handoff to remote session; graphical-session.target unit fix; widget's undecorated-launch position fixed: was landing under GNOME's top bar)
+Updated: 2026-10-04 night (remote follow-ups; see first section). Earlier: (handoff to remote session; graphical-session.target unit fix; widget's undecorated-launch position fixed: was landing under GNOME's top bar)
+
+## Current State (2026-10-04 evening — remote follow-ups after the 26.04 upgrade)
+
+- [x] **FreeShow black outputs fixed.** `start-freeshow.sh` passed `--use-gl=desktop`, which Electron on
+  26.04 rejects (`Requested GL implementation (gl=none,angle=none) not found in allowed implementations:
+  [(gl=egl-angle,angle=default)]` — GPU process died in a loop). Flag removed (installed to `~/bin`).
+  Separately, `~/.config/freeshow/settings.json` had Primary at x=2789 (landed on DP-1, the booth monitor)
+  and Stage at y=1080 (hung off DP-3's bottom). Reset to Primary (3440,0) / Stage (5360,0); backup
+  `settings.json.bak.20261004-prefix`. Verified window positions with `xwininfo`; **not verified on the
+  physical TVs** (they were off) — put a slide live and look. Why the saved bounds were wrong is unknown
+  (file predates the upgrade, 11:35). `~/.config/monitors.xml` is missing (only `.bak`/`~` copies).
+- [x] **qpwgraph no longer starts at boot** (not on the FOH path; the ALSA bridge is). Removed from
+  `soundbooth.target`, `ensure-audio-routes.service` and the installer's enable list; now an
+  `OPTIONAL_SERVICES` entry in health. Manual: `systemctl --user start qpwgraph`. Backup of the old units:
+  `~/systemd-user-backup-20261004-qpw`.
+- [x] **Health guard `session-guard`**: FAILs if any user unit `Wants=/Requires=/BindsTo=/Upholds=`
+  `graphical-session.target` (the 26.04 login-loop cause).
+- [x] **PreSonus: the Renesas uPD720201 PCIe card (06:00.0) is the fault.** On it, opening playback fails
+  every time (`xhci-pci-renesas: unexpected command completion code 0x11` → `usb 5-1: Not enough
+  bandwidth for altsetting 1`, bridge restart-loops); same errors on the 24.04 boots, so not the upgrade;
+  a new cable changed nothing. On a motherboard port (bus 3, Matisse, shared with the ATEM) it enumerates
+  clean and `presonus-foh-bridge` runs. **Audio end-to-end not verified** (nothing playing). Card has run on
+  ROM fallback (`renesas_usb_fw.mem` is not in `linux-firmware`); whether that is the cause is unproven —
+  read the on-card FW version with `sudo setpci -s 06:00.0 f4.l f6.w` (non-root reads ffffffff).
+  Bus 3 shares bandwidth with the ATEM (see the Audacity note) — a chipset-controller port (`02:00.0`,
+  buses 1/2) is the preferred long-term home.
+- [x] **Spotify: snap replaced by the apt `spotify-client`.** The snap's AppArmor blocked FreeShow's MPRIS
+  polling (logged every second). Spotify rotated its repo key; upgrade left `spotify.sources` pointing at a
+  0-byte key. Autostart now `/usr/bin/spotify`. Snap login data (`~/snap/spotify`) may still exist.
+- [ ] Still open: autologin (needs root), `camera-management` `:9999`, PreSonus audio end-to-end, TVs
+  check of FreeShow, dashboard AI chat, stale WirePlumber 0.4 / GNOME 46 claims, autorandr cosmetic.
 
 ## RESUME HERE (handoff written 2026-10-04 ~14:50 CDT, before moving to a remote session)
 
