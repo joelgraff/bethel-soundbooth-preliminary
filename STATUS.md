@@ -1,6 +1,35 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-10-04 (widget's undecorated-launch position fixed: was landing under GNOME's top bar)
+Updated: 2026-10-04 (graphical-session.target unit fix; widget's undecorated-launch position fixed: was landing under GNOME's top bar)
+
+## Current State (2026-10-04 — GNOME login blocked by user units starting graphical-session.target)
+
+- [x] **Bug:** GNOME refused login ("A graphical session is already running!") because
+  `Wants=`/`Requires=graphical-session.target` in five user units started the target before GNOME.
+  Replaced with `PartOf=` in `ardour`, `qpwgraph`, `soundbooth-dashboard`, `hdmi-preview`,
+  `camera-management`; `qpwgraph` `WantedBy=default.target` → `graphical-session.target`
+  (`reenable`d). Repo copies in `audio-routing/systemd/` and `dashboard/systemd/` updated to match;
+  convention recorded in SYSTEM-STATE.md. `verify` clean, no cycle warnings, nothing restarted.
+  Backup: `~/systemd-user-backup-20261004-142803`.
+- [x] **Verified by a real boot (14:33):** login succeeds, no "already running", no ordering-cycle
+  warnings. Mechanism and timeline: `docs/ubuntu-26.04-upgrade-login-incident.md` (this was the
+  24.04 → 26.04 upgrade made at 13:32–13:55 the same day; SYSTEM-STATE.md has a new
+  "Ubuntu 26.04 upgrade" section listing what is now stale).
+- [ ] **Post-upgrade problems found in the logs, NOT fixed** (details in the incident doc):
+  1. ~~`soundbooth-dashboard` down~~ — **FIXED 14:39**: venv rebuilt on Python 3.14, service up,
+     HTTP 200. Old venv at `dashboard/backend/.venv.py312.bak`. Agent chat (anthropic SDK
+     1.4→1.11) not exercised.
+  2. ~~WirePlumber 0.5 ignores the Lua rules~~ — **PORTED 2026-10-04** to
+     `audio-routing/wireplumber/5{1,2}-*.conf` (live in `~/.config/wireplumber/wireplumber.conf.d/`,
+     installer deploys them). **Not applied/verified live**: needs a WirePlumber restart or reboot
+     (not mid-service). After: `pactl list cards | grep -i extreme` → empty; PreSonus rule needs
+     the board on USB. Old Lua in `~/wireplumber-lua-retired-20261004/`.
+  3. GNOME user extensions disabled (`disable-user-extensions=true`); multiview-workspace ext
+     is OUT OF DATE for shell 50 → dashboard no longer lands on workspace 2.
+  4. Autologin commented out of `/etc/gdm3/custom.conf` at 14:13 (operator troubleshooting);
+     decide whether to restore. Needs root.
+  5. PreSonus not on USB; `presonus-foh-bridge` restart-looping (power, not the upgrade).
+  6. Cosmetic: `autorandr.service` start-limit-hit, empty wallpaper URI, assorted vendor noise.
 
 ## Current State (2026-10-04 even later — undecorated widget was landing under the top panel; fixed)
 

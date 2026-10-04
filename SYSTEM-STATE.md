@@ -3,7 +3,7 @@
 **Living document.** Update this when hardware, routing, displays, or services change.  
 All AI agent sessions should treat this as the source of truth for “how the system works now.”
 
-Last updated: 2026-09-13
+Last updated: 2026-10-04
 
 ---
 
@@ -56,13 +56,13 @@ Layout also stored in `~/.config/monitors.xml`. After hotplug, **connectors** ar
 ### Key audio files / services
 
 - ~~WirePlumber rule `50-soundbooth-software-to-mixer.lua`~~ — **removed 2026-09-20**: dead code. It sat in `alsa_monitor.rules`, which only matches ALSA devices/nodes, never client streams; verified that neither its Spotify/browser rule nor its ffplay rule ever applied `node.target` to a live stream. Software lands on Mixer because **Mixer is the session default sink**; ffplay lands on HDMI because `start-ffmpeg-display.sh` pins it with `PULSE_SINK` (and `ffplay-audio-guard.service` keeps it there — see Program display).
-  (remaining WP rules, source copies in `soundbooth-project/audio-routing/wireplumber/`: `51-presonus-soft-mixer.lua`, `52-atem-audio-ignore.lua` — both *device* rules)
+  (remaining WP rules, source copies in `soundbooth-project/audio-routing/wireplumber/`: `51-presonus-soft-mixer.conf`, `52-atem-audio-ignore.conf` — both *device* rules, **WirePlumber 0.5 SPA-JSON format, ported 2026-10-04 from Lua**; live copies in `~/.config/wireplumber/wireplumber.conf.d/`, deployed by `install-soundbooth-system.sh`)
 - Virtual sinks: `~/.config/pipewire/pipewire-pulse.conf.d/virtual-controllers.conf`  
   (source: `soundbooth-project/audio-routing/pipewire-pulse/`) — **Mixer** has elevated `priority.session`
 - Session default sink: **Mixer** (WirePlumber `default-nodes` state; re-applied by `ensure-audio-routes.sh` / `virtual-audio.service`)
 - Repair script: `~/bin/ensure-audio-routes.sh` (default sink + app→Mixer + Mixer→PreSonus AUX0/1 + soft volume attempt)
 - **PreSonus in PipeWire (canonical):** full **pro-audio** I/O (**64ch** playback + capture) for **Ardour** and **qpwgraph**. Never `device.disabled` on the card.
-- **WP:** `51-presonus-soft-mixer.lua` → soft-mixer + ignore-dB only. Profile **pro-audio** (default-profile).
+- **WP:** `51-presonus-soft-mixer.conf` → soft-mixer + ignore-dB only. Profile **pro-audio** (default-profile).
 - **FOH software (live default, 2026-08-02):** apps → **Mixer** → `presonus-foh-bridge.service` (ALSA `parec Mixer.monitor | aplay -D presonus_foh`, card profile `input:multichannel-input`) → USB return 1–2. This is the **actual production path today**, not the native PW `pro-output-0:playback_AUX0/1` link — see below.
 - **Two FOH bugs found 2026-08-02** (see STATUS.md for full detail):
   1. **Volume-stuck-at-0% — ROOT-CAUSED + FIXED.** WirePlumber's `restore-stream.lua` replays a persisted `channelVolumes` array onto a node with **zero length validation**; a stale **32-element** array (likely truncated by a `pactl set-sink-volume` call hitting libpulse's 32-channel protocol cap) was being reapplied to the **64-channel** PreSonus node, corrupting AUX0/1's volume. Fixed by clearing the stale entries in `~/.local/state/wireplumber/restore-stream` + restarting wireplumber; confirmed AUX0/AUX1 read unity (100%/0.00dB) afterward. `ensure-audio-routes.sh`'s `presonus_force_unity_volume()` no longer calls `pactl set-sink-mute`/`set-sink-volume` (removed the corrupting calls; only the correct 64-element `pw-cli` write remains).
@@ -235,7 +235,7 @@ daemon. **Live schedule: every Sunday 09:23** local (`America/Chicago`).
 - **VLC services removed** — do not reinstall `vlc.service` / `vlc-display-guard` (fights FFmpeg for `/dev/video0`). Optional manual VLC as a normal media player is OK.
 - Aggregate target: `soundbooth.target` Wants FFmpeg stack + qpwgraph + **ensure-audio-routes** (+ virtual sinks). **Not** Ardour. **Not** VLC.
 - Restart program (TV path only, does not touch livestream): `systemctl --user restart ffmpeg-capture.service ffmpeg-display.service`
-- ATEM capture audio via **ALSA** `plughw:Extreme,0` (Pulse capture unreliable with FFmpeg). WirePlumber rule `52-atem-audio-ignore.lua` sets `device.disabled=true` on the ATEM's audio card so PipeWire never claims it — without this, PipeWire's ALSA monitor can grab the device on boot before ffmpeg-capture does, and ffmpeg's direct ALSA open then fails with "Device or resource busy" (root-caused 2026-08-02, unlike PreSonus this card has no legitimate PipeWire consumer so `device.disabled` is safe here).
+- ATEM capture audio via **ALSA** `plughw:Extreme,0` (Pulse capture unreliable with FFmpeg). WirePlumber rule `52-atem-audio-ignore.conf` sets `device.disabled=true` on the ATEM's audio card so PipeWire never claims it — without this, PipeWire's ALSA monitor can grab the device on boot before ffmpeg-capture does, and ffmpeg's direct ALSA open then fails with "Device or resource busy" (root-caused 2026-08-02, unlike PreSonus this card has no legitimate PipeWire consumer so `device.disabled` is safe here).
 - Encode: H.264 **main@L4.0**, repeat-headers, 2s keyframes — if Subsplash shows "stream but no video", re-arm event and restart `ffmpeg-srt-relay`
 - **Livestream verify (browser):** https://dashboard.subsplash.com/-d/#/media/live
 
@@ -275,6 +275,68 @@ case they're ever wanted again — reinstate via
   - Backup: **Auto Move Windows**, `application-list` → `soundbooth-dashboard.desktop:2`, matched via `--class=SoundboothDashboard` (Vivaldi's `--class` flag sets the Wayland `app_id`) + `StartupWMClass=SoundboothDashboard`. This one **is** gsettings-data-driven (no code to reload), so it's the one actually doing the work on an already-running session.
   - Switch: **Super+Page_Down** or **Super+Alt+2**. Re-apply after GNOME updates: `~/bin/configure-dashboard-workspace.sh`
 - Health: no longer a `soundbooth-health.sh` check (was `check_multiview`, removed) — the dashboard has its own systemd units (`soundbooth-dashboard.service`, `hdmi-preview.service`, `hdmi-preview-dp4.service`) instead.
+
+---
+
+## systemd user-unit conventions (graphical-session.target)
+
+**Never** put `Wants=`, `Requires=`, `BindsTo=` or `Upholds=` on `graphical-session.target` in a
+user unit. Those *activate* the target, and units pulled in by `soundbooth.target` (WantedBy
+`default.target`) started it before GNOME did, so GNOME's login failed with "A graphical session
+is already running!" (fixed 2026-10-04; seen on Ubuntu 26.04).
+
+- Use **`PartOf=graphical-session.target`** (stop/restart propagation only, no activation) plus
+  `After=graphical-session.target`. Applied to `ardour`, `qpwgraph`, `soundbooth-dashboard`,
+  `hdmi-preview`, `camera-management`.
+- `WantedBy=graphical-session.target` is fine for GUI-bound units (`qpwgraph` moved there from
+  `default.target`). `ardour.service` deliberately has no `[Install]` (manual only).
+- **Watcher units must not use `WantedBy=graphical-session.target`** alongside an `After=` on a
+  unit that is itself `After=graphical-session.target` — that is the 3-way ordering cycle
+  documented in `ffmpeg-capture-watch`, `ffmpeg-srt-watch`, `camera-management-watch`. They hang
+  off `soundbooth.target` instead.
+- Check: `systemd-analyze --user verify <unit>`; `journalctl --user -b | grep -i "ordering cycle"`.
+- Caveat: `qpwgraph` is still in `soundbooth.target`'s `Wants=` and no longer `Requires=` the
+  session, so it can launch before the display exists; `start-qpwgraph.sh` waits up to 30s and
+  `Restart=always` covers the rest. Vendor GNOME units referencing the target are untouched.
+
+---
+
+## Ubuntu 26.04 upgrade (2026-10-04) — what changed and what is now stale
+
+Machine went **24.04 → 26.04.1** (GNOME Shell **50.1**, WirePlumber **0.5.13**, PipeWire
+**1.6.2**, Python **3.14**) on 2026-10-04 ~13:32–13:55. Full write-up with timeline and
+evidence: **`docs/ubuntu-26.04-upgrade-login-incident.md`**.
+
+**Why login broke.** `soundbooth` has `Linger=yes`, so the user manager and
+`soundbooth.target` start at boot, *before* any login. Five units pulled
+`graphical-session.target` active via `Wants=`/`Requires=` (see conventions above). GNOME 50's
+systemd-managed `gnome-session-init-worker` refuses to start when that target is already
+active ("A graphical session is already running!"), so every login — autologin and
+password — opened and closed within seconds. GNOME 46 on 24.04 did not check, which is why
+this had worked for months. Fixed with `PartOf=`; verified by a clean login on the next boot.
+
+**Statements elsewhere in this file that are now stale or unverified** (not yet corrected —
+fix each when you re-verify it on the new stack):
+- "GNOME 46 session" / extension-reload behaviour (Control dashboard section) — now GNOME 50.
+- Every **WirePlumber 0.4.17** statement (box is on **0.5.13**; behaviours like ffplay falling
+  back to Mixer, `restore-stream` replay, and `node.dont-fallback` are unverified on 0.5). The two
+  device rules were **ported to `wireplumber.conf.d/*.conf` on 2026-10-04** (old Lua archived in
+  `~/wireplumber-lua-retired-20261004/`, removed from the repo). Installed + syntax-checked
+  (`spa-json-dump`) but **not yet proven live** — takes effect at the next WirePlumber start; verify
+  with `pactl list cards | grep -i extreme` (should print nothing) and PreSonus soft-mixer
+  on its card once the board is on.
+- **Dashboard** venv was Python 3.12 on a 3.14 system (crash-loop) — **rebuilt 2026-10-04** on
+  3.14; unpinned `requirements.txt` now resolves to newer fastapi/anthropic. Rebuild the same
+  way (`python3 -m venv`, `pip install -r requirements.txt`) after any future Python bump.
+- **Workspace-2 placement** of the dashboard: user extensions are disabled
+  (`disable-user-extensions=true`); `soundbooth-multiview-workspace` is also OUT OF DATE for
+  shell 50; `auto-move-windows` and `tilingshell` are off.
+- **Autologin is off** (`/etc/gdm3/custom.conf`, commented out 2026-10-04 14:13 while
+  troubleshooting). Booth now waits at the greeter after boot until someone logs in.
+
+**Before any future release upgrade:** read the incident doc's "How to diagnose" section, run
+`~/bin/soundbooth-health.sh` before and after, and expect the user manager to start units
+before the session exists — nothing may activate `graphical-session.target` itself.
 
 ---
 

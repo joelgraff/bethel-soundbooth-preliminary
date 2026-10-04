@@ -1,7 +1,7 @@
 [Unit]
 Description=Ardour DAW with PreSonus wait (soundbooth, optional)
 After=graphical-session.target virtual-sinks-loaded.target qpwgraph.service wireplumber.service
-Requires=graphical-session.target
+PartOf=graphical-session.target
 
 [Service]
 Type=simple

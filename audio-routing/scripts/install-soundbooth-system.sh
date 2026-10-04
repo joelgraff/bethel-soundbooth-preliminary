@@ -172,6 +172,20 @@ for f in "$REPO"/audio-routing/systemd/*.service.d-*.conf; do
     install_file "$f" "${UNITS}/${b%%.d-*}.d/${b#*.d-}" 0644
 done
 
+# WirePlumber 0.5 config (SPA-JSON). Copy only: a running wireplumber reads these at
+# start, so they take effect on the next boot/restart — this script never restarts it
+# (a restart mid-service drops ffplay's audio onto Mixer/FOH). The old 0.4 Lua rules
+# in main.lua.d/ are silently ignored by 0.5 and must not be reinstalled.
+WP_CONF="${HOME}/.config/wireplumber/wireplumber.conf.d"
+echo "== wireplumber -> ${WP_CONF/#$HOME/\~} =="
+for f in "$REPO"/audio-routing/wireplumber/*.conf; do
+    [[ -f "$f" ]] || continue
+    install_file "$f" "$WP_CONF/$(basename "$f")" 0644
+done
+for f in "${HOME}"/.config/wireplumber/main.lua.d/*.lua; do
+    [[ -f "$f" ]] && drift "stale WirePlumber 0.4 Lua rule (ignored by 0.5): ${f/#$HOME/\~} — port or remove it"
+done
+
 if (( ENABLE )); then
     echo "== enable =="
     (( CHECK )) || systemctl --user daemon-reload

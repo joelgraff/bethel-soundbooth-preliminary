@@ -2,7 +2,7 @@
 Description=Soundbooth Control Dashboard (backend API + agent bridge)
 Documentation=file:///home/soundbooth/soundbooth-project/dashboard/README.md
 After=graphical-session.target
-Wants=graphical-session.target
+PartOf=graphical-session.target
 # Ceiling so this can't crash-loop forever — same convention as ffmpeg-capture.service
 # (added alongside the audio-routing/systemd StartLimit audit for consistency).
 StartLimitIntervalSec=600
