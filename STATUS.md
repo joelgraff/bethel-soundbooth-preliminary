@@ -15,8 +15,7 @@ Updated: 2026-10-04 night (remote follow-ups; see first section). Earlier: (hand
   `static/js/agent-chat.js` (shared; main dashboard chat confirmed still rendering), `widget-chat.html`,
   `start-widget-chat.sh`, `start-widget-subsplash.sh`. Chat needs `ANTHROPIC_API_KEY` (not set); Subsplash needs a
   one-time login at the booth. Not positioned/autostarted.
-- [ ] **PreSonus dropped off USB again at 18:09:53** (`usb 3-2: USB disconnect`, clean — no errors before it;
-  may have been unplugged/powered off — unconfirmed). `presonus-usb-watch` gave up (max restarts/hour).
+- [x] PreSonus disconnected at 18:09:53 because the operator switched the board off (not the instability). If FOH is silent after it is powered back on: `~/bin/presonus-recover.sh`, or `systemctl --user reset-failed presonus-foh-bridge && systemctl --user start presonus-foh-bridge` (the watcher is rate-limited to 10 restarts/hour).
 - [ ] **Real-camera test needed** (someone at the booth, camera powered on): move/zoom/home, save + recall a
   preset, check the page looks right on DP-1. Not yet decided: where the widget sits (zones), whether to add
   preset recall to the AI chat tools.
