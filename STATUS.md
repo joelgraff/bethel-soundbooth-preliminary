@@ -24,8 +24,10 @@ Updated: 2026-10-04 (graphical-session.target unit fix; widget's undecorated-lau
      installer deploys them). **ATEM rule verified live** (WirePlumber restarted 14:42:
      `pactl list cards | grep -i extreme` now empty, capture unaffected, ffplay stayed on HDMI).
      PreSonus rule still unverified — needs the board on USB. Old Lua in `~/wireplumber-lua-retired-20261004/`.
-  3. GNOME user extensions disabled (`disable-user-extensions=true`); multiview-workspace ext
-     is OUT OF DATE for shell 50 → dashboard no longer lands on workspace 2.
+  3. ~~GNOME user extensions disabled~~ — **FIXED 14:45**: `disable-user-extensions` → false,
+     tilingshell + auto-move-windows ACTIVE. `soundbooth-multiview-workspace` metadata/`ws.index`
+     fixed in repo + deployed but reads OUT OF DATE until the **next login** (shell caches
+     metadata); verify the dashboard lands on workspace 2 after the next reboot.
   4. Autologin commented out of `/etc/gdm3/custom.conf` at 14:13 (operator troubleshooting);
      decide whether to restore. Needs root.
   5. PreSonus not on USB; `presonus-foh-bridge` restart-looping (power, not the upgrade).

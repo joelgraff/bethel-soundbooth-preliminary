@@ -328,9 +328,16 @@ fix each when you re-verify it on the new stack):
 - **Dashboard** venv was Python 3.12 on a 3.14 system (crash-loop) — **rebuilt 2026-10-04** on
   3.14; unpinned `requirements.txt` now resolves to newer fastapi/anthropic. Rebuild the same
   way (`python3 -m venv`, `pip install -r requirements.txt`) after any future Python bump.
-- **Workspace-2 placement** of the dashboard: user extensions are disabled
-  (`disable-user-extensions=true`); `soundbooth-multiview-workspace` is also OUT OF DATE for
-  shell 50; `auto-move-windows` and `tilingshell` are off.
+- **Workspace-2 placement** of the dashboard — **fixed 2026-10-04**: GNOME had
+  `disable-user-extensions=true` after the upgrade; set back to `false` (live, no logout).
+  `tilingshell` and `auto-move-windows` (stock upstream 50.4 — the repo's old
+  `auto-move-windows-soundbooth-patch/` targeted the retired Multiview and must NOT be
+  reapplied) are ACTIVE. `soundbooth-multiview-workspace` now declares shell 46+50 (and its
+  `ws.index` method-vs-property bug is fixed) but still reads **OUT OF DATE until the next
+  login**, because the shell caches metadata at start — until then the backup path
+  (`auto-move-windows` → `soundbooth-dashboard.desktop:2`) does the placement, and only for
+  windows created *after* the extension loaded (an already-open dashboard window is not moved).
+  Cause of the original `true` is unknown (not found in logs).
 - **Autologin is off** (`/etc/gdm3/custom.conf`, commented out 2026-10-04 14:13 while
   troubleshooting). Booth now waits at the greeter after boot until someone logs in.
 

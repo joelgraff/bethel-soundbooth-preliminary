@@ -97,12 +97,17 @@ Ordered by how much they matter on a Sunday.
    flags any leftover `main.lua.d/*.lua` as drift (before this it never installed WirePlumber
    files at all — they had been hand-copied). All WirePlumber 0.4.17 claims in
    `SYSTEM-STATE.md` (including the `ffplay` fallback behaviour) are unverified on 0.5.
-3. **GNOME user extensions are disabled.** `org.gnome.shell disable-user-extensions`
-   is `true`; `tilingshell`, `auto-move-windows` and `soundbooth-multiview-workspace`
-   are all `Enabled: No`, the last also `OUT OF DATE` (its `metadata.json` does not list
-   shell 50). That extension and `auto-move-windows` are what put the dashboard window
-   on workspace 2, so that placement is currently not happening. Re-enabling user
-   extensions changes the live desktop — do it with the operator watching, not mid-service.
+3. **GNOME user extensions were disabled — FIXED 2026-10-04 ~14:45.**
+   `org.gnome.shell disable-user-extensions` was `true` (who/what set it is unknown; nothing in the
+   logs). Set to `false` live: `tilingshell` and `auto-move-windows` went ACTIVE, no shell errors.
+   `auto-move-windows` is already upstream 50.4 (the repo's `auto-move-windows-soundbooth-patch/`
+   targets the retired Multiview — obsolete, don't reapply). `soundbooth-multiview-workspace`
+   only listed shell 46: metadata now `["46","50"]` and a `ws.index` bug fixed (it is a method, so
+   the old check always re-moved and logged every 3s). It still shows OUT OF DATE because GNOME
+   caches metadata at shell start; it loads on the next login. Until then the stock Auto Move
+   `application-list` entry places the dashboard, but only for newly-created windows.
+   `tiling-assistant` and `tilingshell` are both enabled, as before the upgrade (the cockpit plan
+   wants `tiling-assistant` dropped — not done).
 4. **Autologin is off** (see 14:13 above). If the booth is meant to come up unattended
    it will now sit at the GDM greeter. Re-enabling is two lines in
    `/etc/gdm3/custom.conf` and needs root; deliberately not done by an agent. Note

@@ -74,7 +74,11 @@ export default class SoundboothDashboardWorkspace extends Extension {
         this._ensureWorkspaces(TARGET_WS);
         try {
             const ws = window.get_workspace();
-            if (!ws || ws.index !== TARGET_WS) {
+            // Meta.Workspace.index is a method, not a property (comparing the
+            // function itself made this always true: a redundant move + log line
+            // every 3s scan). Tolerate both shapes across Mutter versions.
+            const wsIndex = ws ? (typeof ws.index === 'function' ? ws.index() : ws.index) : -1;
+            if (!ws || wsIndex !== TARGET_WS) {
                 window.change_workspace_by_index(TARGET_WS, false);
                 log('soundbooth-dashboard-workspace: moved to workspace ' + (TARGET_WS + 1));
             }
