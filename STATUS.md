@@ -22,9 +22,11 @@ Updated: 2026-10-04 night (remote follow-ups; see first section). Earlier: (hand
   every time (`xhci-pci-renesas: unexpected command completion code 0x11` → `usb 5-1: Not enough
   bandwidth for altsetting 1`, bridge restart-loops); same errors on the 24.04 boots, so not the upgrade;
   a new cable changed nothing. On a motherboard port (bus 3, Matisse, shared with the ATEM) it enumerates
-  clean and `presonus-foh-bridge` runs. **Audio end-to-end not verified** (nothing playing). Card has run on
-  ROM fallback (`renesas_usb_fw.mem` is not in `linux-firmware`); whether that is the cause is unproven —
-  read the on-card FW version with `sudo setpci -s 06:00.0 f4.l f6.w` (non-root reads ffffffff).
+  clean and `presonus-foh-bridge` runs. **Audio end-to-end not verified** (nothing playing). The card's firmware is fine:
+  `setpci -s 06:00.0 6c.l` = `00202609` → FW **2.0.2.6** (latest) loaded from its own ROM, so the
+  `failed to load firmware renesas_usb_fw.mem, fallback to ROM` line is benign — no file needed. Cause of the
+  `0x11` (xHCI "Parameter Error" on Configure Endpoint) is **unknown**; suspect this controller can't schedule
+  the board's 64-ch high-bandwidth iso endpoints (unproven). Leave the board off this card.
   Bus 3 shares bandwidth with the ATEM (see the Audacity note) — a chipset-controller port (`02:00.0`,
   buses 1/2) is the preferred long-term home.
 - [x] **Spotify: snap replaced by the apt `spotify-client`.** The snap's AppArmor blocked FreeShow's MPRIS
