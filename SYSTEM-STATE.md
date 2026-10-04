@@ -340,6 +340,13 @@ fix each when you re-verify it on the new stack):
   Cause of the original `true` is unknown (not found in logs).
 - **Autologin restored 2026-10-04 (evening)** — `AutomaticLoginEnable=true` / `AutomaticLogin=soundbooth` uncommented in `/etc/gdm3/custom.conf` (backup `custom.conf.bak-20261004`). Takes effect at the next boot; **not yet verified by a real boot**. Expect `gkr-pam: couldn't unlock the login keyring` (also on 24.04).
 
+- **Follow-ups 2026-10-04 (evening):** FreeShow launcher must NOT pass `--use-gl=desktop` (26.04 Electron
+  rejects it; GPU process loops, outputs go black). `qpwgraph` is no longer started at boot (manual only).
+  Health has a `session-guard` check for the login-loop pattern. The PreSonus 32SX must **not** be on the
+  Renesas PCIe card — playback fails on it (xhci `0x11` / "Not enough bandwidth"; card firmware is fine,
+  cause unknown); it is on a motherboard port (bus 3, shared with the ATEM). Spotify is the apt
+  `spotify-client` (the snap's AppArmor blocked FreeShow's MPRIS polling).
+
 **Before any future release upgrade:** read the incident doc's "How to diagnose" section, run
 `~/bin/soundbooth-health.sh` before and after, and expect the user manager to start units
 before the session exists — nothing may activate `graphical-session.target` itself.
