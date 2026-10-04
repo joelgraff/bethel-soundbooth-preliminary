@@ -546,3 +546,26 @@ button:active:not(:disabled),
 }
 .doc-rendered th { background: var(--surface-2); color: var(--text); font-weight: 700; white-space: nowrap; }
 .doc-rendered td { color: var(--text-muted); }
+
+/* ---- camera (PTZ) widget: widget-camera.html ---- */
+.ptz-card { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.ptz-pad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.ptz-btn { min-height: 56px; font-size: 20px; font-weight: 700; border-radius: 12px; background: var(--surface-2); color: var(--text); border: 1px solid var(--border); touch-action: none; user-select: none; -webkit-user-select: none; }
+.ptz-btn:active, .ptz-btn.held { background: var(--accent-bg); border-color: var(--accent-border); }
+.ptz-btn:disabled { opacity: .4; cursor: not-allowed; }
+.ptz-home { font-size: 14px; }
+.ptz-zoom { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ptz-zoom .ptz-btn { font-size: 15px; }
+.ptz-speed { display: flex; align-items: center; gap: 12px; }
+.ptz-speed input { flex: 1; }
+.ptz-presets-card { padding: 16px; }
+.ptz-presets { display: flex; flex-direction: column; gap: 8px; }
+.ptz-preset-row { display: flex; gap: 6px; }
+.ptz-preset-row .ptz-recall { flex: 1; text-align: left; justify-content: flex-start; font-size: 15px; padding: 14px 16px; }
+.ptz-preset-row .ptz-slot { color: var(--text-faint); font-family: "IBM Plex Mono", monospace; font-size: 12px; margin-left: auto; }
+.ptz-preset-row .btn { padding: 10px 12px; }
+.ptz-empty { color: var(--text-muted); font-size: 13px; }
+.ptz-add { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.ptz-add input, .ptz-add select { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; font-size: 14px; padding: 10px 12px; }
+.ptz-add input { flex: 1; min-width: 140px; }
+.ptz-speed input { accent-color: var(--accent); }

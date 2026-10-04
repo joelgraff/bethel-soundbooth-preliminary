@@ -69,6 +69,15 @@ const api = {
     method: "POST", body: JSON.stringify({ content, expected_mtime: expectedMtime ?? null }),
   }),
   signalChainSheets: () => apiFetch("/api/signal-chain/sheets"),
+  ptzStatus: () => apiFetch("/api/ptz/status"),
+  ptzMove: (direction, speed) => apiFetch("/api/ptz/move", { method: "POST", body: JSON.stringify({ direction, speed }) }),
+  ptzZoom: (direction, speed) => apiFetch("/api/ptz/zoom", { method: "POST", body: JSON.stringify({ direction, speed }) }),
+  ptzHome: () => apiFetch("/api/ptz/home", { method: "POST" }),
+  ptzRecall: (slot) => apiFetch(`/api/ptz/presets/${slot}/recall`, { method: "POST" }),
+  ptzSavePreset: (name, slot, savePosition, overwrite) => apiFetch("/api/ptz/presets", {
+    method: "POST", body: JSON.stringify({ name, slot, save_position: !!savePosition, overwrite: !!overwrite }),
+  }),
+  ptzDeletePreset: (slot) => apiFetch(`/api/ptz/presets/${slot}`, { method: "DELETE" }),
 };
 
 // Booth-PC-only bootstrap: start-booth-dashboard-view.sh launches the local

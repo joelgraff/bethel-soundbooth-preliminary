@@ -24,6 +24,7 @@ from . import agent_tools
 from . import docs_editor
 from . import signal_chain as signal_chain_mod
 from . import livestream_schedule as schedule_mod
+from . import ptz as ptz_mod
 from . import recording as recording_mod
 from .agent import AgentBridge
 from .auth import check_local_token, check_pin, require_session
@@ -268,6 +269,75 @@ def api_schedule_arm(body: ScheduleArmBody, _: None = Depends(require_session)):
         )
     except schedule_mod.ScheduleError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+
+class PtzMoveBody(BaseModel):
+    direction: str
+    speed: int = 8
+
+
+class PtzZoomBody(BaseModel):
+    direction: str
+    speed: int = 3
+
+
+class PtzPresetBody(BaseModel):
+    name: str
+    slot: int
+    save_position: bool = False
+    overwrite: bool = False
+
+
+def _ptz_call(fn, *args, **kwargs):
+    """Map camera-side failures to HTTP: standby/bad input 409, unreachable 502."""
+    try:
+        return fn(*args, **kwargs)
+    except ptz_mod.PtzStandbyError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ptz_mod.PtzError as exc:
+        msg = str(exc)
+        unreachable = msg.startswith(("camera unreachable", "camera did not answer", "camera connection"))
+        raise HTTPException(status_code=502 if unreachable else 400, detail=msg) from exc
+
+
+@app.get("/api/ptz/status")
+def api_ptz_status(_: None = Depends(require_session)):
+    status = ptz_mod.get_status()
+    status["presets"] = _ptz_call(ptz_mod.load_presets)
+    return status
+
+
+@app.post("/api/ptz/move")
+def api_ptz_move(body: PtzMoveBody, _: None = Depends(require_session)):
+    return _ptz_call(ptz_mod.move, body.direction, body.speed)
+
+
+@app.post("/api/ptz/zoom")
+def api_ptz_zoom(body: PtzZoomBody, _: None = Depends(require_session)):
+    return _ptz_call(ptz_mod.zoom, body.direction, body.speed)
+
+
+@app.post("/api/ptz/home")
+def api_ptz_home(_: None = Depends(require_session)):
+    return _ptz_call(ptz_mod.home)
+
+
+@app.post("/api/ptz/presets")
+def api_ptz_preset_save(body: PtzPresetBody, _: None = Depends(require_session)):
+    return _ptz_call(
+        ptz_mod.save_preset, body.name, body.slot,
+        save_position=body.save_position, overwrite=body.overwrite,
+    )
+
+
+@app.post("/api/ptz/presets/{slot}/recall")
+def api_ptz_preset_recall(slot: int, _: None = Depends(require_session)):
+    return _ptz_call(ptz_mod.recall_preset, slot)
+
+
+@app.delete("/api/ptz/presets/{slot}")
+def api_ptz_preset_delete(slot: int, _: None = Depends(require_session)):
+    return _ptz_call(ptz_mod.delete_preset, slot)
 
 
 class DocSaveBody(BaseModel):

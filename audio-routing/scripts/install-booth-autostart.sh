@@ -61,6 +61,10 @@ if [[ -f "$HOME/soundbooth-project/audio-routing/scripts/start-widget-livestream
     install -m 0755 "$HOME/soundbooth-project/audio-routing/scripts/start-widget-livestream.sh" \
         "$HOME/bin/start-widget-livestream.sh"
 fi
+if [[ -f "$HOME/soundbooth-project/audio-routing/scripts/start-widget-camera.sh" ]]; then
+    install -m 0755 "$HOME/soundbooth-project/audio-routing/scripts/start-widget-camera.sh" \
+        "$HOME/bin/start-widget-camera.sh"
+fi
 
 echo "Done. Autostart applies on next graphical login (or reboot)."
 echo "Start now without rebooting:"
@@ -69,3 +73,4 @@ echo "  ~/bin/start-freeshow.sh &"
 echo "  ~/bin/start-booth-browser.sh &        # Vivaldi on DP-1 (not program DP-4)"
 echo "  ~/bin/start-booth-dashboard-view.sh & # dashboard on GNOME workspace 2"
 echo "  ~/bin/start-widget-livestream.sh &    # livestream cockpit widget (manual for now)"
+echo "  ~/bin/start-widget-camera.sh &        # PTZ camera control widget (manual for now)"

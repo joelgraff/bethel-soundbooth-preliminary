@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Camera</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+<div class="widget-page">
+  <div class="card widget-status-card">
+    <div class="widget-status-row">
+      <div class="tally-lamp" id="cam-lamp"></div>
+      <div>
+        <div class="widget-status-label" id="cam-label">Checking…</div>
+        <div class="brand-sub" id="cam-sub"></div>
+      </div>
+    </div>
+  </div>
+  <div class="card ptz-card">
+    <div class="ptz-pad" id="ptz-pad">
+      <button class="ptz-btn" data-dir="upleft" aria-label="Up left">↖</button>
+      <button class="ptz-btn" data-dir="up" aria-label="Up">↑</button>
+      <button class="ptz-btn" data-dir="upright" aria-label="Up right">↗</button>
+      <button class="ptz-btn" data-dir="left" aria-label="Left">←</button>
+      <button class="ptz-btn ptz-home" id="ptz-home" aria-label="Home">Home</button>
+      <button class="ptz-btn" data-dir="right" aria-label="Right">→</button>
+      <button class="ptz-btn" data-dir="downleft" aria-label="Down left">↙</button>
+      <button class="ptz-btn" data-dir="down" aria-label="Down">↓</button>
+      <button class="ptz-btn" data-dir="downright" aria-label="Down right">↘</button>
+    </div>
+    <div class="ptz-zoom">
+      <button class="ptz-btn" data-zoom="out" aria-label="Zoom out">Zoom −</button>
+      <button class="ptz-btn" data-zoom="in" aria-label="Zoom in">Zoom +</button>
+    </div>
+    <label class="ptz-speed"><span class="lbl">SPEED</span>
+      <input type="range" id="ptz-speed" min="1" max="20" value="8">
+    </label>
+  </div>
+  <div class="card ptz-presets-card">
+    <div class="lbl" style="margin-bottom:10px;">PRESETS</div>
+    <div class="ptz-presets" id="ptz-presets"></div>
+    <div class="ptz-add">
+      <input type="text" id="ptz-name" maxlength="40" placeholder="New preset name">
+      <select id="ptz-slot" aria-label="Camera slot"></select>
+      <button class="btn btn-ghost" id="ptz-save">Save current view</button>
+    </div>
+    <div class="brand-sub" style="margin-top:8px;">Saving stores the camera's current view in that slot, replacing whatever the camera held there.</div>
+  </div>
+</div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<script src="/js/api.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/widget-camera.js"></script>
+</body>
+</html>

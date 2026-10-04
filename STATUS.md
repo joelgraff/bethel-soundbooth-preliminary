@@ -2,6 +2,19 @@
 
 Updated: 2026-10-04 night (remote follow-ups; see first section). Earlier: (handoff to remote session; graphical-session.target unit fix; widget's undecorated-launch position fixed: was landing under GNOME's top bar)
 
+## Current State (2026-10-04 night — PTZ camera control widget built)
+
+- [x] **PTZ control app with named presets** (`dashboard/backend/app/ptz.py`, `static/widget-camera.html`,
+  `~/bin/start-widget-camera.sh`). VISCA over TCP :5678 direct to the PT12X (confirmed with read-only inquiries;
+  the camera is in **standby**, which is why CMP's preview was waiting). Press-and-hold pad + zoom + home, named
+  presets mapped to camera slots (`~/.config/soundbooth/ptz-presets.json`), saves confirm because they overwrite
+  the camera's slot. Safety: resend-while-held, stop on release/blur/hidden, 1.5 s backend watchdog, refuses in
+  standby. Tests: `tests/ptz-visca-test.py` (fake camera, 38 checks) and `tests/ptz-widget-ui-test.js` (13).
+  Dashboard service restarted to serve it; live `/api/ptz/status` → standby, move correctly refused.
+- [ ] **Real-camera test needed** (someone at the booth, camera powered on): move/zoom/home, save + recall a
+  preset, check the page looks right on DP-1. Not yet decided: where the widget sits (zones), whether to add
+  preset recall to the AI chat tools.
+
 ## Current State (2026-10-04 evening — remote follow-ups after the 26.04 upgrade)
 
 - [x] **FreeShow black outputs fixed.** `start-freeshow.sh` passed `--use-gl=desktop`, which Electron on

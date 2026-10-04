@@ -72,6 +72,11 @@ nothing in this repo talks to the camera's control protocols directly.
 (PT12X-SDI-xx-G2) documents two control surfaces per `SYSTEM-STATE.md`:
 VISCA-over-IP (`:5678`) and an HTTP interface (`:80`). Building this needs:
 
+> **Built 2026-10-04** — `dashboard/backend/app/ptz.py` (VISCA over TCP :5678, confirmed live with read-only
+> inquiries), `static/widget-camera.html`, launcher `start-widget-camera.sh`. Named presets are stored here
+> (`ptz-presets.json`) mapped to camera slots. See `dashboard/README.md` → "PTZ camera control widget". The
+> movement/preset commands are untested on the real camera. Original plan below.
+
 1. A short research step confirming which protocol (or both) actually
    supports pan/tilt/zoom + preset recall + home on this specific
    camera/firmware (SOC v6.2.82) — not assumed.
@@ -95,7 +100,7 @@ happen mid-service.
    "locking" deliberately left aside, see Decisions)*
 4. **Livestream + DP-monitors widget — built this session, see below.**
 5. AI chat widget — reuses `/ws/agent`, new frontend only. *(pending)*
-6. Camera control widget — the real new backend piece, above. *(pending)*
+6. Camera control widget — the real new backend piece, above. *(built 2026-10-04; real-camera test pending)*
 7. FreeShow/Spotify zone — mostly a tiling/placement config, not new code.
    *(pending)*
 

@@ -161,6 +161,33 @@ import -window "$WID" /tmp/dash.png       # ImageMagick
 where X11 capture tools can't see it at all. Size the window taller than the page and
 crop afterwards — synthetic scroll and key events do not reach these windows reliably.
 
+## PTZ camera control widget
+
+Direction pad, zoom, home and **named presets** for the PTZOptics PT12X — no video, so it
+stays small enough to pin on DP-1 (replaces CMP for day-to-day moves; see
+`docs/dp1-desktop-cockpit-plan.md`).
+
+- Page: `static/widget-camera.html` + `js/widget-camera.js`. Launcher: `~/bin/start-widget-camera.sh &`
+  (own Vivaldi profile; deliberately **not positioned** — tile it by hand until the DP-1 zones are decided).
+- Backend: `app/ptz.py` speaks **VISCA over TCP :5678** straight to the camera (IP from
+  `~/.config/soundbooth/camera.conf`). Endpoints: `GET /api/ptz/status`, `POST /api/ptz/move|zoom|home`,
+  `POST /api/ptz/presets` (name a slot, optionally store the camera's current view in it),
+  `POST /api/ptz/presets/{slot}/recall`, `DELETE /api/ptz/presets/{slot}`.
+- **Presets**: names live in `~/.config/soundbooth/ptz-presets.json` (name → camera slot 0-254; the UI offers
+  1-89). Recall is one tap, no confirmation. **Saving a view overwrites that camera slot** — including
+  presets set from CMP or the phone app, which can't be read back — so the UI always asks first.
+  "✕" forgets only the name; the camera's slot is left alone.
+- **Safety**: movement is press-and-hold. The page re-sends the drive command every 500 ms and sends a stop
+  on release, pointer-cancel, window blur or a hidden tab; the backend also stops the camera on its own
+  1.5 s after the last drive command. In **standby** the camera ignores commands, so the API refuses them
+  (409) and the page greys out; a *stop* is always allowed through. Power on/off is intentionally not offered.
+- Tests: `backend/tests/ptz-visca-test.py` (fake VISCA camera: frames, clamping, watchdog, preset rules, errors;
+  `.venv/bin/python tests/ptz-visca-test.py`) and `tests/ptz-widget-ui-test.js` (`node`; the hold/stop logic
+  against a DOM stub).
+- **Verified**: read-only inquiries against the real camera (power = standby, 2026-10-04), full HTTP flow and the
+  rendered page against the fake camera. **Not verified**: movement, preset save/recall and the on-screen
+  look on the real camera — it was in standby and nobody was at the booth.
+
 ## Reference Docs page (`docs.html`)
 
 View/edit surface for the project's physical reference docs — currently
