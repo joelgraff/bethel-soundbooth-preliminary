@@ -76,7 +76,7 @@ Ordered by how much they matter on a Sunday.
    newer fastapi 0.142 / anthropic 1.11 than before; all `app.*` modules import, service
    serves HTTP 200). Old venv kept as `dashboard/backend/.venv.py312.bak` — delete once
    satisfied. The live agent chat path (Anthropic SDK jump 1.4 → 1.11) is untested.
-2. **WirePlumber 0.5 ignored our Lua rules — PORTED 2026-10-04, not yet live-verified.** The box now has WirePlumber 0.5.13 /
+2. **WirePlumber 0.5 ignored our Lua rules — PORTED 2026-10-04; ATEM rule verified live, PreSonus rule not.** The box now has WirePlumber 0.5.13 /
    PipeWire 1.6.2; the journal says "Lua configuration files are NOT supported in
    WirePlumber 0.5". `~/.config/wireplumber/main.lua.d/51-presonus-soft-mixer.lua`
    and `52-atem-audio-ignore.lua` therefore do nothing. Observed: PipeWire now owns the
@@ -86,8 +86,13 @@ Ordered by how much they matter on a Sunday.
    it is a latent risk, not a current fault. Both rules were ported to
    `wireplumber.conf.d/*.conf` (SPA-JSON; `~` = glob, confirmed from libwireplumber symbols and the
    vendor config; `device.disabled` still honoured, `monitors/alsa.lua:485`). Syntax-checked with
-   `spa-json-dump`. **Deliberately not applied to the running WirePlumber** — a restart mid-service
-   drops ffplay's audio onto Mixer/FOH. Applies at next boot or restart. The PreSonus rule can't be
+   `spa-json-dump`. Applied by restarting WirePlumber at 14:42 (room quiet, no stream): ATEM card dropped
+   out of PipeWire as intended; `ffplay` (input #251) stayed on the HDMI sink in every poll from
+   t+1s on; health check clean apart from PreSonus. `ffplay-audio-guard` fired at 14:42:18 when
+   the HDMI sink briefly vanished — its park-on-LocalLive call failed (stream momentarily
+   unmovable) but the stream came back to HDMI on its own; a sub-second leak to Mixer during the
+   restart gap can't be ruled out, the polls didn't start until t+1s. Restart is therefore
+   *low* risk but not zero — still avoid mid-service. The PreSonus rule can't be
    exercised until the board is back on USB. The installer now deploys the `.conf` files and
    flags any leftover `main.lua.d/*.lua` as drift (before this it never installed WirePlumber
    files at all — they had been hand-copied). All WirePlumber 0.4.17 claims in

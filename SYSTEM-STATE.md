@@ -321,10 +321,10 @@ fix each when you re-verify it on the new stack):
 - Every **WirePlumber 0.4.17** statement (box is on **0.5.13**; behaviours like ffplay falling
   back to Mixer, `restore-stream` replay, and `node.dont-fallback` are unverified on 0.5). The two
   device rules were **ported to `wireplumber.conf.d/*.conf` on 2026-10-04** (old Lua archived in
-  `~/wireplumber-lua-retired-20261004/`, removed from the repo). Installed + syntax-checked
-  (`spa-json-dump`) but **not yet proven live** — takes effect at the next WirePlumber start; verify
-  with `pactl list cards | grep -i extreme` (should print nothing) and PreSonus soft-mixer
-  on its card once the board is on.
+  `~/wireplumber-lua-retired-20261004/`, removed from the repo). **ATEM rule verified live
+  2026-10-04 14:42** (WirePlumber restarted: ATEM card gone from `pactl list cards`, 1 → 0;
+  `ffmpeg-capture` kept its ALSA handle, no busy errors). **PreSonus soft-mixer rule still
+  unverified** — board was not on USB.
 - **Dashboard** venv was Python 3.12 on a 3.14 system (crash-loop) — **rebuilt 2026-10-04** on
   3.14; unpinned `requirements.txt` now resolves to newer fastapi/anthropic. Rebuild the same
   way (`python3 -m venv`, `pip install -r requirements.txt`) after any future Python bump.

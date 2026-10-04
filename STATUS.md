@@ -21,9 +21,9 @@ Updated: 2026-10-04 (graphical-session.target unit fix; widget's undecorated-lau
      1.4→1.11) not exercised.
   2. ~~WirePlumber 0.5 ignores the Lua rules~~ — **PORTED 2026-10-04** to
      `audio-routing/wireplumber/5{1,2}-*.conf` (live in `~/.config/wireplumber/wireplumber.conf.d/`,
-     installer deploys them). **Not applied/verified live**: needs a WirePlumber restart or reboot
-     (not mid-service). After: `pactl list cards | grep -i extreme` → empty; PreSonus rule needs
-     the board on USB. Old Lua in `~/wireplumber-lua-retired-20261004/`.
+     installer deploys them). **ATEM rule verified live** (WirePlumber restarted 14:42:
+     `pactl list cards | grep -i extreme` now empty, capture unaffected, ffplay stayed on HDMI).
+     PreSonus rule still unverified — needs the board on USB. Old Lua in `~/wireplumber-lua-retired-20261004/`.
   3. GNOME user extensions disabled (`disable-user-extensions=true`); multiview-workspace ext
      is OUT OF DATE for shell 50 → dashboard no longer lands on workspace 2.
   4. Autologin commented out of `/etc/gdm3/custom.conf` at 14:13 (operator troubleshooting);
