@@ -569,3 +569,4 @@ button:active:not(:disabled),
 .ptz-add input, .ptz-add select { background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-family: inherit; font-size: 14px; padding: 10px 12px; }
 .ptz-add input { flex: 1; min-width: 140px; }
 .ptz-speed input { accent-color: var(--accent); }
+.widget-chat-card { height: calc(100vh - 40px); }

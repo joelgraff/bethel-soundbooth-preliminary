@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Agent</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+<div class="widget-page">
+  <div class="card chat-card widget-chat-card">
+    <div class="chat-header">
+      <div class="chat-header-left">
+        <div class="chat-avatar" id="chat-avatar"></div>
+        <div>
+          <div style="font-size:14.5px; font-weight:700;">AI Agent</div>
+          <div class="chat-status"><span class="dot offline" id="chat-dot"></span><span id="chat-status-text">Not connected</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="chat-log" id="chat-log"></div>
+    <div style="display:flex; flex-direction:column; gap:10px;">
+      <div class="chat-input-row">
+        <input id="chat-input" placeholder="Ask the AI agent…" disabled>
+        <button class="chat-send" id="chat-send" disabled></button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+<script src="/js/api.js"></script>
+<script src="/js/icons.js"></script>
+<script src="/js/ui.js"></script>
+<script src="/js/agent-chat.js"></script>
+<script src="/js/widget-chat.js"></script>
+</body>
+</html>

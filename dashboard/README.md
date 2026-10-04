@@ -188,6 +188,18 @@ stays small enough to pin on DP-1 (replaces CMP for day-to-day moves; see
   rendered page against the fake camera. **Not verified**: movement, preset save/recall and the on-screen
   look on the real camera — it was in standby and nobody was at the booth.
 
+## Chat and Subsplash widgets
+
+- **AI agent chat widget** — `static/widget-chat.html` (+ `js/widget-chat.js`), launcher `~/bin/start-widget-chat.sh &`.
+  The chat client moved out of `dashboard.js` into `js/agent-chat.js`, shared by the dashboard and this page
+  (same `/ws/agent` bridge). Needs `ANTHROPIC_API_KEY` in `dashboard.conf` — **not set on this box**, so both
+  show "No API key" until it is (rendered and confirmed on both pages 2026-10-04; the live chat path itself is
+  still untested).
+- **Subsplash live-status window** — `~/bin/start-widget-subsplash.sh &` opens
+  `dashboard.subsplash.com/-d/#/media/live` in its own Vivaldi profile. **Needs a one-time Subsplash login at
+  the booth** (nothing is stored in the repo); the profile then keeps it. No dashboard code involved.
+- Neither launcher positions its window; tile by hand until the DP-1 zones are decided.
+
 ## Reference Docs page (`docs.html`)
 
 View/edit surface for the project's physical reference docs — currently
