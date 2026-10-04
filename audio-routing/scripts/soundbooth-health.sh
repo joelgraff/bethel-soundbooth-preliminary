@@ -180,6 +180,11 @@ check_camera_management() {
     fi
     if ss -tln 2>/dev/null | grep -qE ":${CMP_WS_PORT}([[:space:]]|\$)"; then
         log_result PASS "$section" "CMP RTSP-MPEG websocket bound on :${CMP_WS_PORT}"
+    elif journalctl --user -u camera-management.service -n 3 --no-pager -o cat 2>/dev/null \
+            | tail -1 | grep -qE 'has no stream — waiting|still waiting on camera'; then
+        # start-camera-management.sh holds off launching CMP until the camera serves a
+        # real RTSP frame — expected whenever the camera is off/standby (e.g. after service).
+        log_result PASS "$section" "CMP waiting for the camera's RTSP stream (camera off/standby — expected; preview starts by itself when it streams)"
     else
         log_result WARN "$section" "camera-management.service active but :${CMP_WS_PORT} not listening (CMP preview likely blank — camera-management-watch.service will restart it automatically after its grace period; manual: systemctl --user restart camera-management, then allow a few minutes)"
     fi
