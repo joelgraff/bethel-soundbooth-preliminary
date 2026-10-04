@@ -1,6 +1,53 @@
 # Soundbooth Project — Cross-Session Status
 
-Updated: 2026-10-04 (graphical-session.target unit fix; widget's undecorated-launch position fixed: was landing under GNOME's top bar)
+Updated: 2026-10-04 evening (handoff to remote session; graphical-session.target unit fix; widget's undecorated-launch position fixed: was landing under GNOME's top bar)
+
+## RESUME HERE (handoff written 2026-10-04 ~14:50 CDT, before moving to a remote session)
+
+Context: the 24.04 → 26.04 upgrade earlier today broke GDM login and several booth pieces. Read
+`docs/ubuntu-26.04-upgrade-login-incident.md` (timeline, root cause, evidence) and SYSTEM-STATE.md's
+"Ubuntu 26.04 upgrade" section first. Everything below was done and committed (`45fc39f`, `9b71208`,
+`a6c7936`); working tree is clean except two intentionally-untracked items.
+
+**Done + verified live:** login loop fixed (five units `PartOf=` not `Wants/Requires=`; clean login on
+the next boot) · dashboard venv rebuilt on Python 3.14 (service up, HTTP 200) · WirePlumber Lua rules
+ported to 0.5 `.conf` (ATEM rule verified after a live restart) · GNOME user extensions re-enabled.
+
+**Open, in suggested order:**
+1. **Reboot-verify** (operator was going to reboot): dashboard window lands on workspace 2;
+   `soundbooth-multiview-workspace` extension no longer OUT OF DATE (`gnome-extensions info`); no
+   `journalctl -b -g 'already running'`; ATEM card absent from `pactl list cards`; `ffmpeg-capture` up.
+2. **Autologin is off** — `/etc/gdm3/custom.conf` has `AutomaticLoginEnable`/`AutomaticLogin=soundbooth`
+   commented out (done 14:13 today during troubleshooting; not by an agent). Booth waits at the greeter
+   after boot. Restoring needs root (operator's call). Safe to restore now the login loop is fixed;
+   expect `gkr-pam: couldn't unlock the login keyring` under autologin (also happened on 24.04).
+3. **PreSonus 32SX is not on USB** (`lsusb` empty; health FAIL; `presonus-foh-bridge` restart-loops,
+   `presonus-usb-watch` says power-cycle) — power/cable, looks unrelated to the upgrade. Once it is back:
+   confirm the PreSonus soft-mixer WirePlumber rule applies (`51-presonus-soft-mixer.conf`, never tested)
+   and that FOH audio works (`~/bin/soundbooth-health.sh`, then `ensure-audio-routes.sh`).
+4. **CMP preview:** `camera-management.service` is active but nothing listens on `:9999`
+   (health WARN). Not investigated; `camera-management-watch` is supposed to recover it. Check whether
+   it's upgrade-related (Electron/AppImage under GNOME 50, DISPLAY=:0 / Xwayland).
+5. **Dashboard AI chat** untested after the venv rebuild (anthropic SDK jumped 1.4 → 1.11). Consider
+   pinning `dashboard/backend/requirements.txt`.
+6. **Stale 0.4-era claims** in SYSTEM-STATE.md (WirePlumber 0.4.17 behaviours — ffplay fallback to Mixer,
+   `restore-stream`, `node.dont-fallback`; GNOME 46 extension-reload notes) are unverified on WP 0.5 /
+   GNOME 50. Re-verify and correct as encountered. `ffplay-audio-guard` logged a failed park attempt
+   during the WirePlumber restart — worth a look when the room is quiet.
+7. **Cosmetic/cleanup:** `autorandr.service` failed (no profiles; disable or ignore); empty GNOME
+   wallpaper URI; drop `tiling-assistant` per the cockpit plan (both tiling extensions are enabled, as
+   before the upgrade); delete `dashboard/backend/.venv.py312.bak/` (74 MB, untracked) when satisfied;
+   delete the obsolete `audio-routing/gnome-shell-extensions/auto-move-windows-soundbooth-patch/`
+   (targets the retired Multiview; do not reapply).
+
+**Known drift, not from today's work:** `install-soundbooth-system.sh --check` reports
+`~/bin/install-booth-autostart.sh`, `start-booth-browser.sh`, `start-booth-dashboard-view.sh` differ
+from the repo (looks like in-progress DP-1 widget work from earlier today). Resolve deliberately.
+
+**Cautions for the next session:** don't restart `wireplumber` mid-service (ffplay audio can fall onto
+Mixer/FOH). Nothing may `Wants=/Requires=/BindsTo=/Upholds=` `graphical-session.target` in a user unit.
+Backups of today's edits: `~/systemd-user-backup-20261004-142803`,
+`~/wireplumber-lua-retired-20261004/`.
 
 ## Current State (2026-10-04 — GNOME login blocked by user units starting graphical-session.target)
 
